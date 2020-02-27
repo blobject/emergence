@@ -1,0 +1,11 @@
+* emergence
+
+** About
+
+*Emergence* is a visualiser/processor of a primordial particle system and its emergent/interactive properties.
+
+It is a rewrite of https://github.com/agarick/mff/tree/master/emergence, which was coded in JavaScript and HTML. The present project uses C++ and OpenCL.
+
+Implementation is based on the article, /How a life-like system emerges from a simple particle motion law/, by  Schmickl, Stefanec, and Crailsheim: https://www.nature.com/articles/srep37969.
+
+/WIP/
