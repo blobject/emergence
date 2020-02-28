@@ -2,10 +2,47 @@
 
 ** About
 
-*Emergence* is a visualiser/processor of a primordial particle system and its emergent/interactive properties.
+*Emergence* is a visualiser and processor of a primordial particle system and its emergent/interactive properties.
 
-It is a rewrite of https://github.com/agarick/mff/tree/master/emergence, which was coded in JavaScript and HTML. The present project uses C++ and OpenCL.
+This project is based on the article, /How a life-like system emerges from a simple particle motion law/, by  Schmickl, Stefanec, and Crailsheim: https://www.nature.com/articles/srep37969.
 
-Implementation is based on the article, /How a life-like system emerges from a simple particle motion law/, by  Schmickl, Stefanec, and Crailsheim: https://www.nature.com/articles/srep37969.
+This is a rewrite of https://github.com/agarick/mff/tree/master/emergence, which was coded in JavaScript + HTML5 and runs on the web browser. The present project uses OpenGL (graphics), OpenCL (parallelisation), GLFW (windowing), ImGui (user interface), and C++ as the main language of implementation. It runs as a native desktop application.
 
-/WIP/
+** Build & Run
+
+*** Dependencies
+
+- clang++ (>= 9)
+- cmake (+ make)
+- glew
+- glfw (>= 3)
+- imgui (source provided in =opt/=)
+- opencl sdk (per your graphics card manufacturer, eg. [[https://software.intel.com/en-us/opencl-sdk/choose-download][intel]], [[https://developer.nvidia.com/opencl][nvidia]])
+  - and opencl headers (>= 2.1)
+  - for the amd sdk, see [[https://stackoverflow.com/questions/53070673/download-opencl-amd-app-sdk-3-0-for-windows-and-linux][here]]
+- opengl (>= 3.3)
+
+/For all dependencies, except the opencl sdk, this project recommends installing according to your OS/package manager's common practice. On Debian/Ubuntu, for example, use "apt(itude)" to install the libraries' corresponding/ =*-dev= /packages./
+
+*** Linux
+
+- Build ::
+1. =git clone= (or download and extract) =<this repository>=
+1. =cd emergence=
+1. =rm -R build= (if it exists)
+1. =mkdir build=
+1. =cd build=
+1. =cmake ..=
+1. =make=
+
+- Run ::
+1. =./emergence=
+
+*** MacOS
+
+/TODO/
+
+*** Windows
+
+/TODO/
+
