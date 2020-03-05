@@ -1,16 +1,17 @@
 #pragma once
 
-#include <GLFW/glfw3.h>
+#include "headless.hh"
+#include "visualiser.hh"
+#include "../processor/processor.hh"
 
 class View
 {
  public:
-  GLFWwindow* window;
-  unsigned int width;
-  unsigned int height;
+  bool visual_;
+  Visualiser* visualiser_;
+  Headless* headless_;
 
-  View();
-  GLFWwindow* Init(unsigned int width, unsigned int height);
-  void        End();
-  int         Draw(GLFWwindow* window);
+  View(Processor* proc, bool visual, bool hidectrl);
+
+  void Fin();
 };

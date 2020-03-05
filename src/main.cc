@@ -1,17 +1,145 @@
-#include <cstdlib>
-#include "const.hh"
-#include "controller/controller.hh"
-#include "model/model.hh"
+#include <iostream>
+#include <fstream>
+#include <map>
+#include <unistd.h>
+
+#include "util/common.hh"
+#include "util/util.hh"
+#include "processor/processor.hh"
 #include "view/view.hh"
 
-int main()
+static void
+Help()
 {
-  Model model;
-  Controller controller;
-  View view;
+  std::cout << "Usage: " << ME << " [OPTIONS]\n\n"
+            << "Primordial particle system visualiser/processor.\n\n"
+            << "Options:\n"
+            << "  -f FILE  supply an initial state\n"
+            << "  -c       run in headless mode\n"
+            << "  -u       hide the visualiser controls\n"
+            << "  -v       show version\n"
+            << "  -h       show this help" << std::endl;
+}
 
-  view.Draw(view.window);
-  view.End();
+static std::map<std::string,std::string>
+Args(int argc, char* argv[])
+{
+  std::map<std::string,std::string> opts = {{"quit", ""},
+                                            {"return", ""},
+                                            {"headless", ""},
+                                            {"inputstate", ""},
+                                            {"hidectrl", ""}};
+  std::ifstream stream;
+  int opt;
+  while (-1 != (opt = getopt(argc, argv, ":cf:huv")))
+  {
+    switch (opt)
+    {
+    case 'c': opts["headless"]  = "y"; break;
+    case 'u': opts["hidectrl"] = "y"; break;
+    case 'v': opts["quit"] = "version";  opts["return"] =  "0"; break;
+    case 'h': opts["quit"] = "help";     opts["return"] =  "0"; break;
+    case ':': opts["quit"] = "bad_file"; opts["return"] = "-1"; break;
+    case 'f':
+      opts["inputstate"] = optarg;
+      stream = std::ifstream(optarg);
+      if (stream)
+      {
+        stream.close();
+      }
+      else
+      {
+        opts["quit"] = "inputstate";
+        opts["return"] = "-1";
+      }
+      break;
+    case '?':
+    default: opts["quit"] = optopt; opts["return"] = "-1"; break;
+    }
+  }
+  return opts;
+}
+
+static void
+Argue(std::map<std::string,std::string> &opts)
+{
+  auto opt = opts["quit"];
+  if (! opt.empty())
+  {
+    if ("help" == opt)
+    {
+      Help();
+      return;
+    }
+    else if ("version" == opt)
+    {
+      std::cout << ME << " version " << VERSION << std::endl;
+      return;
+    }
+    else if ("bad_file" == opt)
+    {
+      std::cerr << "Error: no file provided\n\n";
+    }
+    else if ("inputstate" == opt)
+    {
+      std::cerr << "Error: unreadable file '" << opts["inputstate"] << "'\n\n";
+    }
+    else
+    {
+      std::cerr << "Error: unknown argument '" << opts["quit"] << "'\n\n";
+    }
+    Help();
+    return;
+  }
+  if (opts["headless"].empty())
+  {
+    std::cout << "Running visualiser" << std::endl;
+  }
+  else
+  {
+    opt = opts["inputstate"];
+    std::cout << "Running headless";
+    if (! opt.empty()) std::cout << ": " << opt;
+    std::cout << std::endl;
+  }
+}
+
+int
+main(int argc, char* argv[])
+{
+  // arguments
+  auto opts = Args(argc, argv);
+  Argue(opts);
+  if (! opts["return"].empty()) return std::stoi(opts["return"]);
+
+  // configuration
+  std::string load = opts["inputstate"];
+  bool visual = opts["headless"].empty();
+  bool hidectrl = opts["hidectrl"].empty();
+
+  // main objects
+  State state = State(load);
+  Processor proc(&state);
+  View view(&proc, visual, hidectrl);
+
+  // main action
+  //Util::SaveState(&state, "foosave");
+  //Util::LoadState(&state, "fooload");
+  if (visual)
+  {
+    Visualiser* ui = view.visualiser_;
+    ui->Draw(ui->window_);
+    ui->Fin();
+  }
+  else
+  {
+    Headless* ui = view.headless_;
+    ui->Process();
+  }
+
+  // finalise
+  view.Fin();
+  state.Fin();
 
   return 0;
 }

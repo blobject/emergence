@@ -7,6 +7,13 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 project(emergence)
 
 add_executable(emergence src/main.cc
+                         src/util/debug.cc
+                         src/util/file.cc
+                         src/processor/processor.cc
+                         src/state/state.cc
+                         src/view/view.cc
+                         src/view/visualiser.cc
+                         src/view/headless.cc
                          opt/imgui.cpp
                          opt/imgui_demo.cpp
                          opt/imgui_draw.cpp
@@ -19,11 +26,5 @@ find_package(glfw3 REQUIRED)
 find_package(OpenCL REQUIRED)
 find_package(OpenGL REQUIRED)
 target_link_libraries(emergence GLEW glfw OpenCL OpenGL)
-
 include_directories(opt)
-
-add_library(model SHARED src/model/model.cc)
-add_library(controller SHARED src/controller/controller.cc)
-add_library(view SHARED src/view/view.cc)
-target_link_libraries(emergence model controller view)
 
