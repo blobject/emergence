@@ -1,8 +1,10 @@
 #include <iostream>
-#include <regex>
 #include <GL/glew.h>
 
 #include "util.hh"
+
+
+// PrepDebugGl: Clear out all OpenGL errors.
 
 void
 Util::PrepDebugGl()
@@ -10,8 +12,11 @@ Util::PrepDebugGl()
   while (GL_NO_ERROR != glGetError());
 }
 
+
+// DebugGl: Print the first OpenGL error.
+
 bool
-Util::DebugGl(std::string func, std::string path, int line)
+Util::DebugGl(const std::string &func, const std::string &path, int line)
 {
   std::string error;
   while (GLenum e = glGetError())
@@ -26,17 +31,10 @@ Util::DebugGl(std::string func, std::string path, int line)
     case GL_OUT_OF_MEMORY:     error = "out of memory";     break;
     default:                   error = "unknown";           break;
     }
-    std::cerr << "Error: gl, " << error << " in " << func << "\n  "
-              << Util::Relative(path) << ':' << line << std::endl;
+    std::cerr << "Error: gl, " << error << " at " << Util::Relative(path) << ':'
+              << line << "\n  " << func << std::endl;
     return false;
   }
   return true;
-}
-
-std::string
-Util::Relative(std::string path)
-{
-  std::regex re("^.*[\\/](src[\\/])");
-  return std::regex_replace(path, re, "$1");
 }
 

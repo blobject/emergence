@@ -1,28 +1,15 @@
 #include "view.hh"
+#include "headless.hh"
+#include "visualiser.hh"
 
-View::View(Processor* proc, bool visual, bool hidectrl)
+
+View*
+View::Init(Processor* processor, bool visual, bool hidectrl)
 {
-  this->visual_ = visual;
   if (visual)
   {
-    this->visualiser_ = new Visualiser(proc, hidectrl);
+    return new Visualiser(processor, hidectrl);
   }
-  else
-  {
-    this->headless_ = new Headless(proc);
-  }
-}
-
-void
-View::Fin()
-{
-  if (this->visual_)
-  {
-    delete this->visualiser_;
-  }
-  else
-  {
-    delete this->headless_;
-  }
+  return new Headless(processor);
 }
 

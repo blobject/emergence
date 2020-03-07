@@ -2,18 +2,24 @@
 
 #include <GLFW/glfw3.h>
 
+#include "gui.hh"
+#include "view.hh"
 #include "../processor/processor.hh"
 
-class Visualiser
+
+// Visualiser: The graphical view.
+
+class Visualiser : public View
 {
  public:
-  GLFWwindow* window_;
+  Processor*   processor_;
+  Gui*         gui_;
   unsigned int width_;
   unsigned int height_;
 
-  Visualiser(Processor* proc, bool hide_ctrl);
+  Visualiser(Processor* processor_, bool hide_ctrl);
+  ~Visualiser();
 
-  GLFWwindow* Init(unsigned int width, unsigned int height);
-  void        Fin();
-  int         Draw(GLFWwindow* window);
+  void Exec();
 };
+

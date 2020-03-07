@@ -1,13 +1,19 @@
 #pragma once
 
+#include "view.hh"
 #include "../processor/processor.hh"
 
-class Headless
+
+// Headless: The non-graphical (commandline-only) view.
+
+class Headless : public View
 {
  public:
-  Processor* proc_;
+  Processor* processor_;
 
-  Headless(Processor* proc);
+  Headless(Processor* processor);
+  ~Headless();
 
-  void Process();
+  void Exec();
 };
+

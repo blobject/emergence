@@ -4,11 +4,14 @@
 
 #include "util.hh"
 
-ShaderSource
-Util::LoadShader(std::string path)
+
+// LoadShader: Parse a file containing shaders.
+
+LoadShaderOut
+Util::LoadShader(const std::string &path)
 {
-  enum class Type { NONE = -1, VERTEX = 0, FRAGMENT = 1 };
-  std::stringstream ss[2];
+  enum class Type { NONE = -1, VERTEX = 0, GEOMETRY = 1, FRAGMENT = 2 };
+  std::stringstream ss[3];
   std::ifstream stream(path);
   if (stream)
   {
@@ -16,18 +19,19 @@ Util::LoadShader(std::string path)
     std::string line;
     while(std::getline(stream, line))
     {
-      if (line.find("#shader") != std::string::npos)
+      if ("# vertex" == line)
       {
-        if (line.find("vertex") != std::string::npos)
-        {
-          type = Type::VERTEX;
-        }
-        else if (line.find("fragment") != std::string::npos)
-        {
-          type = Type::FRAGMENT;
-        }
+        type = Type::VERTEX;
       }
-      else
+      else if ("# geometry" == line)
+      {
+        type = Type::GEOMETRY;
+      }
+      else if ("# fragment" == line)
+      {
+        type = Type::FRAGMENT;
+      }
+      else if (line.rfind("//", 0) != 0)
       {
         ss[(int) type] << line << '\n';
       }
@@ -38,11 +42,16 @@ Util::LoadShader(std::string path)
   {
     return { "", "" };
   }
-  return { ss[(int) Type::VERTEX].str(), ss[(int) Type::FRAGMENT].str()};
+  return { Util::Trim(ss[(int) Type::VERTEX].str()),
+           Util::Trim(ss[(int) Type::GEOMETRY].str()),
+           Util::Trim(ss[(int) Type::FRAGMENT].str()) };
 }
 
+
+// LoadState: Parse a file containing the initial state.
+
 bool
-Util::LoadState(State* state, std::string path)
+Util::LoadState(State* state, const std::string &path)
 {
   std::ifstream stream(path);
   if (stream)
@@ -109,8 +118,11 @@ Util::LoadState(State* state, std::string path)
   return true;
 }
 
+
+// SaveState: Write the current state to a file.
+
 bool
-Util::SaveState(State* state, std::string path)
+Util::SaveState(State* state, const std::string &path)
 {
   std::ofstream stream(path);
   if (stream)

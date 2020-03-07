@@ -1,10 +1,9 @@
 #include <chrono>
-#include <fstream>
 #include <iostream>
-#include <sstream>
 
 #include "state.hh"
 #include "../util/util.hh"
+
 
 Particle::Particle(std::default_random_engine rng,
                    Distribution distribution,
@@ -25,12 +24,14 @@ Particle::Particle(std::default_random_engine rng,
   }
 }
 
+
 History::History()
 {
   this->snapshots_ = std::vector<int>(100, 0);
 }
 
-State::State(std::string load)
+
+State::State(const std::string &load)
 {
   // sedentary data
   this->rng_.seed(std::chrono::system_clock::now().time_since_epoch().count());
@@ -58,8 +59,7 @@ State::State(std::string load)
   }
 }
 
-void
-State::Fin()
+State::~State()
 {
   delete this->history_;
 }

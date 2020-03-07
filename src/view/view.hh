@@ -1,17 +1,16 @@
 #pragma once
 
-#include "headless.hh"
-#include "visualiser.hh"
 #include "../processor/processor.hh"
+
+
+// View: Abstract class over the Visualiser and Headless views.
 
 class View
 {
  public:
-  bool visual_;
-  Visualiser* visualiser_;
-  Headless* headless_;
+  // factory method
+  static View* Init(Processor* processor, bool visual, bool hidectrl);
 
-  View(Processor* proc, bool visual, bool hidectrl);
-
-  void Fin();
+  virtual void Exec() = 0;
 };
+

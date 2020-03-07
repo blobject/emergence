@@ -1,10 +1,11 @@
 #pragma once
 
 #include <random>
-#include <string>
-#include <vector>
 
 #include "../util/common.hh"
+
+
+// Particle: A particle in the primordial particle system.
 
 class Particle
 {
@@ -23,6 +24,9 @@ class Particle
            unsigned int height);
 };
 
+
+// History: Record of (almost) all particle instances.
+
 class History
 {
  public:
@@ -30,6 +34,9 @@ class History
 
   History();
 };
+
+
+// State: Main data source of the primordial particle system.
 
 class State
 {
@@ -49,8 +56,7 @@ class State
   unsigned int          stop_;         // stable
   std::vector<Particle> particles_;    // volatile/adjustable
 
-  State(std::string path);
-
-  void Fin();
+  State(const std::string &path);
+  ~State();
 };
 

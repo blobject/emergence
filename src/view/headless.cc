@@ -1,15 +1,16 @@
-#include <iostream>
-
 #include "headless.hh"
 
-Headless::Headless(Processor* proc)
-{
-  this->proc_ = proc;
-}
+
+Headless::Headless(Processor* processor)
+  : processor_(processor) {}
+
+
+Headless::~Headless() {}
+
 
 void
-Headless::Process()
+Headless::Exec()
 {
-  std::cout << "TODO: call processor" << std::endl;
+  // TODO: call processor
 }
 

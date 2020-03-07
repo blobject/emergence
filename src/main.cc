@@ -8,6 +8,50 @@
 #include "processor/processor.hh"
 #include "view/view.hh"
 
+
+// forward declarations
+
+static std::map<std::string,std::string>
+  Args(int argc, char* argv[]);
+
+static void
+  Argue(std::map<std::string,std::string> &opts);
+
+
+// main: Emergence program entry point.
+
+int
+main(int argc, char* argv[])
+{
+  // arguments
+  auto opts = Args(argc, argv);
+  Argue(opts);
+  if (! opts["return"].empty()) return std::stoi(opts["return"]);
+
+  // configuration
+  std::string load = opts["inputstate"];
+  bool visual = opts["headless"].empty();
+  bool hidectrl = opts["hidectrl"].empty();
+
+  // main objects
+  State state = State(load);
+  Processor processor = Processor(&state);
+  View* view = View::Init(&processor, visual, hidectrl);
+
+  // main execution
+  //Util::SaveState(&state, "foosave");
+  //Util::LoadState(&state, "fooload");
+  view->Exec();
+
+  // finalise
+  //delete processor;
+
+  return 0;
+}
+
+
+// Help: Print usage help.
+
 static void
 Help()
 {
@@ -20,6 +64,9 @@ Help()
             << "  -v       show version\n"
             << "  -h       show this help" << std::endl;
 }
+
+
+// Args: Parse commandline arguments.
 
 static std::map<std::string,std::string>
 Args(int argc, char* argv[])
@@ -59,6 +106,9 @@ Args(int argc, char* argv[])
   }
   return opts;
 }
+
+
+// Argue: Print appropriate messages according to commandline arguments.
 
 static void
 Argue(std::map<std::string,std::string> &opts)
@@ -104,42 +154,3 @@ Argue(std::map<std::string,std::string> &opts)
   }
 }
 
-int
-main(int argc, char* argv[])
-{
-  // arguments
-  auto opts = Args(argc, argv);
-  Argue(opts);
-  if (! opts["return"].empty()) return std::stoi(opts["return"]);
-
-  // configuration
-  std::string load = opts["inputstate"];
-  bool visual = opts["headless"].empty();
-  bool hidectrl = opts["hidectrl"].empty();
-
-  // main objects
-  State state = State(load);
-  Processor proc(&state);
-  View view(&proc, visual, hidectrl);
-
-  // main action
-  //Util::SaveState(&state, "foosave");
-  //Util::LoadState(&state, "fooload");
-  if (visual)
-  {
-    Visualiser* ui = view.visualiser_;
-    ui->Draw(ui->window_);
-    ui->Fin();
-  }
-  else
-  {
-    Headless* ui = view.headless_;
-    ui->Process();
-  }
-
-  // finalise
-  view.Fin();
-  state.Fin();
-
-  return 0;
-}
