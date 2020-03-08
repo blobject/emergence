@@ -1,4 +1,3 @@
-#include <iostream>
 #include <GL/glew.h>
 
 #include "util.hh"
@@ -31,8 +30,8 @@ Util::DebugGl(const std::string &func, const std::string &path, int line)
     case GL_OUT_OF_MEMORY:     error = "out of memory";     break;
     default:                   error = "unknown";           break;
     }
-    std::cerr << "Error: gl, " << error << " at " << Util::Relative(path) << ':'
-              << line << "\n  " << func << std::endl;
+    Util::Err("gl, " + error + " at " + Util::Relative(path) + ':'
+              + std::to_string(line) + "\n  " + func);
     return false;
   }
   return true;

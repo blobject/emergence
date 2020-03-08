@@ -1,8 +1,9 @@
-#include <iostream>
-#include <GLFW/glfw3.h>
+#include "imgui/imgui.h"
+#include "imgui/imgui_impl_glfw.h"
+#include "imgui/imgui_impl_opengl3.h"
 
 #include "gui.hh"
-#include "../util/common.hh"
+#include "../util/util.hh"
 
 
 Gui::Gui(const std::string &version, unsigned int width, unsigned int height)
@@ -11,7 +12,7 @@ Gui::Gui(const std::string &version, unsigned int width, unsigned int height)
   GLFWwindow* window;
   if (! glfwInit())
   {
-    std::cerr << "Error: glfwInit" << std::endl;
+    Util::Err("glfwInit");
     return;
   }
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -20,7 +21,7 @@ Gui::Gui(const std::string &version, unsigned int width, unsigned int height)
   window = glfwCreateWindow(width, height, ME, NULL, NULL);
   if (! window)
   {
-    std::cerr << "Error: glfwCreateWindow" << std::endl;
+    Util::Err("glfwCreateWindow");
     glfwTerminate();
     return;
   }
@@ -41,6 +42,9 @@ Gui::Gui(const std::string &version, unsigned int width, unsigned int height)
 
 Gui::~Gui()
 {
+  ImGui_ImplGlfw_Shutdown();
+  ImGui_ImplOpenGL3_Shutdown();
+  ImGui::DestroyContext();
   glfwTerminate();
 }
 
@@ -53,59 +57,53 @@ Gui::Close()
 
 
 bool
-Gui::Closing()
+Gui::Closing() const
 {
   return glfwWindowShouldClose(this->window_);
 }
 
 
 void
-Gui::Draw()
+Gui::Draw(const State &state) const
 {
   ImGui_ImplOpenGL3_NewFrame();
   ImGui_ImplGlfw_NewFrame();
   ImGui::NewFrame();
   {
     static int counter = 0;
+    int frame_width = 200;
     int window_width = 0;
     int window_height = 0;
     int controls_width = 0;
     glfwGetFramebufferSize(this->window_, &window_width, &window_height);
-    controls_width = window_width;
-    if ((controls_width /= 3) < 300)
-    {
-      controls_width = 300;
-    }
+    //if ((frame_width /= 4) < 200)
+    //{
+    //  frame_width = 200;
+    //}
     ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_Always);
-    ImGui::SetNextWindowSize(ImVec2(static_cast<float>(controls_width),
+    ImGui::SetNextWindowSize(ImVec2(static_cast<float>(frame_width),
                                     static_cast<float>(window_height - 20)),
                              ImGuiCond_Always);
     ImGui::SetNextWindowBgAlpha(0.7f);
-    ImGui::Begin("Controls", NULL, ImGuiWindowFlags_NoResize);
+    ImGui::Begin("Configuration", NULL, ImGuiWindowFlags_NoResize);
     ImGui::Dummy(ImVec2(0.0f, 1.0f));
-    ImGui::TextColored(ImVec4(1.0f, 0.0f, 1.0f, 1.0f), "Application");
-    ImGui::Text("Main window width: %d", window_width);
-    ImGui::Text("Main window height: %d", window_height);
-    ImGui::Dummy(ImVec2(0.0f, 1.0f));
-    ImGui::TextColored(ImVec4(1.0f, 0.0f, 1.0f, 1.0f), "GLFW");
-    ImGui::Text("%s", glfwGetVersionString());
-    ImGui::Dummy(ImVec2(0.0f, 8.0f));
+    ImGui::TextColored(ImVec4(1.0f, 0.0f, 1.0f, 1.0f), "World");
+    ImGui::Text("width:        %u", window_width);
+    ImGui::Text("height:       %u", window_height);
+    ImGui::Text("alpha:        %.2f", state.alpha_);
+    ImGui::Text("beta:         %.2f", state.beta_);
+    ImGui::Text("gamma:        %.2f", state.gamma_);
+    ImGui::Text("distribution: %d", (int) state.distribution_);
+    ImGui::Text("stop:         %u", state.stop_);
+    ImGui::Text("color scheme: %d", state.colorscheme_);
     ImGui::Separator();
+    ImGui::Dummy(ImVec2(0.0f, 1.0f));
+    ImGui::TextColored(ImVec4(1.0f, 0.0f, 1.0f, 1.0f), "Particles");
+    ImGui::Text("# particles:  %u", static_cast<unsigned>(state.particles_.size()));
+    ImGui::Separator();
+    ImGui::Dummy(ImVec2(0.0f, 1.0f));
+    ImGui::TextColored(ImVec4(1.0f, 0.0f, 1.0f, 1.0f), "History");
     ImGui::Dummy(ImVec2(0.0f, 8.0f));
-    if (ImGui::Button("Counter button"))
-    {
-      std::cout << "counter button clicked\n";
-      counter++;
-      if (counter == 9) { ImGui::OpenPopup("Easter egg"); }
-    }
-    ImGui::SameLine();
-    ImGui::Text("counter = %d", counter);
-    if (ImGui::BeginPopupModal("Easter egg", NULL))
-    {
-      ImGui::Text("Ho-ho, you found me!");
-      if (ImGui::Button("Buy Ultimate Orb")) { ImGui::CloseCurrentPopup(); }
-      ImGui::EndPopup();
-    }
     ImGui::Dummy(ImVec2(0.0f, 15.0f));
     ImGui::End();
   }
@@ -122,5 +120,13 @@ Gui::HandleInput()
   {
     this->Close();
   }
+}
+
+
+void
+Gui::Next() const
+{
+  glfwSwapBuffers(this->window_);
+  glfwPollEvents();
 }
 

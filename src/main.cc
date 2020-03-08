@@ -1,4 +1,3 @@
-#include <iostream>
 #include <fstream>
 #include <map>
 #include <unistd.h>
@@ -35,16 +34,14 @@ main(int argc, char* argv[])
 
   // main objects
   State state = State(load);
-  Processor processor = Processor(&state);
-  View* view = View::Init(&processor, visual, hidectrl);
+  Processor processor = Processor(state);
+  std::unique_ptr<View> view =
+    std::move(View::Init(processor, visual, hidectrl));
 
   // main execution
   //Util::SaveState(&state, "foosave");
   //Util::LoadState(&state, "fooload");
   view->Exec();
-
-  // finalise
-  //delete processor;
 
   return 0;
 }
@@ -55,14 +52,14 @@ main(int argc, char* argv[])
 static void
 Help()
 {
-  std::cout << "Usage: " << ME << " [OPTIONS]\n\n"
-            << "Primordial particle system visualiser/processor.\n\n"
-            << "Options:\n"
-            << "  -f FILE  supply an initial state\n"
-            << "  -c       run in headless mode\n"
-            << "  -u       hide the visualiser controls\n"
-            << "  -v       show version\n"
-            << "  -h       show this help" << std::endl;
+  Util::Out("Usage: " + std::string(ME) + " [OPTIONS]\n\n"
+            + "Primordial particle system visualiser/processor.\n\n"
+            + "Options:\n"
+            + "  -f FILE  supply an initial state\n"
+            + "  -c       run in headless mode\n"
+            + "  -u       hide the visualiser controls\n"
+            + "  -v       show version\n"
+            + "  -h       show this help");
 }
 
 
@@ -123,34 +120,34 @@ Argue(std::map<std::string,std::string> &opts)
     }
     else if ("version" == opt)
     {
-      std::cout << ME << " version " << VERSION << std::endl;
+      Util::Out(std::string(ME) + " version " + std::string(VERSION));
       return;
     }
     else if ("bad_file" == opt)
     {
-      std::cerr << "Error: no file provided\n\n";
+      Util::Err("no file provided\n\n");
     }
     else if ("inputstate" == opt)
     {
-      std::cerr << "Error: unreadable file '" << opts["inputstate"] << "'\n\n";
+      Util::Err("unreadable file '" + opts["inputstate"] + "'\n");
     }
     else
     {
-      std::cerr << "Error: unknown argument '" << opts["quit"] << "'\n\n";
+      Util::Err("unknown argument '" + opts["quit"] + "'\n");
     }
     Help();
     return;
   }
   if (opts["headless"].empty())
   {
-    std::cout << "Running visualiser" << std::endl;
+    Util::Out("Running visualiser");
   }
   else
   {
     opt = opts["inputstate"];
-    std::cout << "Running headless";
-    if (! opt.empty()) std::cout << ": " << opt;
-    std::cout << std::endl;
+    std::string out = "Running headless";
+    if (! opt.empty()) out += ": " + opt;
+    Util::Out(out);
   }
 }
 

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <memory>
+
 #include "../processor/processor.hh"
 
 
@@ -8,8 +10,11 @@
 class View
 {
  public:
+  virtual ~View() {}
+
   // factory method
-  static View* Init(Processor* processor, bool visual, bool hidectrl);
+  static std::unique_ptr<View> Init(Processor &processor,
+                                    bool visual, bool hidectrl);
 
   virtual void Exec() = 0;
 };

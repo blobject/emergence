@@ -1,7 +1,5 @@
 #pragma once
 
-#include <GLFW/glfw3.h>
-
 #include "gui.hh"
 #include "view.hh"
 #include "../processor/processor.hh"
@@ -12,13 +10,12 @@
 class Visualiser : public View
 {
  public:
-  Processor*   processor_;
-  Gui*         gui_;
+  Processor    processor_;
+  Gui          gui_;
   unsigned int width_;
   unsigned int height_;
 
-  Visualiser(Processor* processor_, bool hide_ctrl);
-  ~Visualiser();
+  Visualiser(Processor &processor, bool hide_ctrl);
 
   void Exec();
 };

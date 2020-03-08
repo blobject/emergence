@@ -1,4 +1,3 @@
-#include <iostream>
 #include <GL/glew.h>
 
 #include "shader.hh"
@@ -83,12 +82,11 @@ Shader::CompileShader(unsigned int type, const std::string &source)
     DOGL(glGetShaderiv(id, GL_INFO_LOG_LENGTH, &length));
     char* message = (char*) alloca(length * sizeof(char));
     DOGL(glGetShaderInfoLog(id, length, &length, message));
-    std::cerr << "Error: failed to compile "
-              << (type == GL_VERTEX_SHADER ? "vertex" :
-                  type == GL_GEOMETRY_SHADER ? "geometry" :
-                  "fragment")
-              << '\n';
-    std::cerr << message << std::endl;
+    Util::Err("failed to compile "
+              + std::string(type == GL_VERTEX_SHADER ? "vertex" :
+                            type == GL_GEOMETRY_SHADER ? "geometry" :
+                            "fragment")
+              + '\n' + message);
     DOGL(glDeleteShader(id));
     return 0;
   }
@@ -105,15 +103,31 @@ Shader::GetUniformLocation(const std::string &name)
     return this->uniform_location_cache_[name];
   }
   DOGL(int location = glGetUniformLocation(this->id_, name.c_str()));
+  if (-1 == location)
+  {
+    Util::Warn("uniform '" + name + "' not found");
+  }
   this->uniform_location_cache_[name] = location;
   return location;
 }
 
+void
+Shader::SetUniform1f(const std::string &name, float v)
+{
+  DOGL(glUniform1f(Shader::GetUniformLocation(name), v));
+}
 
 void
 Shader::SetUniform4f(const std::string &name,
                      float v0, float v1, float v2, float v3)
 {
   DOGL(glUniform4f(Shader::GetUniformLocation(name), v0, v1, v2, v3));
+}
+
+void
+Shader::SetUniformMat4f(const std::string &name, const glm::mat4 &mat)
+{
+  DOGL(glUniformMatrix4fv(Shader::GetUniformLocation(name), 1, GL_FALSE,
+                          &mat[0][0]));
 }
 

@@ -16,6 +16,7 @@ This is a rewrite of an [[https://github.com/agarick/mff/tree/master/emergence][
 - cmake (& make)
 - glew
 - glfw ~>= 3~
+- glm
 - imgui (source provided in ~opt/~)
 - opencl headers ~>= 2.1~
 - opencl sdk ~>= 2.1~ (per your graphics card manufacturer, eg. [[https://software.intel.com/en-us/opencl-sdk/choose-download][intel]], [[https://developer.nvidia.com/opencl][nvidia]])

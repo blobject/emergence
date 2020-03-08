@@ -1,9 +1,34 @@
-#include <iostream>
 #include <fstream>
 #include <sstream>
 
 #include "util.hh"
 
+
+// Out: Print to stdout.
+
+void
+Util::Out(const std::string &s)
+{
+  std::cout << s << std::endl;
+}
+
+
+// Warn: Print warning to stderr.
+
+void
+Util::Warn(const std::string &s)
+{
+  std::cerr << "Warning: " << s << std::endl;
+}
+
+
+// Err: Print error to stderr.
+
+void
+Util::Err(const std::string &s)
+{
+  std::cerr << "Error: " << s << std::endl;
+}
 
 // LoadShader: Parse a file containing shaders.
 
@@ -51,7 +76,7 @@ Util::LoadShader(const std::string &path)
 // LoadState: Parse a file containing the initial state.
 
 bool
-Util::LoadState(State* state, const std::string &path)
+Util::LoadState(State &state, const std::string &path)
 {
   std::ifstream stream(path);
   if (stream)
@@ -71,14 +96,14 @@ Util::LoadState(State* state, const std::string &path)
       float gamma;
       linestream = std::istringstream(line);
       // on read failure, the State members are left unchanged
-      if (linestream >> stop) state->stop_ = stop;
-      if (linestream >> width) state->width_ = width;
-      if (linestream >> height) state->height_ = height;
+      if (linestream >> stop) state.stop_ = stop;
+      if (linestream >> width) state.width_ = width;
+      if (linestream >> height) state.height_ = height;
       if (linestream >> distribution_num)
-        state->distribution_ = (Distribution) distribution_num;
-      if (linestream >> alpha) state->alpha_ = alpha;
-      if (linestream >> beta) state->beta_ = beta;
-      if (linestream >> gamma) state->gamma_ = gamma;
+        state.distribution_ = (Distribution) distribution_num;
+      if (linestream >> alpha) state.alpha_ = alpha;
+      if (linestream >> beta) state.beta_ = beta;
+      if (linestream >> gamma) state.gamma_ = gamma;
     }
     unsigned int x;
     unsigned int y;
@@ -86,7 +111,7 @@ Util::LoadState(State* state, const std::string &path)
     float speed;
     unsigned size;
     float neighsize;
-    state->particles_.clear();
+    state.particles_.clear();
     while (std::getline(stream, line))
     {
       if (line.empty())
@@ -94,21 +119,21 @@ Util::LoadState(State* state, const std::string &path)
         continue;
       }
       linestream = std::istringstream(line);
-      Particle particle(state->rng_, state->distribution_,
-                        state->width_, state->height_);
+      Particle particle(state.distribution_, state.width_,
+                           state.height_);
       if (linestream >> x) particle.x_ = x;
       if (linestream >> y) particle.y_ = y;
       if (linestream >> phi) particle.phi_ = phi;
       if (linestream >> speed) particle.speed_ = speed;
       if (linestream >> size) particle.size_ = size;
       if (linestream >> neighsize) particle.neighsize_ = neighsize;
-      state->particles_.push_back(particle);
+      state.particles_.push_back(particle);
     }
-    if (state->particles_.empty())
+    if (state.particles_.empty())
     {
-      state->particles_ = std::vector<Particle>
-        (1000, Particle(state->rng_, state->distribution_,
-                        state->width_, state->height_));
+      state.particles_ = std::vector<Particle>
+        (1000, Particle(state.distribution_, state.width_,
+                           state.height_));
     }
   }
   else
@@ -122,19 +147,19 @@ Util::LoadState(State* state, const std::string &path)
 // SaveState: Write the current state to a file.
 
 bool
-Util::SaveState(State* state, const std::string &path)
+Util::SaveState(State &state, const std::string &path)
 {
   std::ofstream stream(path);
   if (stream)
   {
-    stream << state->stop_ << ' '
-           << state->width_ << ' '
-           << state->height_ << ' '
-           << (int) state->distribution_ << ' '
-           << state->alpha_ << ' '
-           << state->beta_ << ' '
-           << state->gamma_ << '\n';
-    for (const Particle &particle : state->particles_)
+    stream << state.stop_ << ' '
+           << state.width_ << ' '
+           << state.height_ << ' '
+           << (int) state.distribution_ << ' '
+           << state.alpha_ << ' '
+           << state.beta_ << ' '
+           << state.gamma_ << '\n';
+    for (const Particle &particle : state.particles_)
     {
       stream << particle.x_ << ' '
              << particle.y_ << ' '

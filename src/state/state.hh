@@ -1,31 +1,30 @@
 #pragma once
 
-#include <random>
+#include <string>
+#include <vector>
 
 #include "../util/common.hh"
 
 
 // Particle: A particle in the primordial particle system.
 
-class Particle
+struct Particle
 {
- public:
   // transportable data
-  unsigned int x_;         // volatile
-  unsigned int y_;         // volatile
-  float        phi_;       // volatile
-  float        speed_;     // adjustable
-  unsigned int size_;      // adjustable
-  float        neighsize_; // adjustable
+  float x_;         // volatile
+  float y_;         // volatile
+  float phi_;       // volatile
+  float speed_;     // adjustable
+  float size_;      // adjustable
+  float neighsize_; // adjustable
 
-  Particle(std::default_random_engine rng,
-           Distribution distribution,
+  Particle(Distribution distribution,
            unsigned int width,
            unsigned int height);
 };
 
 
-// History: Record of (almost) all particle instances.
+// History: Record of particle system instances.
 
 class History
 {
@@ -41,10 +40,10 @@ class History
 class State
 {
  public:
+
   // sedentary data
-  std::default_random_engine rng_;         // stable
-  History*                   history_;     // cumulative
-  int                        colorscheme_; // adjustable
+  History history_;     // cumulative
+  int     colorscheme_; // adjustable
 
   // transportable data
   unsigned int          width_;        // adjustable
@@ -57,6 +56,6 @@ class State
   std::vector<Particle> particles_;    // volatile/adjustable
 
   State(const std::string &path);
-  ~State();
+  //~State();
 };
 

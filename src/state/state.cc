@@ -1,26 +1,19 @@
-#include <chrono>
-#include <iostream>
-
 #include "state.hh"
 #include "../util/util.hh"
 
 
-Particle::Particle(std::default_random_engine rng,
-                   Distribution distribution,
+Particle::Particle(Distribution distribution,
                    unsigned int width,
                    unsigned int height)
 {
-  this->x_ = 0;
-  this->y_ = 0;
-  this->phi_ = 0.0;
-  this->size_ = 0;
-  this->speed_ = 0.0;
-  this->neighsize_ = 0.0;
+  this->size_ = 5.0f;
+  this->speed_ = 0.0f;
+  this->neighsize_ = 0.0f;
   if (distribution == Distribution::UNIFORM)
   {
-    this->x_ = std::uniform_int_distribution<int>(0, width - 1)(rng);
-    this->y_ = std::uniform_int_distribution<int>(0, height - 1)(rng);
-    this->phi_ = std::uniform_real_distribution<float>(0, 1)(rng);
+    this->x_ = Util::Distribute<float>(0.0f, (float) width - 1);
+    this->y_ = Util::Distribute<float>(0.0f, (float) height - 1);
+    this->phi_ = Util::Distribute<float>(0.0f, 1.0f);
   }
 }
 
@@ -34,8 +27,7 @@ History::History()
 State::State(const std::string &load)
 {
   // sedentary data
-  this->rng_.seed(std::chrono::system_clock::now().time_since_epoch().count());
-  this->history_ = new History();
+  this->history_ = History();
   this->colorscheme_ = 0;
 
   // transportable data
@@ -46,21 +38,22 @@ State::State(const std::string &load)
   this->gamma_ = 0.0;
   this->distribution_ = Distribution::UNIFORM;
   this->stop_ = 0;
-  this->particles_ = std::vector<Particle>
-    (1000, Particle(this->rng_, this->distribution_,
-                    this->width_, this->height_));
+  for (int i = 0; i < 1000; ++i)
+  {
+    this->particles_.push_back(Particle(this->distribution_,
+                                        this->width_, this->height_));
+  }
 
   if (! load.empty())
   {
-    if (! Util::LoadState(this, load))
+    if (! Util::LoadState(*this, load))
     {
-      std::cerr << "Warning: could not load file '" << load << "'" << std::endl;
+      Util::Err("could not load file '" + load + "'");
     }
   }
 }
 
-State::~State()
-{
-  delete this->history_;
-}
+//State::~State()
+//{
+//}
 

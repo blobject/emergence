@@ -1,6 +1,7 @@
 #pragma once
 
 #include <unordered_map>
+#include <glm/glm.hpp>
 
 
 // Shader: Wrapper around OpenGL shaders.
@@ -24,7 +25,10 @@ class Shader
                                    const std::string &fshader,
                                    const std::string &gshader);
   int                 GetUniformLocation(const std::string &name);
+  void                SetUniform1f(const std::string &name, float v);
   void                SetUniform4f(const std::string &name,
                                    float v0, float v1, float v2, float v3);
+  void                SetUniformMat4f(const std::string &name,
+                                      const glm::mat4 &mat);
 };
 

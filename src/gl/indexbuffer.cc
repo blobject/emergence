@@ -1,6 +1,6 @@
 #include <GL/glew.h>
 
-#include "ibuffer.hh"
+#include "indexbuffer.hh"
 #include "../util/util.hh"
 
 

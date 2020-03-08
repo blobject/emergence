@@ -1,10 +1,8 @@
 #pragma once
 
-#include <string>
+#include <GLFW/glfw3.h>
 
-#include "imgui.h"
-#include "imgui_impl_glfw.h"
-#include "imgui_impl_opengl3.h"
+#include "../state/state.hh"
 
 
 // Gui: The part of the visualisation dealing with the user interface.
@@ -18,8 +16,9 @@ class Gui
   ~Gui();
 
   void Close();
-  bool Closing();
-  void Draw();
+  bool Closing() const;
+  void Draw(const State &state) const;
   void HandleInput();
+  void Next() const;
 };
 

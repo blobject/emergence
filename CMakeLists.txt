@@ -8,12 +8,13 @@ project(emergence)
 
 add_executable(emergence src/main.cc
                          src/util/debug.cc
-                         src/util/file.cc
+                         src/util/io.cc
+                         src/util/random.cc
                          src/util/string.cc
-                         src/gl/ibuffer.cc
-                         src/gl/varray.cc
-                         src/gl/vbuffer.cc
-                         src/gl/vbufferlayout.cc
+                         src/gl/indexbuffer.cc
+                         src/gl/vertexarray.cc
+                         src/gl/vertexbuffer.cc
+                         src/gl/vertexbufferlayout.cc
                          src/gl/shader.cc
                          src/processor/processor.cc
                          src/state/state.cc
@@ -22,12 +23,12 @@ add_executable(emergence src/main.cc
                          src/view/visualiser.cc
                          src/view/drawer.cc
                          src/view/gui.cc
-                         opt/imgui.cpp
-                         opt/imgui_demo.cpp
-                         opt/imgui_draw.cpp
-                         opt/imgui_impl_glfw.cpp
-                         opt/imgui_impl_opengl3.cpp
-                         opt/imgui_widgets.cpp)
+                         opt/imgui/imgui.cpp
+                         opt/imgui/imgui_demo.cpp
+                         opt/imgui/imgui_draw.cpp
+                         opt/imgui/imgui_impl_glfw.cpp
+                         opt/imgui/imgui_impl_opengl3.cpp
+                         opt/imgui/imgui_widgets.cpp)
 include_directories(opt)
 
 find_package(GLEW REQUIRED)

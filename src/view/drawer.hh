@@ -1,8 +1,8 @@
 #pragma once
 
-#include "../gl/ibuffer.hh"
+//#include "../gl/indexbuffer.hh"
 #include "../gl/shader.hh"
-#include "../gl/varray.hh"
+#include "../gl/vertexarray.hh"
 
 
 // Drawer: Clear and draw/render the visualisation.
@@ -11,8 +11,10 @@ class Drawer
 {
  public:
   static void Clear();
-  static void Draw(const VertexArray &va,
-                   const IndexBuffer &ib,
+  static void Draw(unsigned int size,
+                   unsigned int count,
+                   const VertexArray &va,
+                   //const IndexBuffer &ib,
                    const Shader &shader);
 };
 

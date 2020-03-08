@@ -12,11 +12,13 @@ Drawer::Clear()
 
 
 void
-Drawer::Draw(const VertexArray &va, const IndexBuffer &ib, const Shader &shader)
+Drawer::Draw(unsigned int size, unsigned int count,
+             const VertexArray &va, const Shader &shader)
 {
   shader.Bind();
   va.Bind();
-  ib.Bind();
-  DOGL(glDrawElements(GL_TRIANGLES, ib.get_count(), GL_UNSIGNED_INT, nullptr));
+  //ib.Bind();
+  DOGL(glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, size, count));
+  //DOGL(glDrawElements(GL_TRIANGLES, ib.get_count(), GL_UNSIGNED_INT, nullptr));
 }
 

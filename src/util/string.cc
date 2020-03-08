@@ -8,8 +8,7 @@
 std::string
 Util::Relative(const std::string &path)
 {
-  std::regex re("^.*[\\/](src[\\/])");
-  return std::regex_replace(path, re, "$1");
+  return std::regex_replace(path, std::regex("^.*[\\/]src[\\/]"), "");
 }
 
 

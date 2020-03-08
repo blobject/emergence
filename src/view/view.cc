@@ -3,13 +3,15 @@
 #include "visualiser.hh"
 
 
-View*
-View::Init(Processor* processor, bool visual, bool hidectrl)
+std::unique_ptr<View>
+View::Init(Processor &processor, bool visual, bool hidectrl)
 {
   if (visual)
   {
-    return new Visualiser(processor, hidectrl);
+    std::unique_ptr<View> view(new Visualiser(processor, hidectrl));
+    return view;
   }
-  return new Headless(processor);
+  std::unique_ptr<View> view(new Headless(processor));
+  return view;
 }
 
