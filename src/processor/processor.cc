@@ -1,4 +1,4 @@
-#include <CL/cl.hpp>
+//#include <CL/cl.hpp>
 #include <GL/glew.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -69,6 +69,7 @@ Processor::Process()
 
 // InitCl: Initialise OpenCL.
 
+/**
 void
 Processor::InitCl()
 {
@@ -87,4 +88,5 @@ Processor::InitCl()
     }
   }
 }
+//*/
 

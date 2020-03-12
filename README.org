@@ -2,11 +2,11 @@
 
 ** About
 
-*Emergence* is a visualiser and processor of a primordial particle system and its emergent properties.
+*Emergence* is a visualiser and processor of a primordial particle system.
 
-This project is based on the article, /How a life-like system emerges from a simple particle motion law/, by  Schmickl, Stefanec, and Crailsheim: https://www.nature.com/articles/srep37969, and extends it with parallel computation and three-dimensionality.
+This project is based on the article, /How a life-like system emerges from a simple particle motion law/, by  Schmickl, Stefanec, and Crailsheim: https://www.nature.com/articles/srep37969, and extends it with three-dimensionality.
 
-This is a rewrite of an [[https://github.com/agarick/mff/tree/master/emergence][earlier version in JavaScript + HTML5]] which ran via web browser and Node.js. The present project uses OpenGL + GLEW (graphics), OpenCL (parallelisation), glm (math), GLFW (windowing), ImGui (user interface), and C++ as the main language of implementation. It runs as a native desktop application.
+This is a rewrite of an [[https://github.com/agarick/mff/tree/master/emergence][earlier version in JavaScript + HTML5]] which ran via web browser and Node.js. The present project uses OpenGL + GLEW (graphics), glm (math), GLFW (windowing), ImGui (user interface), and C++ as the main language of implementation. It runs as a native desktop application.
 
 ** Build & Run
 
@@ -18,12 +18,14 @@ This is a rewrite of an [[https://github.com/agarick/mff/tree/master/emergence][
 - glfw ~>= 3~
 - glm
 - imgui (source provided in ~opt/~)
+- opengl ~>= 3.3~
+#+BEGIN_COMMENT
 - opencl headers ~>= 2.1~
 - opencl sdk ~>= 2.1~ (per your graphics card manufacturer, eg. [[https://software.intel.com/en-us/opencl-sdk/choose-download][intel]], [[https://developer.nvidia.com/opencl][nvidia]])
   - For the amd sdk, see [[https://stackoverflow.com/questions/53070673/download-opencl-amd-app-sdk-3-0-for-windows-and-linux][here]]
-- opengl ~>= 3.3~
+#+END_COMMENT
 
-/For all dependencies, except the opencl sdk, this project recommends installing according to your OS/package manager's common practice. On Debian or Ubuntu, for example, use apt(itude) to install the libraries' corresponding/ ~*-dev~ /packages./
+/This project recommends installing dependencies according to your OS/package manager's common practice. On Debian or Ubuntu, for example, use apt(itude) to install the libraries' corresponding/ ~*-dev~ /packages./
 
 *** Linux
 
