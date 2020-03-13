@@ -16,9 +16,9 @@
 
 struct LoadShaderOut
 {
-  std::string Vertex;
-  std::string Geometry;
-  std::string Fragment;
+  std::string vertex;
+  std::string geometry;
+  std::string fragment;
 };
 
 
@@ -37,6 +37,7 @@ class Util
   static void          Out(const std::string &s);
   static void          Warn(const std::string &s);
   static void          Err(const std::string &s);
+  static void          ErrGl(const std::string &s);
   static LoadShaderOut LoadShader(const std::string &path);
   static bool          LoadState(State &state, const std::string &path);
   static bool          SaveState(State &state, const std::string &path);

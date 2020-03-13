@@ -13,7 +13,7 @@ class View
   virtual ~View() {}
 
   // factory method
-  static std::unique_ptr<View> Init(Processor &processor,
+  static std::unique_ptr<View> Init(Processor* processor,
                                     bool visual, bool hidectrl);
 
   virtual void Exec() = 0;

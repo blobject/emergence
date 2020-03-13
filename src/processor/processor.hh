@@ -9,22 +9,33 @@
 
 struct ProcessOut
 {
-  unsigned int Num;
-  VertexArray* VertexArray;
-  Shader*      Shader;
+  unsigned int num;
+  VertexArray* vertex_array;
+  Shader*      shader;
+
+  ~ProcessOut();
 };
 
 
 // Processor: Primordial particle system algorithm implementation.
 
-class Processor
+class Processor //: public Observer
 {
+ private:
+  State &state_;
+  //unsigned int num_;
+  //VertexArray* va_;
+  //Shader* shader_;
+
  public:
-  State state_;
-
   Processor(State &state);
+  ~Processor();
 
+  inline State &get_state() const { return this->state_; }
+
+  //void        Update(Subject &next) override;
   static void InitCl();
-  ProcessOut  Process();
+  ProcessOut  All();
+  ProcessOut  Right();
 };
 

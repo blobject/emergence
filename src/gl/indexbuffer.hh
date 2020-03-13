@@ -14,6 +14,7 @@ class IndexBuffer
   ~IndexBuffer();
 
   inline unsigned int get_count() const { return this->count_; }
+
   void                Bind() const;
   void                Unbind() const;
 };

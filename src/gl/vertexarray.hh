@@ -18,6 +18,7 @@ class VertexArray
   ~VertexArray();
 
   inline unsigned int get_id() const { return this->id_; }
+
   void AddBuffer(unsigned int id, const VertexBuffer &vb,
                  const LayoutItem &layout);
   void Bind() const;

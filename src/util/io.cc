@@ -30,6 +30,16 @@ Util::Err(const std::string &s)
   std::cerr << "Error: " << s << std::endl;
 }
 
+
+// ErrGl: Print gl error to stderr.
+
+void
+Util::ErrGl(const std::string &s)
+{
+  std::cerr << "Error (gl): " << s << std::endl;
+}
+
+
 // LoadShader: Parse a file containing shaders.
 
 LoadShaderOut
@@ -109,8 +119,8 @@ Util::LoadState(State &state, const std::string &path)
     unsigned int y;
     float phi;
     float speed;
-    unsigned size;
-    float neighsize;
+    unsigned radius;
+    float nradius;
     state.particles_.clear();
     while (std::getline(stream, line))
     {
@@ -120,20 +130,20 @@ Util::LoadState(State &state, const std::string &path)
       }
       linestream = std::istringstream(line);
       Particle particle(state.distribution_, state.width_,
-                           state.height_);
-      if (linestream >> x) particle.x_ = x;
-      if (linestream >> y) particle.y_ = y;
-      if (linestream >> phi) particle.phi_ = phi;
-      if (linestream >> speed) particle.speed_ = speed;
-      if (linestream >> size) particle.size_ = size;
-      if (linestream >> neighsize) particle.neighsize_ = neighsize;
+                        state.height_);
+      if (linestream >> x) particle.x = x;
+      if (linestream >> y) particle.y = y;
+      if (linestream >> phi) particle.phi = phi;
+      if (linestream >> speed) particle.speed = speed;
+      if (linestream >> radius) particle.radius = radius;
+      if (linestream >> nradius) particle.nradius = nradius;
       state.particles_.push_back(particle);
     }
     if (state.particles_.empty())
     {
       state.particles_ = std::vector<Particle>
         (1000, Particle(state.distribution_, state.width_,
-                           state.height_));
+                        state.height_));
     }
   }
   else
@@ -161,12 +171,12 @@ Util::SaveState(State &state, const std::string &path)
            << state.gamma_ << '\n';
     for (const Particle &particle : state.particles_)
     {
-      stream << particle.x_ << ' '
-             << particle.y_ << ' '
-             << particle.phi_ << ' '
-             << particle.speed_ << ' '
-             << particle.size_ << ' '
-             << particle.neighsize_ << '\n';
+      stream << particle.x << ' '
+             << particle.y << ' '
+             << particle.phi << ' '
+             << particle.speed << ' '
+             << particle.radius << ' '
+             << particle.nradius << '\n';
     }
     stream.close();
   }

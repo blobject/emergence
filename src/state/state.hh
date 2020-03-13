@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <string>
 #include <vector>
 
@@ -11,12 +12,12 @@
 struct Particle
 {
   // transportable data
-  float x_;         // volatile
-  float y_;         // volatile
-  float phi_;       // volatile
-  float speed_;     // adjustable
-  float size_;      // adjustable
-  float neighsize_; // adjustable
+  float x;       // volatile
+  float y;       // volatile
+  float phi;     // volatile
+  float speed;   // adjustable
+  float radius;  // adjustable
+  float nradius; // adjustable
 
   Particle(Distribution distribution,
            unsigned int width,
@@ -34,10 +35,36 @@ class History
   History();
 };
 
+/**
+// Observer pattern for State
+
+class Subject;
+
+class Observer
+{
+ public:
+  virtual ~Observer() = default;
+  virtual void Update(Subject& s) = 0;
+};
+
+class Subject
+{
+ private:
+  std::vector<Observer*> observers;
+
+ public:
+  virtual ~Subject() = default;
+
+  void Register(Observer& o);
+  void Deregister(Observer& o);
+  void Notify();
+};
+//*/
+
 
 // State: Main data source of the primordial particle system.
 
-class State
+class State //: public Subject
 {
  public:
 
@@ -46,6 +73,7 @@ class State
   int     colorscheme_; // adjustable
 
   // transportable data
+  unsigned int          num_;          // adjustable
   unsigned int          width_;        // adjustable
   unsigned int          height_;       // adjustable
   float                 alpha_;        // adjustable
@@ -56,6 +84,13 @@ class State
   std::vector<Particle> particles_;    // volatile/adjustable
 
   State(const std::string &path);
-  //~State();
+
+  void set_num(unsigned int num);
+  void set_dim(unsigned int width, unsigned int height);
+  void set_alpha(float alpha);
+  void set_beta(float beta);
+  void set_gamma(float gamma);
+  //void set_distribution(Distribution distribution);
+  //void set_stop(unsigned int stop);
 };
 

@@ -10,13 +10,13 @@
 class Visualiser : public View
 {
  public:
-  Processor    processor_;
-  Gui          gui_;
+  Processor*   processor_;
+  Gui*         gui_;
   unsigned int width_;
   unsigned int height_;
 
-  Visualiser(Processor &processor, bool hide_ctrl);
+  Visualiser(Processor* processor, bool hide_ctrl);
 
-  void Exec();
+  void Exec() override;
 };
 

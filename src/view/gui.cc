@@ -1,6 +1,6 @@
-#include "imgui/imgui.h"
-#include "imgui/imgui_impl_glfw.h"
-#include "imgui/imgui_impl_opengl3.h"
+#include <imgui/imgui.h>
+#include <imgui/imgui_impl_glfw.h>
+#include <imgui/imgui_impl_opengl3.h>
 
 #include "gui.hh"
 #include "../util/util.hh"
@@ -99,10 +99,14 @@ Gui::Draw(const State &state) const
     ImGui::Separator();
     ImGui::Dummy(ImVec2(0.0f, 1.0f));
     ImGui::TextColored(ImVec4(1.0f, 0.0f, 1.0f, 1.0f), "Particles");
-    ImGui::Text("# particles:  %u", static_cast<unsigned>(state.particles_.size()));
+    ImGui::Text("# particles:  %u",
+                static_cast<unsigned>(state.particles_.size()));
     ImGui::Separator();
     ImGui::Dummy(ImVec2(0.0f, 1.0f));
     ImGui::TextColored(ImVec4(1.0f, 0.0f, 1.0f, 1.0f), "History");
+    ImGui::Dummy(ImVec2(0.0f, 1.0f));
+    int foo;
+    ImGui::SliderInt("num", &foo, 0, 200);
     ImGui::Dummy(ImVec2(0.0f, 8.0f));
     ImGui::Dummy(ImVec2(0.0f, 15.0f));
     ImGui::End();

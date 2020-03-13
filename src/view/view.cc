@@ -4,7 +4,7 @@
 
 
 std::unique_ptr<View>
-View::Init(Processor &processor, bool visual, bool hidectrl)
+View::Init(Processor* processor, bool visual, bool hidectrl)
 {
   if (visual)
   {

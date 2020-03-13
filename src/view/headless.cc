@@ -1,7 +1,7 @@
 #include "headless.hh"
 
 
-Headless::Headless(Processor &processor)
+Headless::Headless(Processor* processor)
   : processor_(processor) {}
 
 

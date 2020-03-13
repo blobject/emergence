@@ -4,16 +4,16 @@
 
 
 // TypeSize: Convenience function that converts OpenGL data
-//                            constants to corresponding data sizes.
+//           constants to corresponding data sizes.
 
 unsigned int
 LayoutItem::TypeSize(unsigned int type)
 {
   switch (type)
   {
-  case GL_FLOAT:         return 4;
-  case GL_UNSIGNED_INT:  return 4;
-  case GL_UNSIGNED_BYTE: return 1;
+    case GL_FLOAT:         return 4;
+    case GL_UNSIGNED_INT:  return 4;
+    case GL_UNSIGNED_BYTE: return 1;
   }
   return 0;
 }

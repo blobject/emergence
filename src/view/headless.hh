@@ -9,10 +9,10 @@
 class Headless : public View
 {
  public:
-  Processor processor_;
+  Processor* processor_;
 
-  Headless(Processor &processor);
+  Headless(Processor* processor);
 
-  void Exec();
+  void Exec() override;
 };
 

@@ -24,11 +24,8 @@ VertexArray::AddBuffer(unsigned int id, const VertexBuffer &vb,
   vb.Bind();
   vb.Buffer();
   DOGL(glEnableVertexAttribArray(id));
-  //char* foo;
-  //sprintf(foo, "count: %u, type: %d, norm: %d, stride: %u\n", item.Count, (int) item.Type, (int) item.Normalised, item.Stride);
-  //Util::Out(std::string(foo));
-  DOGL(glVertexAttribPointer(id, item.Count, item.Type, item.Normalised,
-                             item.Stride, (const void*) 0));
+  DOGL(glVertexAttribPointer(id, item.count, item.type, item.normalised,
+                             item.stride, (const void*) 0));
 }
 
 

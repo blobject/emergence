@@ -17,20 +17,22 @@ This is a rewrite of an [[https://github.com/agarick/mff/tree/master/emergence][
 - glew
 - glfw ~>= 3~
 - glm
-- imgui (source provided in ~opt/~)
+- imgui (source & headers provided in ~opt/~)
 - opengl ~>= 3.3~
-#+BEGIN_COMMENT
-- opencl headers ~>= 2.1~
-- opencl sdk ~>= 2.1~ (per your graphics card manufacturer, eg. [[https://software.intel.com/en-us/opencl-sdk/choose-download][intel]], [[https://developer.nvidia.com/opencl][nvidia]])
-  - For the amd sdk, see [[https://stackoverflow.com/questions/53070673/download-opencl-amd-app-sdk-3-0-for-windows-and-linux][here]]
-#+END_COMMENT
+- opencl headers ~>= 2.1~ (C++ bindings provided in ~opt/~)
+- opencl runtime ~>= 2.1~
+  - Per your graphics card manufacturer, eg. [[https://software.intel.com/en-us/articles/opencl-drivers#proc-graph-section][intel]], [[https://developer.nvidia.com/opencl][nvidia]]. For the amd sdk, see [[https://stackoverflow.com/questions/53070673/download-opencl-amd-app-sdk-3-0-for-windows-and-linux][here]].
 
-/This project recommends installing dependencies according to your OS/package manager's common practice. On Debian or Ubuntu, for example, use apt(itude) to install the libraries' corresponding/ ~*-dev~ /packages./
+/This project recommends installing dependencies according to your OS/package manager's common practice (except for maybe the opencl sdk and headers). On Debian or Ubuntu, for example, use apt(itude) to install the libraries' corresponding/ ~*-dev~ /packages./
+
+- Note ::
+- As the opencl sdk installation is specific to your hardware and system, please correctly specify the ~include~ and ~link~ directories in ~CMakeLists.txt~.
+- Copies of imgui source & headers and part of the opencl headers are locally provided in this repository, under ~opt/~.
 
 *** Linux
 
 - Build ::
-1. retrieve the source at ~https://github.com/agarick/emergence~
+1. retrieve this repository from ~https://github.com/agarick/emergence~
 1. ~cd emergence~
 1. ~rm -R build; mkdir build; cd build~
 1. ~cmake ..~

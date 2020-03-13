@@ -35,8 +35,8 @@ main(int argc, char* argv[])
   // main objects
   State state = State(load);
   Processor processor = Processor(state);
-  std::unique_ptr<View> view =
-    std::move(View::Init(processor, visual, hidectrl));
+  std::unique_ptr<View> view = std::move(
+    View::Init(&processor, visual, hidectrl));
 
   // main execution
   //Util::SaveState(&state, "foosave");
@@ -79,26 +79,26 @@ Args(int argc, char* argv[])
   {
     switch (opt)
     {
-    case 'c': opts["headless"]  = "y"; break;
-    case 'u': opts["hidectrl"] = "y"; break;
-    case 'v': opts["quit"] = "version";  opts["return"] =  "0"; break;
-    case 'h': opts["quit"] = "help";     opts["return"] =  "0"; break;
-    case ':': opts["quit"] = "bad_file"; opts["return"] = "-1"; break;
-    case 'f':
-      opts["inputstate"] = optarg;
-      stream = std::ifstream(optarg);
-      if (stream)
-      {
-        stream.close();
-      }
-      else
-      {
-        opts["quit"] = "inputstate";
-        opts["return"] = "-1";
-      }
-      break;
-    case '?':
-    default: opts["quit"] = optopt; opts["return"] = "-1"; break;
+      case 'c': opts["headless"]  = "y"; break;
+      case 'u': opts["hidectrl"] = "y"; break;
+      case 'v': opts["quit"] = "version";  opts["return"] =  "0"; break;
+      case 'h': opts["quit"] = "help";     opts["return"] =  "0"; break;
+      case ':': opts["quit"] = "bad_file"; opts["return"] = "-1"; break;
+      case 'f':
+        opts["inputstate"] = optarg;
+        stream = std::ifstream(optarg);
+        if (stream)
+        {
+          stream.close();
+        }
+        else
+        {
+          opts["quit"] = "inputstate";
+          opts["return"] = "-1";
+        }
+        break;
+      case '?':
+      default: opts["quit"] = optopt; opts["return"] = "-1"; break;
     }
   }
   return opts;
@@ -140,12 +140,12 @@ Argue(std::map<std::string,std::string> &opts)
   }
   if (opts["headless"].empty())
   {
-    Util::Out("Running visualiser");
+    Util::Out("Running emergence visualiser");
   }
   else
   {
     opt = opts["inputstate"];
-    std::string out = "Running headless";
+    std::string out = "Running emergence headless";
     if (! opt.empty()) out += ": " + opt;
     Util::Out(out);
   }

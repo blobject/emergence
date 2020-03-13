@@ -5,9 +5,9 @@
 #include "../gl/vertexarray.hh"
 
 
-// Drawer: Clear and draw/render the visualisation.
+// Scene: Renderer of the visualisation.
 
-class Drawer
+class Scene
 {
  public:
   static void Clear();

@@ -8,9 +8,9 @@ Shader::Shader(const std::string &path)
   : path_(path), id_(0)
 {
   LoadShaderOut source = Util::LoadShader(path);
-  this->id_ = Shader::CreateShader(source.Vertex,
-                                   source.Geometry,
-                                   source.Fragment);
+  this->id_ = Shader::CreateShader(source.vertex,
+                                   source.geometry,
+                                   source.fragment);
 }
 
 

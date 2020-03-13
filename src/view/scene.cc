@@ -1,19 +1,19 @@
 #include <GL/glew.h>
 
-#include "drawer.hh"
+#include "scene.hh"
 #include "../util/util.hh"
 
 
 void
-Drawer::Clear()
+Scene::Clear()
 {
   DOGL(glClear(GL_COLOR_BUFFER_BIT));
 }
 
 
 void
-Drawer::Draw(unsigned int size, unsigned int count,
-             const VertexArray &va, const Shader &shader)
+Scene::Draw(unsigned int size, unsigned int count,
+            const VertexArray &va, const Shader &shader)
 {
   shader.Bind();
   va.Bind();

@@ -1,59 +1,64 @@
+// allow version 330 core shader syntax (NOTE: may be unnecessary)
+#define MESA_GL_VERSION_OVERRIDE 3.3
+#define MESA_GLSL_VERSION_OVERRIDE 330
+
 #include <GL/glew.h>
 
 #include "visualiser.hh"
-#include "drawer.hh"
+#include "scene.hh"
 #include "../util/util.hh"
 
 
-Visualiser::Visualiser(Processor &processor, bool hide_ctrl)
+Visualiser::Visualiser(Processor* processor, bool hide_ctrl)
   : processor_(processor)
-  , width_(processor.state_.width_)
-  , height_(processor.state_.height_)
-  , gui_(Gui("#version 330 core",
-             processor.state_.width_,
-             processor.state_.height_))
 {
-  if (nullptr == this->gui_.window_)
+  State &state = processor->get_state();
+  this->width_ = state.width_;
+  this->height_ = state.height_;
+  this->gui_ = new Gui("#version 330 core", state.width_, state.height_);
+  if (nullptr == this->gui_->window_)
   {
-    return;
+    return; // TODO: handle error
   }
 	glewExperimental = true; // for core profile
   if (GLEW_OK != glewInit())
   {
     Util::Err("glewInit");
   }
-  // (NOTE: seems unnecessary) allow version 330 core shader syntax
-  //putenv((char *) "MESA_GL_VERSION_OVERRIDE=3.3");
-  //putenv((char *) "MESA_GLSL_VERSION_OVERRIDE=330");
 }
 
 
 void
 Visualiser::Exec()
 {
-  GLFWwindow* window = this->gui_.window_;
-  Drawer drawer;
+  State &state = this->processor_->get_state();
+  Scene scene;
 
-  // gl process
-  ProcessOut processed = this->processor_.Process();
-  unsigned int num = processed.Num;
-  VertexArray &va = *(processed.VertexArray);
-  Shader &shader = *(processed.Shader);
+  // processing
+  ProcessOut data = this->processor_->All();
+  unsigned int num = data.num;
+  VertexArray &va = *(data.vertex_array);
+  Shader &shader = *(data.shader);
 
-  while (! this->gui_.Closing())
+  while (! this->gui_->Closing())
   {
-    this->gui_.HandleInput();
-    drawer.Clear();
+    // pre
+    this->gui_->HandleInput();
+    scene.Clear();
 
-    // gl draw
-    va.Bind();
-    drawer.Draw(4, num, va, shader);
+    // render
+    //va.Bind(); // optional bind
+    scene.Draw(GL_FLOAT, num, va, shader);
     //va->Unbind(); // optional unbind
+    this->gui_->Draw(state);
 
-    this->gui_.Draw(this->processor_.state_);
-    this->gui_.Next();
+    // post
+    this->gui_->Next();
+
+    // process next
+    //ProcessOut next = this->processor_->Right();
+    //num = next.num;
+    //va = *(next.vertex_array);
   }
-  delete processed.Shader;
-  delete processed.VertexArray;
 }
 

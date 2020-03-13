@@ -7,10 +7,10 @@
 
 struct LayoutItem
 {
-  unsigned int  Type;
-  unsigned int  Count;
-  unsigned char Normalised;
-  unsigned int  Stride;
+  unsigned int  type;
+  unsigned int  count;
+  unsigned char normalised;
+  unsigned int  stride;
 
   static unsigned int TypeSize(unsigned int type);
 };
