@@ -6,7 +6,7 @@
 
 This project is based on the article, /How a life-like system emerges from a simple particle motion law/, by  Schmickl, Stefanec, and Crailsheim: https://www.nature.com/articles/srep37969, and extends it with three-dimensionality.
 
-This is a rewrite of an [[https://github.com/agarick/mff/tree/master/emergence][earlier version in JavaScript + HTML5]] which ran via web browser and Node.js. The present project uses OpenGL + GLEW (graphics), glm (math), GLFW (windowing), ImGui (user interface), and C++ as the main language of implementation. It runs as a native desktop application.
+This is a rewrite of an [[https://github.com/agarick/mff/tree/master/emergence][earlier version in JavaScript + HTML5]] which ran via web browser and Node.js. The present project uses OpenGL + GLEW (graphics), glm (math), GLFW (windowing), ImGui (user interface), OpenCL (parallelisation), and C++ as the main language of implementation. It runs as a native desktop application.
 
 ** Build & Run
 
@@ -26,7 +26,7 @@ This is a rewrite of an [[https://github.com/agarick/mff/tree/master/emergence][
 /This project recommends installing dependencies according to your OS/package manager's common practice (except for maybe the opencl sdk and headers). On Debian or Ubuntu, for example, use apt(itude) to install the libraries' corresponding/ ~*-dev~ /packages./
 
 - Note ::
-- As the opencl sdk installation is specific to your hardware and system, please correctly specify the ~include~ and ~link~ directories in ~CMakeLists.txt~.
+- As the opencl sdk installation is specific to your hardware and system, make sure to correctly specify the ~include~ and ~link~ directories in ~CMakeLists.txt~.
 - Copies of imgui source & headers and part of the opencl headers are locally provided in this repository, under ~opt/~.
 
 *** Linux

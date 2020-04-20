@@ -40,6 +40,14 @@ Visualiser::Exec()
   VertexArray &va = *(data.vertex_array);
   Shader &shader = *(data.shader);
 
+  // profiling
+  GLuint64 start, stop;
+  unsigned int queryID[2];
+  glGenQueries(2, queryID);
+  glQueryCounter(queryID[0], GL_TIMESTAMP);
+  GLint stopAvailable = 0;
+  bool profiled = false;
+
   while (! this->gui_->Closing())
   {
     // pre
@@ -56,9 +64,23 @@ Visualiser::Exec()
     this->gui_->Next();
 
     // process next
-    //ProcessOut next = this->processor_->Right();
-    //num = next.num;
-    //va = *(next.vertex_array);
+    va = *(this->processor_->Next());
+
+    /**
+    // profiling
+    glQueryCounter(queryID[1], GL_TIMESTAMP);
+    while (! stopAvailable)
+    {
+      glGetQueryObjectiv(queryID[1], GL_QUERY_RESULT_AVAILABLE, &stopAvailable);
+    }
+    if (! profiled)
+    {
+      profiled = true;
+      glGetQueryObjectui64v(queryID[0], GL_QUERY_RESULT, &start);
+      glGetQueryObjectui64v(queryID[1], GL_QUERY_RESULT, &stop);
+      std::cout << "time spent: " << (stop - start) / 1000000.0 << std::endl;
+    }
+    //*/
   }
 }
 

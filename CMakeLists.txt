@@ -6,10 +6,13 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 project(emergence)
 
+# imgui
 include_directories(${PROJECT_SOURCE_DIR}/opt)
+
+# opencl
 include_directories(/opt/intel/include)
 include_directories(${PROJECT_SOURCE_DIR}/opt/opencl)
-link_directories(/opt/intel/lib)
+link_directories(/opt/intel/lib /opt/intel/lib64)
 
 add_library(imgui OBJECT
   opt/imgui/imgui.cpp

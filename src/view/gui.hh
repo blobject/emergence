@@ -9,6 +9,11 @@
 
 class Gui
 {
+ private:
+  double ago_;
+  unsigned int frames_;
+  unsigned int fps_;
+
  public:
   GLFWwindow* window_;
 
@@ -17,7 +22,7 @@ class Gui
 
   void Close();
   bool Closing() const;
-  void Draw(const State &state) const;
+  void Draw(const State &state);
   void HandleInput();
   void Next() const;
 };

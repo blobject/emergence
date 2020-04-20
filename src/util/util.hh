@@ -42,6 +42,9 @@ class Util
   static bool          LoadState(State &state, const std::string &path);
   static bool          SaveState(State &state, const std::string &path);
 
+  // math.cc
+  template<typename T> static int Signum(T a) { return (T(0) < a) - (a < T(0)); }
+
   // random.cc
   template<typename T> static T Distribute(T a, T b);
   template<> int                Distribute<int>(int a, int b);

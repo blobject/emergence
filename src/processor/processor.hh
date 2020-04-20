@@ -23,9 +23,12 @@ class Processor //: public Observer
 {
  private:
   State &state_;
-  //unsigned int num_;
-  //VertexArray* va_;
-  //Shader* shader_;
+  VertexArray* va_;
+  std::vector<std::vector<std::vector<unsigned int> > > grid_;
+
+  void Reset();
+  void Seek();
+  void Move();
 
  public:
   Processor(State &state);
@@ -33,9 +36,8 @@ class Processor //: public Observer
 
   inline State &get_state() const { return this->state_; }
 
-  //void        Update(Subject &next) override;
-  static void InitCl();
-  ProcessOut  All();
-  ProcessOut  Right();
+  static void  InitCl();
+  ProcessOut   All();
+  VertexArray* Next();
 };
 

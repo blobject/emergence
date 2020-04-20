@@ -3,6 +3,7 @@
 #include <imgui/imgui_impl_opengl3.h>
 
 #include "gui.hh"
+#include "../util/common.hh"
 #include "../util/util.hh"
 
 
@@ -37,6 +38,9 @@ Gui::Gui(const std::string &version, unsigned int width, unsigned int height)
   ImGui_ImplOpenGL3_Init(version.c_str());
 
   this->window_ = window;
+  this->ago_ = glfwGetTime();
+  this->frames_ = 0;
+  this->fps_ = 0;
 }
 
 
@@ -64,8 +68,16 @@ Gui::Closing() const
 
 
 void
-Gui::Draw(const State &state) const
+Gui::Draw(const State &state)
 {
+  double now = glfwGetTime();
+  ++this->frames_;
+  if (now - this->ago_ >= 1.0)
+  {
+    this->fps_ = this->frames_;
+    this->frames_ = 0;
+    this->ago_ = now;
+  }
   ImGui_ImplOpenGL3_NewFrame();
   ImGui_ImplGlfw_NewFrame();
   ImGui::NewFrame();
@@ -88,6 +100,7 @@ Gui::Draw(const State &state) const
     ImGui::Begin("Configuration", NULL, ImGuiWindowFlags_NoResize);
     ImGui::Dummy(ImVec2(0.0f, 1.0f));
     ImGui::TextColored(ImVec4(1.0f, 0.0f, 1.0f, 1.0f), "World");
+    ImGui::Text("fps:          %u", this->fps_);
     ImGui::Text("width:        %u", window_width);
     ImGui::Text("height:       %u", window_height);
     ImGui::Text("alpha:        %.2f", state.alpha_);

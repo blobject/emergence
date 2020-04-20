@@ -101,6 +101,8 @@ Util::LoadState(State &state, const std::string &path)
       unsigned int height;
       int distribution_num;
       Distribution distribution;
+      float nradius;
+      float speed;
       float alpha;
       float beta;
       float gamma;
@@ -111,6 +113,8 @@ Util::LoadState(State &state, const std::string &path)
       if (linestream >> height) state.height_ = height;
       if (linestream >> distribution_num)
         state.distribution_ = (Distribution) distribution_num;
+      if (linestream >> nradius) state.nradius_ = nradius;
+      if (linestream >> speed) state.speed_ = speed;
       if (linestream >> alpha) state.alpha_ = alpha;
       if (linestream >> beta) state.beta_ = beta;
       if (linestream >> gamma) state.gamma_ = gamma;
@@ -118,9 +122,7 @@ Util::LoadState(State &state, const std::string &path)
     unsigned int x;
     unsigned int y;
     float phi;
-    float speed;
     unsigned radius;
-    float nradius;
     state.particles_.clear();
     while (std::getline(stream, line))
     {
@@ -134,9 +136,7 @@ Util::LoadState(State &state, const std::string &path)
       if (linestream >> x) particle.x = x;
       if (linestream >> y) particle.y = y;
       if (linestream >> phi) particle.phi = phi;
-      if (linestream >> speed) particle.speed = speed;
       if (linestream >> radius) particle.radius = radius;
-      if (linestream >> nradius) particle.nradius = nradius;
       state.particles_.push_back(particle);
     }
     if (state.particles_.empty())
@@ -166,6 +166,8 @@ Util::SaveState(State &state, const std::string &path)
            << state.width_ << ' '
            << state.height_ << ' '
            << (int) state.distribution_ << ' '
+           << state.nradius_ << ' '
+           << state.speed_ << ' '
            << state.alpha_ << ' '
            << state.beta_ << ' '
            << state.gamma_ << '\n';
@@ -174,9 +176,7 @@ Util::SaveState(State &state, const std::string &path)
       stream << particle.x << ' '
              << particle.y << ' '
              << particle.phi << ' '
-             << particle.speed << ' '
-             << particle.radius << ' '
-             << particle.nradius << '\n';
+             << particle.radius << '\n';
     }
     stream.close();
   }

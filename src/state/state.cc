@@ -1,4 +1,7 @@
+#include <cmath>
+
 #include "state.hh"
+#include "../util/common.hh"
 #include "../util/util.hh"
 
 
@@ -7,13 +10,16 @@ Particle::Particle(Distribution distribution,
                    unsigned int height)
 {
   this->radius = 5.0f;
-  this->speed = 0.0f;
-  this->nradius = 0.0f;
   if (distribution == Distribution::UNIFORM)
   {
-    this->x = Util::Distribute<float>(0.0f, (float) width - 1);
-    this->y = Util::Distribute<float>(0.0f, (float) height - 1);
-    this->phi = Util::Distribute<float>(0.0f, 1.0f);
+    this->x = Util::Distribute<float>(0.0f, (float) width);
+    this->y = Util::Distribute<float>(0.0f, (float) height);
+    this->phi = Util::Distribute<float>(0.0f, TAU);
+    this->n = 0;
+    this->l = 0;
+    this->r = 0;
+    this->s = sin(this->phi);
+    this->c = cos(this->phi);
   }
 }
 
@@ -59,12 +65,17 @@ State::State(const std::string &load)
   this->colorscheme_ = 0;
 
   // transportable data
-  this->num_ = 1000;
-  this->width_ = 1000;
-  this->height_ = 1000;
-  this->alpha_ = 0.0;
-  this->beta_ = 0.0;
-  this->gamma_ = 0.0;
+  this->num_ = 3000;
+  this->width_ = 1200;
+  this->half_width_ = this->width_ / 2;
+  this->height_ = 1200;
+  this->half_height_ = this->height_ / 2;
+  this->nradius_ = 100.0f;
+  this->nradius_squared_ = this->nradius_ * this->nradius_;
+  this->alpha_ = 3.141593f;
+  this->beta_ = 0.296706f;
+  this->gamma_ = 0.05f;
+  this->speed_ = this->nradius_ * this->gamma_;
   this->distribution_ = Distribution::UNIFORM;
   this->stop_ = 0;
   for (int i = 0; i < this->num_; ++i)
@@ -132,6 +143,23 @@ void
 State::set_gamma(float gamma)
 {
   this->gamma_ = gamma;
+  //this->Notify();
+}
+
+
+void
+State::set_nradius(float nradius)
+{
+  this->nradius_ = nradius;
+  this->nradius_squared_ = nradius * nradius;
+  //this->Notify();
+}
+
+
+void
+State::set_speed(float speed)
+{
+  this->speed_ = speed;
   //this->Notify();
 }
 
