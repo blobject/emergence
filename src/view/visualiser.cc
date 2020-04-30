@@ -3,43 +3,58 @@
 #define MESA_GLSL_VERSION_OVERRIDE 330
 
 #include <GL/glew.h>
+#include <glm/gtc/matrix_transform.hpp>
 
 #include "visualiser.hh"
-#include "scene.hh"
 #include "../util/util.hh"
 
 
-Visualiser::Visualiser(Processor* processor, bool hide_ctrl)
-  : processor_(processor)
+Visualiser::Visualiser(Sys* sys, bool hide_ctrl)
+  : sys_(sys), shader_(NULL)
 {
-  State &state = processor->get_state();
-  this->width_ = state.width_;
-  this->height_ = state.height_;
-  this->gui_ = new Gui("#version 330 core", state.width_, state.height_);
+  State &state = sys->get_state();
+  auto gui_state = GuiState(state);
+  this->gui_ = new Gui(gui_state, sys, "#version 330 core", state.width_,
+                       state.height_);
   if (nullptr == this->gui_->window_)
   {
     return; // TODO: handle error
   }
+  this->gui_->SetPointer();
 	glewExperimental = true; // for core profile
   if (GLEW_OK != glewInit())
   {
     Util::Err("glewInit");
   }
+  this->ago_ = glfwGetTime();
+  this->camera_ = { 0, 0, 0 };
+  this->model_ = glm::translate(glm::mat4(1.0f), this->camera_);
+  this->projection_ = glm::ortho(0.0f, static_cast<float>(state.width_),
+                                 0.0f, static_cast<float>(state.height_),
+                                -1.0f, 1.0f);
+  this->view_ = glm::translate(glm::mat4(1.0f), glm::vec3(0, 0, 0));
 }
 
 
 void
 Visualiser::Exec()
 {
-  State &state = this->processor_->get_state();
-  Scene scene;
+  this->gui_->SetVisualiser(this);
+  Sys* sys = this->sys_;
+  State &state = sys->get_state();
 
-  // processing
-  ProcessOut data = this->processor_->All();
-  unsigned int num = data.num;
-  VertexArray &va = *(data.vertex_array);
-  Shader &shader = *(data.shader);
+  this->Spawn();
 
+  // shading
+  glm::mat4 projection = glm::ortho(0.0f, static_cast<float>(state.width_),
+                                    0.0f, static_cast<float>(state.height_),
+                                   -1.0f, 1.0f);
+  auto shader = new Shader();
+  shader->Bind();
+  shader->SetUniformMat4f("mvp", projection);
+  this->shader_ = shader;
+
+  /**
   // profiling
   GLuint64 start, stop;
   unsigned int queryID[2];
@@ -47,24 +62,35 @@ Visualiser::Exec()
   glQueryCounter(queryID[0], GL_TIMESTAMP);
   GLint stopAvailable = 0;
   bool profiled = false;
+  //*/
 
+  // timing
+  double now;
+
+  // render loop
   while (! this->gui_->Closing())
   {
+    // timing
+    now = glfwGetTime();
+    if (now - this->ago_ < 1.0f / 60.0f)
+    {
+      continue;
+    }
+    this->ago_ = now;
+
     // pre
-    this->gui_->HandleInput();
-    scene.Clear();
+    this->Clear();
 
     // render
     //va.Bind(); // optional bind
-    scene.Draw(GL_FLOAT, num, va, shader);
+    this->Draw(GL_FLOAT, state.num_, this->vertex_array_, shader);
     //va->Unbind(); // optional unbind
-    this->gui_->Draw(state);
+    this->gui_->Draw();
 
     // post
     this->gui_->Next();
-
-    // process next
-    va = *(this->processor_->Next());
+    sys->Next();
+    this->Next();
 
     /**
     // profiling
@@ -82,5 +108,172 @@ Visualiser::Exec()
     }
     //*/
   }
+}
+
+
+// Spawn: Initialise OpenGL vertex constructs given particle positions and draw
+//        them.
+
+void
+Visualiser::Spawn()
+{
+  State &state = this->sys_->get_state();
+  // initialise vertex buffers
+  auto &particles = state.particles_;
+
+  float size = particles[0].size / 2;
+  float shape[] = { 0.0f, size,
+                   -size, 0.0f,
+                    size, 0.0f,
+                    0.0f,-size };
+  float trans[2 * state.num_];
+  int index = 0;
+
+  for (const Particle &particle : particles)
+  {
+    trans[index++] = particle.x;
+    trans[index++] = particle.y;
+  }
+
+  // gpu buffers
+  auto vbs = new VertexBuffer(shape, sizeof(shape));
+  auto vbt = new VertexBuffer(trans, sizeof(trans));
+  auto va = new VertexArray();
+  va->AddBuffer(0, *vbs, VertexBufferLayout::Make<float>(2));
+  va->AddBuffer(1, *vbt, VertexBufferLayout::Make<float>(2));
+
+  // instancing
+  glVertexAttribDivisor(1, 1);
+
+  vbs->Unbind(); // optional
+  vbt->Unbind(); // optional
+  va->Unbind();
+  this->vertex_buffer_shape_ = vbs;
+  this->vertex_buffer_trans_ = vbt;
+  this->vertex_array_ = va;
+}
+
+
+// Respawn: Reinitialise OpenGL vertex constructs and redraw particles.
+
+void
+Visualiser::Respawn()
+{
+  delete this->vertex_buffer_shape_;
+  delete this->vertex_buffer_trans_;
+  delete this->vertex_array_;
+  this->Spawn();
+}
+
+
+void
+Visualiser::Draw(unsigned int size, unsigned int count, VertexArray* va,
+                 Shader* shader)
+{
+  shader->Bind();
+  va->Bind();
+  //ib->Bind();
+  DOGL(glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, size, count));
+  //DOGL(glDrawElements(GL_TRIANGLES, ib->get_count(), GL_UNSIGNED_INT, nullptr));
+}
+
+
+void
+Visualiser::Clear()
+{
+  DOGL(glClear(GL_COLOR_BUFFER_BIT));
+}
+
+
+void
+Visualiser::Next()
+{
+  State &state = this->sys_->get_state();
+  float trans[2 * state.num_];
+  int index = 0;
+  for (auto &particle : state.particles_)
+  {
+    trans[index++] = particle.x;
+    trans[index++] = particle.y;
+  }
+  this->vertex_buffer_trans_->Update(trans);
+  //this->vertex_array_->AddBuffer(1, *this->vertex_buffer_trans_,
+  //                               VertexBufferLayout::Make<float>(2));
+}
+
+
+void
+Visualiser::West()
+{
+  this->camera_ += glm::vec3(this->sys_->get_state().width_ / 100.0f, 0, 0);
+  this->model_ = glm::translate(glm::mat4(1.0f), this->camera_);
+  this->shader_->Bind();
+  this->shader_->SetUniformMat4f(
+    "mvp", this->projection_ * this->view_ * this->model_);
+}
+
+
+void
+Visualiser::South()
+{
+  this->camera_ += glm::vec3(0, this->sys_->get_state().height_ / 100.0f, 0);
+  this->model_ = glm::translate(glm::mat4(1.0f), this->camera_);
+  this->shader_->Bind();
+  this->shader_->SetUniformMat4f(
+    "mvp", this->projection_ * this->view_ * this->model_);
+}
+
+
+void
+Visualiser::North()
+{
+  this->camera_ += glm::vec3(0, this->sys_->get_state().height_ / -100.0f, 0);
+  this->model_ = glm::translate(glm::mat4(1.0f), this->camera_);
+  this->shader_->Bind();
+  this->shader_->SetUniformMat4f(
+    "mvp", this->projection_ * this->view_ * this->model_);
+}
+
+
+void
+Visualiser::East()
+{
+  this->camera_ += glm::vec3(this->sys_->get_state().width_ / -100.0f, 0, 0);
+  this->model_ = glm::translate(glm::mat4(1.0f), this->camera_);
+  this->shader_->Bind();
+  this->shader_->SetUniformMat4f(
+    "mvp", this->projection_ * this->view_ * this->model_);
+}
+
+
+void
+Visualiser::NorthWest()
+{
+  this->North();
+  this->West();
+}
+
+
+void
+Visualiser::NorthEast()
+{
+  this->North();
+  this->East();
+}
+
+
+void
+Visualiser::SouthWest()
+{
+  this->South();
+  this->West();
+}
+
+
+void
+Visualiser::SouthEast()
+{
+  this->South();
+  this->East();
 }
 

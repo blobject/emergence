@@ -32,6 +32,16 @@ VertexBuffer::Buffer() const
 
 
 void
+VertexBuffer::Update(const void* data)
+{
+  this->data_ = data;
+  //this->size_ = sizeof(data);
+  this->Bind();
+  this->Buffer();
+}
+
+
+void
 VertexBuffer::Unbind() const
 {
   DOGL(glBindBuffer(GL_ARRAY_BUFFER, 0));

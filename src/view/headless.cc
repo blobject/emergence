@@ -1,13 +1,13 @@
 #include "headless.hh"
 
 
-Headless::Headless(Processor* processor)
-  : processor_(processor) {}
+Headless::Headless(Sys* sys)
+  : sys_(sys) {}
 
 
 void
 Headless::Exec()
 {
-  // TODO: call processor
+  // TODO: call sys
 }
 

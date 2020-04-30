@@ -2,7 +2,7 @@
 
 #include <memory>
 
-#include "../processor/processor.hh"
+#include "../sys/sys.hh"
 
 
 // View: Abstract class over the Visualiser and Headless views.
@@ -13,8 +13,7 @@ class View
   virtual ~View() {}
 
   // factory method
-  static std::unique_ptr<View> Init(Processor* processor,
-                                    bool visual, bool hidectrl);
+  static std::unique_ptr<View> Init(Sys* sys, bool visual, bool hidectrl);
 
   virtual void Exec() = 0;
 };

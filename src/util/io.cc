@@ -40,6 +40,7 @@ Util::ErrGl(const std::string &s)
 }
 
 
+/**
 // LoadShader: Parse a file containing shaders.
 
 LoadShaderOut
@@ -68,7 +69,7 @@ Util::LoadShader(const std::string &path)
       }
       else if (line.rfind("//", 0) != 0)
       {
-        ss[(int) type] << line << '\n';
+        ss[static_cast<int>(type)] << line << '\n';
       }
     }
     stream.close();
@@ -77,10 +78,11 @@ Util::LoadShader(const std::string &path)
   {
     return { "", "" };
   }
-  return { Util::Trim(ss[(int) Type::VERTEX].str()),
-           Util::Trim(ss[(int) Type::GEOMETRY].str()),
-           Util::Trim(ss[(int) Type::FRAGMENT].str()) };
+  return { Util::Trim(ss[static_cast<int>(Type::VERTEX)].str()),
+           Util::Trim(ss[static_cast<int>(Type::GEOMETRY)].str()),
+           Util::Trim(ss[static_cast<int>(Type::FRAGMENT)].str()) };
 }
+//*/
 
 
 // LoadState: Parse a file containing the initial state.
@@ -101,28 +103,26 @@ Util::LoadState(State &state, const std::string &path)
       unsigned int height;
       int distribution_num;
       Distribution distribution;
-      float nradius;
+      float scope;
       float speed;
       float alpha;
       float beta;
-      float gamma;
       linestream = std::istringstream(line);
       // on read failure, the State members are left unchanged
       if (linestream >> stop) state.stop_ = stop;
       if (linestream >> width) state.width_ = width;
       if (linestream >> height) state.height_ = height;
       if (linestream >> distribution_num)
-        state.distribution_ = (Distribution) distribution_num;
-      if (linestream >> nradius) state.nradius_ = nradius;
+        state.distribution_ = static_cast<Distribution>(distribution_num);
+      if (linestream >> scope) state.scope_ = scope;
       if (linestream >> speed) state.speed_ = speed;
       if (linestream >> alpha) state.alpha_ = alpha;
       if (linestream >> beta) state.beta_ = beta;
-      if (linestream >> gamma) state.gamma_ = gamma;
     }
     unsigned int x;
     unsigned int y;
     float phi;
-    unsigned radius;
+    unsigned size;
     state.particles_.clear();
     while (std::getline(stream, line))
     {
@@ -136,7 +136,7 @@ Util::LoadState(State &state, const std::string &path)
       if (linestream >> x) particle.x = x;
       if (linestream >> y) particle.y = y;
       if (linestream >> phi) particle.phi = phi;
-      if (linestream >> radius) particle.radius = radius;
+      if (linestream >> size) particle.size = size;
       state.particles_.push_back(particle);
     }
     if (state.particles_.empty())
@@ -165,18 +165,17 @@ Util::SaveState(State &state, const std::string &path)
     stream << state.stop_ << ' '
            << state.width_ << ' '
            << state.height_ << ' '
-           << (int) state.distribution_ << ' '
-           << state.nradius_ << ' '
+           << static_cast<int>(state.distribution_) << ' '
+           << state.scope_ << ' '
            << state.speed_ << ' '
            << state.alpha_ << ' '
-           << state.beta_ << ' '
-           << state.gamma_ << '\n';
+           << state.beta_ << '\n';
     for (const Particle &particle : state.particles_)
     {
       stream << particle.x << ' '
              << particle.y << ' '
              << particle.phi << ' '
-             << particle.radius << '\n';
+             << particle.size << '\n';
     }
     stream.close();
   }

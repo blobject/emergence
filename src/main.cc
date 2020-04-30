@@ -4,7 +4,7 @@
 
 #include "util/common.hh"
 #include "util/util.hh"
-#include "processor/processor.hh"
+#include "sys/sys.hh"
 #include "view/view.hh"
 
 
@@ -34,9 +34,9 @@ main(int argc, char* argv[])
 
   // main objects
   State state = State(load);
-  Processor processor = Processor(state);
+  Sys sys = Sys(state);
   std::unique_ptr<View> view = std::move(
-    View::Init(&processor, visual, hidectrl));
+    View::Init(&sys, visual, hidectrl));
 
   // main execution
   //Util::SaveState(&state, "foosave");

@@ -12,16 +12,6 @@
   if (! Util::DebugGl(#x, __FILE__, __LINE__)) __builtin_trap()
 
 
-// LoadShaderOut: For file.cc/LoadShader() to return multiple values.
-
-struct LoadShaderOut
-{
-  std::string vertex;
-  std::string geometry;
-  std::string fragment;
-};
-
-
 // Util: Static utility functions.
 
 class Util
@@ -38,12 +28,8 @@ class Util
   static void          Warn(const std::string &s);
   static void          Err(const std::string &s);
   static void          ErrGl(const std::string &s);
-  static LoadShaderOut LoadShader(const std::string &path);
   static bool          LoadState(State &state, const std::string &path);
   static bool          SaveState(State &state, const std::string &path);
-
-  // math.cc
-  template<typename T> static int Signum(T a) { return (T(0) < a) - (a < T(0)); }
 
   // random.cc
   template<typename T> static T Distribute(T a, T b);
@@ -54,4 +40,34 @@ class Util
   static std::string Relative(const std::string &path);
   static std::string Trim(std::string s);
 };
+
+
+/**
+// Observer: The pattern
+
+class Subject;
+
+class Observer
+{
+ public:
+  virtual ~Observer() = default;
+  virtual void React(Subject &next) = 0;
+};
+
+
+// Subject: Part of the observer pattern
+
+class Subject
+{
+ private:
+  std::vector<Observer*> observers;
+
+ public:
+  virtual ~Subject() = default;
+  void Attach(Observer &observer);
+  void Detach(Observer &observer);
+  void Notify();
+  virtual unsigned int get(std::string key) = 0;
+};
+//*/
 

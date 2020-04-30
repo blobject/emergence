@@ -4,13 +4,10 @@
 #include "../util/util.hh"
 
 
-Shader::Shader(const std::string &path)
-  : path_(path), id_(0)
+Shader::Shader()
+  : id_(0)
 {
-  LoadShaderOut source = Util::LoadShader(path);
-  this->id_ = Shader::CreateShader(source.vertex,
-                                   source.geometry,
-                                   source.fragment);
+  this->id_ = Shader::CreateShader();
 }
 
 
@@ -35,10 +32,27 @@ Shader::Unbind() const
 
 
 unsigned int
-Shader::CreateShader(const std::string &vertex,
-                     const std::string &geometry,
-                     const std::string &fragment)
+Shader::CreateShader()
 {
+  std::string vertex =
+    "#version 330 core\n"
+    "layout (location = 0) in vec2 shape;\n"
+    "layout (location = 1) in vec2 trans;\n"
+    "uniform mat4 mvp;\n"
+    "void main()\n"
+    "{\n"
+    "  vec4 position = vec4(shape.x + trans.x, shape.y + trans.y, 0.0, 1.0);\n"
+    "  gl_Position = mvp * position;\n"
+    "}\n";
+  std::string geometry = "";
+  std::string fragment =
+    "#version 330 core\n"
+    "layout (location = 0) out vec4 color;\n"
+    "void main()\n"
+    "{\n"
+    "  color = vec4(1.0, 1.0, 1.0, 1.0f);\n"
+    "}\n";
+
   DOGL(unsigned int program = glCreateProgram());
   unsigned int v;
   unsigned int g;
@@ -60,9 +74,9 @@ Shader::CreateShader(const std::string &vertex,
   }
   DOGL(glLinkProgram(program));
   DOGL(glValidateProgram(program));
-  if (! vertex.empty()) DOGL(glDeleteShader(v));
-  if (! geometry.empty()) DOGL(glDeleteShader(g));
-  if (! fragment.empty()) DOGL(glDeleteShader(f));
+  if (! vertex.empty()) { DOGL(glDeleteShader(v)); }
+  if (! geometry.empty()) { DOGL(glDeleteShader(g)); }
+  if (! fragment.empty()) { DOGL(glDeleteShader(f)); }
   return program;
 }
 
@@ -80,7 +94,7 @@ Shader::CompileShader(unsigned int type, const std::string &source)
   {
     int length;
     DOGL(glGetShaderiv(id, GL_INFO_LOG_LENGTH, &length));
-    char* message = (char*) alloca(length * sizeof(char));
+    char* message = static_cast<char*>(alloca(length * sizeof(char)));
     DOGL(glGetShaderInfoLog(id, length, &length, message));
     Util::Err("failed to compile "
               + std::string(type == GL_VERTEX_SHADER ? "vertex" :

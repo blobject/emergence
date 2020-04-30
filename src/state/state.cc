@@ -9,11 +9,11 @@ Particle::Particle(Distribution distribution,
                    unsigned int width,
                    unsigned int height)
 {
-  this->radius = 5.0f;
+  this->size = 5.0f;
   if (distribution == Distribution::UNIFORM)
   {
-    this->x = Util::Distribute<float>(0.0f, (float) width);
-    this->y = Util::Distribute<float>(0.0f, (float) height);
+    this->x = Util::Distribute<float>(0.0f, static_cast<float>(width));
+    this->y = Util::Distribute<float>(0.0f, static_cast<float>(height));
     this->phi = Util::Distribute<float>(0.0f, TAU);
     this->n = 0;
     this->l = 0;
@@ -30,34 +30,6 @@ History::History()
 }
 
 
-/**
-void
-Subject::Register(Observer& o)
-{
-  this->observers.push_back(&o);
-}
-
-
-void
-Subject::Deregister(Observer& o)
-{
-  this->observers.erase(std::remove(this->observers.begin(),
-                                    this->observers.end(),
-                                    &o));
-}
-
-
-void
-Subject::Notify()
-{
-  for (auto* o : this->observers)
-  {
-    o->Update(*this);
-  }
-}
-//*/
-
-
 State::State(const std::string &load)
 {
   // sedentary data
@@ -65,24 +37,25 @@ State::State(const std::string &load)
   this->colorscheme_ = 0;
 
   // transportable data
-  this->num_ = 3000;
-  this->width_ = 1200;
-  this->half_width_ = this->width_ / 2;
-  this->height_ = 1200;
-  this->half_height_ = this->height_ / 2;
-  this->nradius_ = 100.0f;
-  this->nradius_squared_ = this->nradius_ * this->nradius_;
-  this->alpha_ = 3.141593f;
-  this->beta_ = 0.296706f;
-  this->gamma_ = 0.05f;
-  this->speed_ = this->nradius_ * this->gamma_;
   this->distribution_ = Distribution::UNIFORM;
   this->stop_ = 0;
+  this->num_ = 4000;
+  this->width_ = 1000;
+  this->height_ = 1000;
+  this->scope_ = 100.0f;
+  this->alpha_ = 3.141593f;
+  this->beta_ = 0.296706f;
+  this->speed_ = 2.65f;
   for (int i = 0; i < this->num_; ++i)
   {
     this->particles_.push_back(Particle(this->distribution_,
                                         this->width_, this->height_));
   }
+
+  // derived data
+  this->half_width_ = this->width_ / 2;
+  this->half_height_ = this->height_ / 2;
+  this->scope_squared_ = this->scope_ * this->scope_;
 
   if (! load.empty())
   {
@@ -94,72 +67,45 @@ State::State(const std::string &load)
 }
 
 
+// Change: Update State data.
 void
-State::set_num(unsigned int num)
+State::Change(StateTransport &next)
 {
-  this->num_ = num;
+  bool respawn = false;
+  if (next.distribution != this->distribution_ ||
+      next.num          != this->num_          ||
+      next.width        != this->width_        ||
+      next.height       != this->height_)
+  {
+    respawn = true;
+  }
+  this->distribution_ = next.distribution;
+  this->stop_ = next.stop;
+  this->colorscheme_ = next.colorscheme;
+  this->num_ = next.num;
+  this->width_ = next.width;
+  this->height_ = next.height;
+  this->scope_ = next.scope;
+  this->speed_ = next.speed;
+  this->alpha_ = next.alpha;
+  this->beta_ = next.beta;
+  if (respawn)
+  {
+    this->Respawn();
+  }
+}
+
+
+// Respawn: Reinitialise particles.
+void
+State::Respawn()
+{
   this->particles_.clear();
+  //std::vector<Particle>().swap(this->particles_); // resize to fit
   for (int i = 0; i < this->num_; ++i)
   {
     this->particles_.push_back(Particle(this->distribution_,
                                         this->width_, this->height_));
   }
-  //this->Notify();
-}
-
-
-void
-State::set_dim(unsigned int width, unsigned int height)
-{
-  this->width_ = width;
-  this->height_ = height;
-  this->particles_.clear();
-  for (int i = 0; i < this->num_; ++i)
-  {
-    this->particles_.push_back(Particle(this->distribution_,
-                                        this->width_, this->height_));
-  }
-  //this->Notify();
-}
-
-
-void
-State::set_alpha(float alpha)
-{
-  this->alpha_ = alpha;
-  //this->Notify();
-}
-
-
-void
-State::set_beta(float beta)
-{
-  this->beta_ = beta;
-  //this->Notify();
-}
-
-
-void
-State::set_gamma(float gamma)
-{
-  this->gamma_ = gamma;
-  //this->Notify();
-}
-
-
-void
-State::set_nradius(float nradius)
-{
-  this->nradius_ = nradius;
-  this->nradius_squared_ = nradius * nradius;
-  //this->Notify();
-}
-
-
-void
-State::set_speed(float speed)
-{
-  this->speed_ = speed;
-  //this->Notify();
 }
 

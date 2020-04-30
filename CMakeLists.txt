@@ -30,24 +30,24 @@ find_package(OpenGL REQUIRED)
 
 add_executable(emergence src/main.cc
   # core
-  src/processor/processor.cc
+  src/sys/sys.cc
   src/state/state.cc
   src/view/view.cc
   src/view/headless.cc
   src/view/visualiser.cc
   src/view/gui.cc
-  src/view/scene.cc
+  # util
+  src/util/debug.cc
+  src/util/io.cc
+  #src/util/observation.cc
+  src/util/random.cc
+  src/util/string.cc
   # gl
   src/gl/indexbuffer.cc
   src/gl/vertexarray.cc
   src/gl/vertexbuffer.cc
   src/gl/vertexbufferlayout.cc
-  src/gl/shader.cc
-  # util
-  src/util/debug.cc
-  src/util/io.cc
-  src/util/random.cc
-  src/util/string.cc)
+  src/gl/shader.cc)
 
 target_link_libraries(emergence imgui GLEW glfw OpenCL OpenGL)
 

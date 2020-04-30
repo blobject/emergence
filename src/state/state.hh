@@ -23,7 +23,7 @@ struct Particle
   unsigned int r; // volatile
   float s;        // volatile
   float c;        // volatile
-  float radius;   // adjustable
+  float size;     // adjustable
 
   Particle(Distribution distribution,
            unsigned int width,
@@ -41,31 +41,24 @@ class History
   History();
 };
 
-/**
-// Observer pattern for State
 
-class Subject;
+// StateTransport: Struct for transporting data from GuiState to State
 
-class Observer
+struct StateTransport
 {
- public:
-  virtual ~Observer() = default;
-  virtual void Update(Subject& s) = 0;
+  // stable
+  Distribution distribution;
+  unsigned int stop;
+  // adjustable
+  int          colorscheme;
+  unsigned int num;
+  unsigned int width;
+  unsigned int height;
+  float        scope;
+  float        speed;
+  float        alpha;
+  float        beta;
 };
-
-class Subject
-{
- private:
-  std::vector<Observer*> observers;
-
- public:
-  virtual ~Subject() = default;
-
-  void Register(Observer& o);
-  void Deregister(Observer& o);
-  void Notify();
-};
-//*/
 
 
 // State: Main data source of the primordial particle system.
@@ -79,31 +72,25 @@ class State //: public Subject
   int     colorscheme_; // adjustable
 
   // transportable data
+  Distribution          distribution_; // stable
+  unsigned int          stop_;         // stable
   unsigned int          num_;          // adjustable
   unsigned int          width_;        // adjustable
-  unsigned int          half_width_;
   unsigned int          height_;       // adjustable
-  unsigned int          half_height_;
-  float                 nradius_;      // adjustable
-  float                 nradius_squared_;
+  float                 scope_;        // adjustable
   float                 speed_;        // adjustable
   float                 alpha_;        // adjustable
   float                 beta_;         // adjustable
-  float                 gamma_;        // adjustable
-  Distribution          distribution_; // stable
-  unsigned int          stop_;         // stable
   std::vector<Particle> particles_;    // volatile/adjustable
+
+  // derived data
+  unsigned int          half_width_;
+  unsigned int          half_height_;
+  float                 scope_squared_;
 
   State(const std::string &path);
 
-  void set_num(unsigned int num);
-  void set_dim(unsigned int width, unsigned int height);
-  void set_nradius(float nradius);
-  void set_speed(float speed);
-  void set_alpha(float alpha);
-  void set_beta(float beta);
-  void set_gamma(float gamma);
-  //void set_distribution(Distribution distribution);
-  //void set_stop(unsigned int stop);
+  void Change(StateTransport &next);
+  void Respawn();
 };
 
