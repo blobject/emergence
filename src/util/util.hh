@@ -1,6 +1,7 @@
 #pragma once
 
 #include <iostream>
+#include <math.h>
 #include <string>
 
 #include "../state/state.hh"
@@ -24,12 +25,17 @@ class Util
                       int line);
 
   // io.cc
-  static void          Out(const std::string &s);
-  static void          Warn(const std::string &s);
-  static void          Err(const std::string &s);
-  static void          ErrGl(const std::string &s);
-  static bool          LoadState(State &state, const std::string &path);
-  static bool          SaveState(State &state, const std::string &path);
+  static void Out(const std::string &s);
+  static void Warn(const std::string &s);
+  static void Err(const std::string &s);
+  static void ErrGl(const std::string &s);
+  static bool LoadState(State &state, const std::string &path);
+  static bool SaveState(State &state, const std::string &path);
+
+  // math.cc
+  static float DegToRad(float d);
+  static float RadToDeg(float r);
+  static int   Signum(int n);
 
   // random.cc
   template<typename T> static T Distribute(T a, T b);

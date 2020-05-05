@@ -66,22 +66,22 @@ struct StateTransport
 class State //: public Subject
 {
  public:
+  std::vector<Particle> particles_; // volatile/adjustable
 
   // sedentary data
   History history_;     // cumulative
   int     colorscheme_; // adjustable
 
   // transportable data
-  Distribution          distribution_; // stable
-  unsigned int          stop_;         // stable
-  unsigned int          num_;          // adjustable
-  unsigned int          width_;        // adjustable
-  unsigned int          height_;       // adjustable
-  float                 scope_;        // adjustable
-  float                 speed_;        // adjustable
-  float                 alpha_;        // adjustable
-  float                 beta_;         // adjustable
-  std::vector<Particle> particles_;    // volatile/adjustable
+  Distribution distribution_; // (stable) initial position distribution
+  unsigned int stop_;         // (stable) # iterations until process stop
+  unsigned int num_;          // (adjustable) # particles
+  unsigned int width_;        // (adjustable) processable space width (pixels)
+  unsigned int height_;       // (adjustable) processable space height (pixels)
+  float        scope_;        // (adjustable) neighborhood radius
+  float        speed_;        // (adjustable) movement multiplier
+  float        alpha_;        // (adjustable) alpha in main formula (degrees)
+  float        beta_;         // (adjustable) beta in main formula (degrees)
 
   // derived data
   unsigned int          half_width_;

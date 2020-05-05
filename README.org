@@ -6,7 +6,7 @@
 
 This project is based on the article, /How a life-like system emerges from a simple particle motion law/, by  Schmickl, Stefanec, and Crailsheim: https://www.nature.com/articles/srep37969, and extends it with three-dimensionality.
 
-This is a rewrite of an [[https://github.com/agarick/mff/tree/master/emergence][earlier version in JavaScript + HTML5]] which ran via web browser and Node.js. The present project uses OpenGL + GLEW (graphics), glm (math), GLFW (windowing), ImGui (user interface), OpenCL (parallelisation), and C++ as the main language of implementation. It runs as a native desktop application.
+This is a rewrite of an [[https://github.com/agarick/mff/tree/master/emergence][earlier version in JavaScript + HTML5]] which ran via web browser and Node.js. TThe present project uses OpenGL + GLEW (graphics), glm (math), GLFW (windowing), ImGui (user interface), and C++ as the main language of implementation. It uses C++ native threads for parallelisation and runs as a native desktop application.
 
 ** Build & Run
 
@@ -18,16 +18,20 @@ This is a rewrite of an [[https://github.com/agarick/mff/tree/master/emergence][
 - glfw ~>= 3~
 - glm
 - imgui (source & headers provided in ~opt/~)
+#+BEGIN_COMMENT
 - opengl ~>= 3.3~
 - opencl headers ~>= 2.1~ (C++ bindings provided in ~opt/~)
 - opencl runtime ~>= 2.1~
   - Per your graphics card manufacturer, eg. [[https://software.intel.com/en-us/articles/opencl-drivers#proc-graph-section][intel]], [[https://developer.nvidia.com/opencl][nvidia]]. For the amd sdk, see [[https://stackoverflow.com/questions/53070673/download-opencl-amd-app-sdk-3-0-for-windows-and-linux][here]].
+#+END_COMMENT
 
-/This project recommends installing dependencies according to your OS/package manager's common practice (except for maybe the opencl sdk and headers). On Debian or Ubuntu, for example, use apt(itude) to install the libraries' corresponding/ ~*-dev~ /packages./
+/This project recommends installing dependencies according to your OS/package manager's common practice. On Debian or Ubuntu, for example, use apt(itude) to install the libraries' corresponding/ ~*-dev~ /packages./
 
+#+BEGIN_COMMENT
 - Note ::
 - As the opencl sdk installation is specific to your hardware and system, make sure to correctly specify the ~include~ and ~link~ directories in ~CMakeLists.txt~.
 - Copies of imgui source & headers and part of the opencl headers are locally provided in this repository, under ~opt/~.
+#+END_COMMENT
 
 *** Linux
 

@@ -1,7 +1,3 @@
-// allow version 330 core shader syntax (NOTE: may be unnecessary)
-#define MESA_GL_VERSION_OVERRIDE 3.3
-#define MESA_GLSL_VERSION_OVERRIDE 330
-
 #include <GL/glew.h>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -12,7 +8,7 @@
 Visualiser::Visualiser(Sys* sys, bool hide_ctrl)
   : sys_(sys), shader_(NULL)
 {
-  State &state = sys->get_state();
+  State &state = sys->state_;
   auto gui_state = GuiState(state);
   this->gui_ = new Gui(gui_state, sys, "#version 330 core", state.width_,
                        state.height_);
@@ -41,7 +37,7 @@ Visualiser::Exec()
 {
   this->gui_->SetVisualiser(this);
   Sys* sys = this->sys_;
-  State &state = sys->get_state();
+  State &state = sys->state_;
 
   this->Spawn();
 
@@ -88,8 +84,8 @@ Visualiser::Exec()
     this->gui_->Draw();
 
     // post
-    this->gui_->Next();
     sys->Next();
+    this->gui_->Next();
     this->Next();
 
     /**
@@ -117,7 +113,7 @@ Visualiser::Exec()
 void
 Visualiser::Spawn()
 {
-  State &state = this->sys_->get_state();
+  State &state = this->sys_->state_;
   // initialise vertex buffers
   auto &particles = state.particles_;
 
@@ -188,7 +184,7 @@ Visualiser::Clear()
 void
 Visualiser::Next()
 {
-  State &state = this->sys_->get_state();
+  State &state = this->sys_->state_;
   float trans[2 * state.num_];
   int index = 0;
   for (auto &particle : state.particles_)
@@ -205,7 +201,7 @@ Visualiser::Next()
 void
 Visualiser::West()
 {
-  this->camera_ += glm::vec3(this->sys_->get_state().width_ / 100.0f, 0, 0);
+  this->camera_ += glm::vec3(this->sys_->state_.width_ / 100.0f, 0, 0);
   this->model_ = glm::translate(glm::mat4(1.0f), this->camera_);
   this->shader_->Bind();
   this->shader_->SetUniformMat4f(
@@ -216,7 +212,7 @@ Visualiser::West()
 void
 Visualiser::South()
 {
-  this->camera_ += glm::vec3(0, this->sys_->get_state().height_ / 100.0f, 0);
+  this->camera_ += glm::vec3(0, this->sys_->state_.height_ / 100.0f, 0);
   this->model_ = glm::translate(glm::mat4(1.0f), this->camera_);
   this->shader_->Bind();
   this->shader_->SetUniformMat4f(
@@ -227,7 +223,7 @@ Visualiser::South()
 void
 Visualiser::North()
 {
-  this->camera_ += glm::vec3(0, this->sys_->get_state().height_ / -100.0f, 0);
+  this->camera_ += glm::vec3(0, this->sys_->state_.height_ / -100.0f, 0);
   this->model_ = glm::translate(glm::mat4(1.0f), this->camera_);
   this->shader_->Bind();
   this->shader_->SetUniformMat4f(
@@ -238,7 +234,7 @@ Visualiser::North()
 void
 Visualiser::East()
 {
-  this->camera_ += glm::vec3(this->sys_->get_state().width_ / -100.0f, 0, 0);
+  this->camera_ += glm::vec3(this->sys_->state_.width_ / -100.0f, 0, 0);
   this->model_ = glm::translate(glm::mat4(1.0f), this->camera_);
   this->shader_->Bind();
   this->shader_->SetUniformMat4f(

@@ -10,9 +10,9 @@ project(emergence)
 include_directories(${PROJECT_SOURCE_DIR}/opt)
 
 # opencl
-include_directories(/opt/intel/include)
-include_directories(${PROJECT_SOURCE_DIR}/opt/opencl)
-link_directories(/opt/intel/lib /opt/intel/lib64)
+#include_directories(/opt/intel/include)
+#include_directories(${PROJECT_SOURCE_DIR}/opt/opencl)
+#link_directories(/opt/intel/lib /opt/intel/lib64)
 
 add_library(imgui OBJECT
   opt/imgui/imgui.cpp
@@ -39,7 +39,7 @@ add_executable(emergence src/main.cc
   # util
   src/util/debug.cc
   src/util/io.cc
-  #src/util/observation.cc
+  src/util/math.cc
   src/util/random.cc
   src/util/string.cc
   # gl
@@ -49,5 +49,5 @@ add_executable(emergence src/main.cc
   src/gl/vertexbufferlayout.cc
   src/gl/shader.cc)
 
-target_link_libraries(emergence imgui GLEW glfw OpenCL OpenGL)
+target_link_libraries(emergence imgui GLEW glfw OpenGL)
 

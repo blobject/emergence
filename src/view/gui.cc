@@ -242,6 +242,10 @@ Gui::Draw()
       ImGui::TextColored(ImVec4(0.5f, 0.5f, 1.0f, 1.f), "%s", status.c_str());
       ImGui::Text("");
     }
+    ImGui::TextColored(ImVec4(1.0f, 0.0f, 1.0f, 1.0f), "Particles");
+    ImGui::InputScalar("num", ImGuiDataType_U32, &state.num_, &zero, &max_num);
+    ImGui::Separator();
+    ImGui::Dummy(ImVec2(0.0f, 1.0f));
     ImGui::TextColored(ImVec4(1.0f, 0.0f, 1.0f, 1.0f), "World");
     ImGui::Text("fps:          %.1f", this->fps_);
     ImGui::InputScalar("width", ImGuiDataType_U32, &state.width_, &zero, &max_dim);
@@ -253,10 +257,6 @@ Gui::Draw()
     ImGui::Text("distribution: %u", state.distribution_);
     ImGui::Text("stop:         %u", state.stop_);
     ImGui::Text("color scheme: %d", state.colorscheme_);
-    ImGui::Separator();
-    ImGui::Dummy(ImVec2(0.0f, 1.0f));
-    ImGui::TextColored(ImVec4(1.0f, 0.0f, 1.0f, 1.0f), "Particles");
-    ImGui::InputScalar("num", ImGuiDataType_U32, &state.num_, &zero, &max_num);
     ImGui::Separator();
     ImGui::Dummy(ImVec2(0.0f, 1.0f));
     ImGui::TextColored(ImVec4(1.0f, 0.0f, 1.0f, 1.0f), "History");

@@ -1,5 +1,3 @@
-#include <cmath>
-
 #include "state.hh"
 #include "../util/common.hh"
 #include "../util/util.hh"
@@ -9,17 +7,18 @@ Particle::Particle(Distribution distribution,
                    unsigned int width,
                    unsigned int height)
 {
-  this->size = 5.0f;
+  this->size = 4.0f;
   if (distribution == Distribution::UNIFORM)
   {
     this->x = Util::Distribute<float>(0.0f, static_cast<float>(width));
     this->y = Util::Distribute<float>(0.0f, static_cast<float>(height));
-    this->phi = Util::Distribute<float>(0.0f, TAU);
+    this->phi = Util::Distribute<float>(0.0f, 360.0f);
     this->n = 0;
     this->l = 0;
     this->r = 0;
-    this->s = sin(this->phi);
-    this->c = cos(this->phi);
+    float phi_rad = Util::DegToRad(this->phi);
+    this->s = sinf(phi_rad);
+    this->c = cosf(phi_rad);
   }
 }
 
@@ -32,27 +31,27 @@ History::History()
 
 State::State(const std::string &load)
 {
-  // sedentary data
+  // sedentary
   this->history_ = History();
   this->colorscheme_ = 0;
 
-  // transportable data
+  // transportable
   this->distribution_ = Distribution::UNIFORM;
   this->stop_ = 0;
-  this->num_ = 4000;
+  this->num_ = 5000;
   this->width_ = 1000;
   this->height_ = 1000;
-  this->scope_ = 100.0f;
-  this->alpha_ = 3.141593f;
-  this->beta_ = 0.296706f;
-  this->speed_ = 2.65f;
+  this->scope_ = 10.0f;
+  this->alpha_ = 180.0f; // degrees
+  this->beta_ = 17.0f; // degrees
+  this->speed_ = 4.0f;
   for (int i = 0; i < this->num_; ++i)
   {
     this->particles_.push_back(Particle(this->distribution_,
                                         this->width_, this->height_));
   }
 
-  // derived data
+  // derived
   this->half_width_ = this->width_ / 2;
   this->half_height_ = this->height_ / 2;
   this->scope_squared_ = this->scope_ * this->scope_;
@@ -79,6 +78,7 @@ State::Change(StateTransport &next)
   {
     respawn = true;
   }
+
   this->distribution_ = next.distribution;
   this->stop_ = next.stop;
   this->colorscheme_ = next.colorscheme;
@@ -89,6 +89,12 @@ State::Change(StateTransport &next)
   this->speed_ = next.speed;
   this->alpha_ = next.alpha;
   this->beta_ = next.beta;
+
+  // derived
+  this->half_width_ = next.width / 2;
+  this->half_height_ = next.height / 2;
+  this->scope_squared_ = next.scope * next.scope;
+
   if (respawn)
   {
     this->Respawn();

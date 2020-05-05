@@ -1,10 +1,5 @@
-#define CL_HPP_MINIMUM_OPENCL_VERSION 110
-#define CL_HPP_TARGET_OPENCL_VERSION 210
-
 #include <GL/glew.h>
-#include <math.h>
-
-#include <CL/cl2.hpp>
+#include <thread>
 
 #include "sys.hh"
 #include "../util/common.hh"
@@ -14,47 +9,14 @@
 Sys::Sys(State &state)
   : state_(state)
 {
-  //this->state_.Register(*this);
-  this->InitCl();
-
-  // initialise grid
   this->InitGrid();
-}
-
-
-//Sys::~Sys()
-//{
-//  this->state_.Deregister(*this);
-//}
-
-
-// InitCl: Initialise OpenCL.
-
-void
-Sys::InitCl()
-{
-  std::vector<cl::Platform> platforms;
-  std::vector<cl::Device> devices;
-  cl::Platform::get(&platforms);
-  Util::Out("");
-  for (const auto &platform : platforms)
-  {
-    Util::Out("cl platform: " + platform.getInfo<CL_PLATFORM_NAME>()
-              + "\n\tversion " + platform.getInfo<CL_PLATFORM_VERSION>());
-    platform.getDevices(CL_DEVICE_TYPE_ALL, &devices);
-    for (const auto &device : devices)
-    {
-      Util::Out("cl device: " + device.getInfo<CL_DEVICE_NAME>()
-                + "\n\tversion " + device.getInfo<CL_DEVICE_VERSION>());
-    }
-  }
-  Util::Out("");
 }
 
 
 void
 Sys::InitGrid()
 {
+  // find nearest whole number divisor
   auto &ps = this->state_.particles_;
   unsigned int width = this->state_.width_;
   unsigned int height = this->state_.height_;
@@ -82,6 +44,7 @@ void
 Sys::Next()
 {
   this->Reset();
+  this->Mirror();
   this->Seek();
   this->Move();
 }
@@ -91,13 +54,13 @@ void
 Sys::Reset()
 {
   auto &ps = this->state_.particles_;
+  auto &grid = this->grid_;
   for (auto &p : ps)
   {
     p.n = 0;
     p.l = 0;
     p.r = 0;
   }
-  auto &grid = this->grid_;
   for (auto &col : grid)
   {
     for (auto &row : col)
@@ -105,33 +68,46 @@ Sys::Reset()
       row.clear();
     }
   }
-}
-
-
-void
-Sys::Regrid()
-{
-  auto &grid = this->grid_;
-  auto &ps = this->state_.particles_;
   unsigned int cols = grid.size();
   unsigned int rows = grid[0].size();
+  unsigned int col;
+  unsigned int row;
   float unit_width = this->state_.width_ / static_cast<float>(cols);
   float unit_height = this->state_.height_ / static_cast<float>(rows);
   for (unsigned int i = 0; i < ps.size(); ++i)
   {
-    grid[floor(ps[i].x / unit_width)][floor(ps[i].y / unit_height)].push_back(i);
+    col = floor(ps[i].x / unit_width);
+    row = floor(ps[i].y / unit_height);
+    if (col >= cols) { col -= cols; }
+    if (row >= rows) { row -= rows; }
+    grid[col][row].push_back(i);
   }
 }
 
 
+// Mirror: Make a copy of particles in its current state.
+
+void
+Sys::Mirror()
+{
+  this->old_particles_ = std::vector<Particle>(this->state_.particles_);
+}
+
+
+// Seek: For each particle calculate new N, L, R.
+
 void
 Sys::Seek()
 {
-  this->Regrid();
   auto &grid = this->grid_;
   unsigned int cols = grid.size();
   unsigned int rows = grid[0].size();
+  auto &os = this->old_particles_;
   auto &ps = this->state_.particles_;
+  auto width = this->state_.width_;
+  auto height = this->state_.height_;
+  auto half_width = this->state_.half_width_;
+  auto half_height = this->state_.half_height_;
 
   // do core calculation of seek:
   // ie. update .n, .l, .r fields of particles
@@ -168,28 +144,33 @@ Sys::Seek()
             for (unsigned int dst_num = 0; dst_num < unit.size(); ++dst_num)
             {
               dst_i = unit[dst_num];
-              // avoid redundant calculation
+              // avoid redundant calculations
               if (src_i <= dst_i)
               {
                 continue;
               }
               // update .n, .l, .r
-              Particle &src = ps[src_i];
-              Particle &dst = ps[dst_i];
-              dx = dst.x - src.x;
-              dy = dst.y - src.y;
+              Particle &old_src = os[src_i];
+              Particle &old_dst = os[dst_i];
+              Particle &new_src = ps[src_i];
+              Particle &new_dst = ps[dst_i];
+              dx = fmod(old_dst.x - old_src.x + half_width, width) - half_width;
+              dy = fmod(old_dst.y - old_src.y + half_height, height) - half_height;
+              // ignore comparisons outside the neighborhood radius
               if (dx * dx + dy * dy > sqscope)
               {
                 continue;
               }
-              ++src.n;
-              ++dst.n;
-              if (dx < 0) { dx *= -1; }
-              if (dy < 0) { dy *= -1; }
+              ++new_src.n;
+              ++new_dst.n;
+              //if (dx < 0) { dx *= -1; }
+              //if (dy < 0) { dy *= -1; }
               // "dst" is to the right of "src"
-              if (0 > dx * src.s - dy * src.c) { ++src.r; } else { ++src.l; }
+              if (0 > dx * old_src.s - dy * old_src.c) { ++new_src.r; }
+              else                                     { ++new_src.l; }
               // "src" is to the right of "dst"
-              if (0 < dx * dst.s - dy * dst.c) { ++dst.r; } else { ++dst.l; }
+              if (0 < dx * old_dst.s - dy * old_dst.c) { ++new_dst.r; }
+              else                                     { ++new_dst.l; }
             }
           }
         }
@@ -208,22 +189,23 @@ Sys::Move()
   float alpha = this->state_.alpha_;
   float beta = this->state_.beta_;
   float delta;
+  float phi_rad;
 
   // do core calculation of move (ie. update .x, .y, .phi)
   for (auto &p : this->state_.particles_)
   {
-    delta = alpha + (p.n * beta * (p.r - p.l > 0 ? 1 : -1));
-    p.phi += delta;
-    if      (p.phi < 0)    { p.phi += TAU; }
-    else if (p.phi >= TAU) { p.phi -= TAU; }
-    p.s = sin(p.phi);
-    p.c = cos(p.phi);
+    p.phi += alpha + (beta * p.n * Util::Signum(static_cast<int>(p.r - p.l)));
+    if (p.phi < 0.0f)    { p.phi += 360.0f; }
+    if (p.phi >= 360.0f) { p.phi -= 360.0f; }
+    phi_rad = Util::DegToRad(p.phi);
+    p.s = sinf(phi_rad);
+    p.c = cosf(phi_rad);
     p.x += speed * p.c;
     p.y += speed * p.s;
     if (p.x < 0)       { p.x += width; }
-    if (p.x >= width)  { p.x -= width; } // "else if" can result in width!
+    if (p.x >= width)  { p.x -= width; } // "else if" can result in == width!
     if (p.y < 0)       { p.y += height; }
-    if (p.y >= height) { p.y -= height; } // "else if" can result in height!
+    if (p.y >= height) { p.y -= height; } // "else if" can result in == height!
   }
 }
 

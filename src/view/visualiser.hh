@@ -1,5 +1,9 @@
 #pragma once
 
+// allow version 330 core shader syntax (NOTE: may be unnecessary)
+#define MESA_GL_VERSION_OVERRIDE 3.3
+#define MESA_GLSL_VERSION_OVERRIDE 330
+
 #include <glm/glm.hpp>
 
 #include "gui.hh"
