@@ -9,14 +9,53 @@
 Sys::Sys(State &state)
   : state_(state)
 {
+  this->InitCl();
   this->InitGrid();
+}
+
+
+void
+Sys::InitCl()
+{
+  std::vector<cl::Platform> platforms;
+  cl::Platform default_platform;
+  std::vector<cl::Device> devices;
+  cl::Device default_device;
+
+  cl::Platform::get(&platforms);
+  if (0 == platforms.size())
+  {
+    Util::Err("no platforms found.");
+    return;
+  }
+  this->cl_platform_ = platforms[0];
+  for (auto &platform : platforms)
+  {
+    if ("FULL_PROFILE" != platform.getInfo<CL_PLATFORM_PROFILE>())
+    {
+      continue;
+    }
+    this->cl_platform_ = platform;
+    platform.getDevices(CL_DEVICE_TYPE_GPU, &devices);
+    if (0 == devices.size())
+    {
+      continue;
+    }
+    cl_device_ = devices[0];
+    break;
+  }
+  // TODO:
+  // check if cl_device_ not set
+  Util::Out("opencl platform: "
+            + this->cl_platform_.getInfo<CL_PLATFORM_NAME>());
+  Util::Out("opencl device: "
+            + this->cl_device_.getInfo<CL_DEVICE_NAME>());
 }
 
 
 void
 Sys::InitGrid()
 {
-  // find nearest whole number divisor
   auto &ps = this->state_.particles_;
   unsigned int width = this->state_.width_;
   unsigned int height = this->state_.height_;
@@ -112,7 +151,8 @@ Sys::Seek()
   // do core calculation of seek:
   // ie. update .n, .l, .r fields of particles
   // this is the naive grid- and euclidean-distance-based algorithm
-  unsigned int sqscope = this->state_.scope_squared_;
+  float scope = this->state_.scope_;
+  float sqscope = this->state_.scope_squared_;
   unsigned int dx;
   unsigned int dy;
   unsigned int ncols[3];
@@ -154,8 +194,16 @@ Sys::Seek()
               Particle &old_dst = os[dst_i];
               Particle &new_src = ps[src_i];
               Particle &new_dst = ps[dst_i];
-              dx = fmod(old_dst.x - old_src.x + half_width, width) - half_width;
-              dy = fmod(old_dst.y - old_src.y + half_height, height) - half_height;
+              dx = old_dst.x - old_src.x;
+              if (dx < -scope)
+                dx = fmod(old_dst.x - old_src.x + half_width, width) + half_width;
+              else if (dx > scope)
+                dx = fmod(old_dst.x - old_src.x + half_width, width) - half_width;
+              dy = old_dst.y - old_src.y;
+              if (dy < -scope)
+                dy = fmod(old_dst.y - old_src.y + half_height, height) + half_height;
+              else if (dy > scope)
+                dy = fmod(old_dst.y - old_src.y + half_height, height) - half_height;
               // ignore comparisons outside the neighborhood radius
               if (dx * dx + dy * dy > sqscope)
               {
@@ -163,8 +211,6 @@ Sys::Seek()
               }
               ++new_src.n;
               ++new_dst.n;
-              //if (dx < 0) { dx *= -1; }
-              //if (dy < 0) { dy *= -1; }
               // "dst" is to the right of "src"
               if (0 > dx * old_src.s - dy * old_src.c) { ++new_src.r; }
               else                                     { ++new_src.l; }

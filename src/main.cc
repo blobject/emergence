@@ -8,8 +8,6 @@
 #include "view/view.hh"
 
 
-// forward declarations
-
 static std::map<std::string,std::string>
   Args(int argc, char* argv[]);
 
@@ -57,7 +55,7 @@ Help()
             + "Options:\n"
             + "  -f FILE  supply an initial state\n"
             + "  -c       run in headless mode\n"
-            + "  -u       hide the visualiser controls\n"
+            + "  -i       hide the visualiser controls\n"
             + "  -v       show version\n"
             + "  -h       show this help");
 }
@@ -79,7 +77,7 @@ Args(int argc, char* argv[])
   {
     switch (opt)
     {
-      case 'c': opts["headless"]  = "y"; break;
+      case 'c': opts["headless"] = "y"; break;
       case 'u': opts["hidectrl"] = "y"; break;
       case 'v': opts["quit"] = "version";  opts["return"] =  "0"; break;
       case 'h': opts["quit"] = "help";     opts["return"] =  "0"; break;

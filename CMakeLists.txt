@@ -6,13 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 project(emergence)
 
-# imgui
 include_directories(${PROJECT_SOURCE_DIR}/opt)
-
-# opencl
-#include_directories(/opt/intel/include)
-#include_directories(${PROJECT_SOURCE_DIR}/opt/opencl)
-#link_directories(/opt/intel/lib /opt/intel/lib64)
 
 add_library(imgui OBJECT
   opt/imgui/imgui.cpp
@@ -26,6 +20,7 @@ find_package(GLEW REQUIRED)
 find_package(glfw3 REQUIRED)
 find_path(GLM_INCLUDE_DIR glm/glm.hpp)
 include_directories(${GLM_INCLUDE_DIR})
+find_package(OpenCL REQUIRED)
 find_package(OpenGL REQUIRED)
 
 add_executable(emergence src/main.cc
@@ -49,5 +44,5 @@ add_executable(emergence src/main.cc
   src/gl/vertexbufferlayout.cc
   src/gl/shader.cc)
 
-target_link_libraries(emergence imgui GLEW glfw OpenGL)
+target_link_libraries(emergence imgui GLEW glfw OpenCL OpenGL)
 
