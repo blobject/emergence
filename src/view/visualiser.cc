@@ -12,7 +12,7 @@ Visualiser::Visualiser(Sys* sys, bool hide_ctrl)
   auto gui_state = GuiState(state);
   this->gui_ = new Gui(gui_state, sys, "#version 330 core", state.width_,
                        state.height_);
-  if (nullptr == this->gui_->window_)
+  if (nullptr == this->gui_->view_)
   {
     return; // TODO: handle error
   }
@@ -78,9 +78,9 @@ Visualiser::Exec()
     this->Clear();
 
     // render
-    //va.Bind(); // optional bind
+    //this->vertex_array_->Bind(); // optional bind
     this->Draw(GL_FLOAT, state.num_, this->vertex_array_, shader);
-    //va->Unbind(); // optional unbind
+    //this->vertex_array_->Unbind(); // optional unbind
     this->gui_->Draw();
 
     // post

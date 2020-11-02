@@ -19,18 +19,18 @@ class GuiState
   Distribution distribution_;
   unsigned int stop_;
   // adjustable
-  int          colorscheme_;
   unsigned int num_;
   unsigned int width_;
   unsigned int height_;
-  float        scope_;
-  float        speed_;
   float        alpha_;
   float        beta_;
+  float        scope_;
+  float        speed_;
+  int          colorscheme_;
 
   GuiState(State &truth);
 
-  void ChangeTruth();
+  bool ChangeTruth();
   bool Untrue();
 };
 
@@ -46,26 +46,29 @@ class Gui
   double       ago_;
   unsigned int frames_;
   float        fps_;
+  bool         control_;
+  unsigned int control_width_;
 
   bool IsItemJustReleased();
 
  public:
   Sys*        sys_;
   Visualiser* visualiser_;
-  GLFWwindow* window_;
+  GLFWwindow* view_;
 
   Gui(GuiState state, Sys* sys, const std::string &version,
       unsigned int width, unsigned int height);
   ~Gui();
 
   inline GuiState get_state() const { return this->state_; }
-  static void KeyCallback(GLFWwindow* window, int key, int scancode, int action,
+  static void KeyCallback(GLFWwindow* view, int key, int scancode, int action,
                           int mods);
   void SetPointer();
   void SetVisualiser(Visualiser* visualiser);
   void Close();
   bool Closing() const;
   void Draw();
+  void DrawControl(bool draw);
   void Next() const;
 };
 

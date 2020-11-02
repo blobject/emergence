@@ -50,14 +50,14 @@ struct StateTransport
   Distribution distribution;
   unsigned int stop;
   // adjustable
-  int          colorscheme;
   unsigned int num;
   unsigned int width;
   unsigned int height;
-  float        scope;
-  float        speed;
   float        alpha;
   float        beta;
+  float        scope;
+  float        speed;
+  int          colorscheme;
 };
 
 
@@ -90,7 +90,7 @@ class State //: public Subject
 
   State(const std::string &path);
 
-  void Change(StateTransport &next);
+  bool Change(StateTransport &next);
   void Respawn();
 };
 

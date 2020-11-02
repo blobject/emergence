@@ -8,11 +8,12 @@
 
 // Sys: Primordial particle system algorithm implementation.
 
+using Grid = std::vector<std::vector<std::vector<unsigned int> > >;
+
 class Sys
 {
  private:
-  std::vector<std::vector<std::vector<unsigned int> > > grid_;
-  std::vector<Particle> old_particles_;
+  Grid grid_;
   cl::Platform cl_platform_;
   cl::Device cl_device_;
 
@@ -20,8 +21,15 @@ class Sys
   void InitGrid();
   void Reset();
   void Regrid();
-  void Mirror();
   void Seek();
+  void SeekFrom(std::vector<Particle> &ps, Grid &grid,
+                unsigned int cols, unsigned int rows);
+  void SeekTo(std::vector<Particle> &ps, Grid &grid,
+              unsigned int col,  unsigned int row,
+              unsigned int cols, unsigned int rows,
+              unsigned int srci);
+  void SeekTally(std::vector<Particle> &ps,
+                 unsigned int srci, unsigned int dsti);
   void Move();
 
  public:

@@ -12,13 +12,12 @@ Particle::Particle(Distribution distribution,
   {
     this->x = Util::Distribute<float>(0.0f, static_cast<float>(width));
     this->y = Util::Distribute<float>(0.0f, static_cast<float>(height));
-    this->phi = Util::Distribute<float>(0.0f, 360.0f);
+    this->phi = Util::Distribute<float>(0.0f, TAU);
     this->n = 0;
     this->l = 0;
     this->r = 0;
-    float phi_rad = Util::DegToRad(this->phi);
-    this->s = sinf(phi_rad);
-    this->c = cosf(phi_rad);
+    this->s = sinf(this->phi);
+    this->c = cosf(this->phi);
   }
 }
 
@@ -38,12 +37,12 @@ State::State(const std::string &load)
   // transportable
   this->distribution_ = Distribution::UNIFORM;
   this->stop_ = 0;
-  this->num_ = 5000;
+  this->num_ = 4000;
   this->width_ = 1000;
   this->height_ = 1000;
-  this->scope_ = 10.0f;
-  this->alpha_ = 180.0f; // degrees
-  this->beta_ = 17.0f; // degrees
+  this->alpha_ = PI; // 180 degrees
+  this->beta_ =  0.296705972839036L; // 17 degrees
+  this->scope_ = 24.0f;
   this->speed_ = 4.0f;
   for (int i = 0; i < this->num_; ++i)
   {
@@ -67,28 +66,39 @@ State::State(const std::string &load)
 
 
 // Change: Update State data.
-void
+bool
 State::Change(StateTransport &next)
 {
   bool respawn = false;
+
   if (next.distribution != this->distribution_ ||
-      next.num          != this->num_          ||
       next.width        != this->width_        ||
       next.height       != this->height_)
   {
     respawn = true;
   }
 
+  if (! respawn &&
+      next.num         == this->num_         &&
+      next.alpha       == this->alpha_       &&
+      next.beta        == this->beta_        &&
+      next.scope       == this->scope_       &&
+      next.speed       == this->speed_       &&
+      next.colorscheme == this->colorscheme_)
+  {
+    return false;
+  }
+
   this->distribution_ = next.distribution;
   this->stop_ = next.stop;
-  this->colorscheme_ = next.colorscheme;
   this->num_ = next.num;
   this->width_ = next.width;
   this->height_ = next.height;
-  this->scope_ = next.scope;
-  this->speed_ = next.speed;
   this->alpha_ = next.alpha;
   this->beta_ = next.beta;
+  this->scope_ = next.scope;
+  this->speed_ = next.speed;
+  this->colorscheme_ = next.colorscheme;
 
   // derived
   this->half_width_ = next.width / 2;
@@ -99,6 +109,8 @@ State::Change(StateTransport &next)
   {
     this->Respawn();
   }
+
+  return true;
 }
 
 

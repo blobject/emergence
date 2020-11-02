@@ -4,9 +4,9 @@
 
 *Emergence* is a visualiser and processor of a primordial particle system.
 
-This project is based on the article, /How a life-like system emerges from a simple particle motion law/, by  Schmickl, Stefanec, and Crailsheim: https://www.nature.com/articles/srep37969, and extends it with three-dimensionality.
+This project is based on the article, /How a life-like system emerges from a simple particle motion law/, by  Schmickl, Stefanec, and Crailsheim: https://www.nature.com/articles/srep37969, and extends it with our own [[https://zool33.uni-graz.at/artlife/pps_3d][version of three-dimensionality]].
 
-This is a rewrite of an [[https://github.com/agarick/mff/tree/master/emergence][earlier version in JavaScript + HTML5]] which ran via web browser and Node.js. The present project uses OpenGL + GLEW (graphics), glm (math), GLFW (windowing), ImGui (user interface), OpenCL (parallelisation), and C++ (implementation language). It runs as a native desktop application on Linux.
+This is a rewrite and extension of an [[https://github.com/blobject/mff/tree/master/emergence][earlier JavaScript + HTML5 version]] which ran via web browser and Node.js. The present project uses OpenGL + GLEW (graphics), glm (math), GLFW (windowing), ImGui (user interface), OpenCL (parallelisation), and C++ (implementation language). It runs as a native desktop application on Linux.
 
 ** Build & Run
 
@@ -17,7 +17,7 @@ This is a rewrite of an [[https://github.com/agarick/mff/tree/master/emergence][
 - glew
 - glfw ~>= 3~
 - glm
-- imgui (source & headers provided in ~opt/~)
+- imgui (source & headers provided in =opt/=)
 - opengl ~>= 3.3~
 - opencl c/c++ headers ~>= 2~
 - opencl loader (aka. ocl-icd) ~>= 2~
@@ -31,19 +31,23 @@ This is a rewrite of an [[https://github.com/agarick/mff/tree/master/emergence][
 - take a look at https://github.com/intel/compute-runtime
 - if possible, install the necessary packages via your distribution's package manager
 - otherwise:
-  1. download the ~deb~ assets from the [[https://github.com/intel/compute-runtime/releases][releases page]]
-  1. extract the libraries from the ~deb~ files, make the libraries executable, and place them under, say, ~/usr/local~
-  1. make sure ~ld.so.conf~ recognises the directory holding the new libraries, for instance ~/usr/local/lib~
-  1. do ~sudo ldconfig~, substituting renamed copies of library files with symlinks if ldconfig complains
-  1. make sure the path to the new OpenCL driver is recognised under ~/etc/OpenCL/vendors~
+  1. download the =deb= assets from the [[https://github.com/intel/compute-runtime/releases][releases page]]
+  1. extract the libraries from the =deb= files, and place them under, say, =/usr/local=
+  1. make sure =ld.so.conf= recognises the directory holding the new libraries, for instance =/usr/local/lib=
+  1. do =sudo ldconfig=, substituting renamed copies of library files with symlinks if ldconfig complains
+  1. make sure the path to the new OpenCL driver (eg. =/usr/local/lib/intel-opencl/libigdrcl.so=) is recognised under =/etc/OpenCL/vendors=
   1. check that your device is recognised and ready, using a program like ~clinfo~
 
 - Build ::
-1. retrieve this repository from ~https://github.com/agarick/emergence~
+1. retrieve this repository from =https://github.com/blobject/emergence=
 1. ~cd emergence~
 1. ~rm -R build; mkdir build; cd build~
 1. ~cmake ..~
 1. ~make~
+
+- Test ::
+1. ~cd emergence/build~
+1. ~./testemergence~
 
 - Run ::
 1. ~cd emergence/build~

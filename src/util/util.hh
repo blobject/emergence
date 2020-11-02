@@ -35,6 +35,8 @@ class Util
   // math.cc
   static float DegToRad(float d);
   static float RadToDeg(float r);
+  static int   ModI(int n, int m);
+  static float ModF(float n, float m);
   static int   Signum(int n);
 
   // random.cc

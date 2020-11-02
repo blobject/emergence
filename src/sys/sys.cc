@@ -14,6 +14,8 @@ Sys::Sys(State &state)
 }
 
 
+// InitCl: Initialise OpenCL
+
 void
 Sys::InitCl()
 {
@@ -53,6 +55,8 @@ Sys::InitCl()
 }
 
 
+// Reset: Make the neighborhood grid
+
 void
 Sys::InitGrid()
 {
@@ -74,20 +78,22 @@ Sys::InitGrid()
     rows = floor(height / scope);
     unit_height = height / static_cast<float>(cols);
   }
-  this->grid_ = std::vector<std::vector<std::vector<unsigned int> > >
-    (cols, std::vector<std::vector<unsigned int> >(rows));
+  this->grid_ = Grid (cols, std::vector<std::vector<unsigned int> >(rows));
 }
 
+
+// Next: Make the particle system act one iteration
 
 void
 Sys::Next()
 {
   this->Reset();
-  this->Mirror();
   this->Seek();
   this->Move();
 }
 
+
+// Reset: Zero out particles' neighborhood count and remake the grid
 
 void
 Sys::Reset()
@@ -124,134 +130,129 @@ Sys::Reset()
 }
 
 
-// Mirror: Make a copy of particles in its current state.
-
-void
-Sys::Mirror()
-{
-  this->old_particles_ = std::vector<Particle>(this->state_.particles_);
-}
-
-
 // Seek: For each particle calculate new N, L, R.
 
 void
 Sys::Seek()
 {
+  auto &ps = this->state_.particles_;
   auto &grid = this->grid_;
   unsigned int cols = grid.size();
   unsigned int rows = grid[0].size();
-  auto &os = this->old_particles_;
-  auto &ps = this->state_.particles_;
-  auto width = this->state_.width_;
-  auto height = this->state_.height_;
-  auto half_width = this->state_.half_width_;
-  auto half_height = this->state_.half_height_;
 
-  // do core calculation of seek:
-  // ie. update .n, .l, .r fields of particles
-  // this is the naive grid- and euclidean-distance-based algorithm
-  float scope = this->state_.scope_;
-  float sqscope = this->state_.scope_squared_;
-  unsigned int dx;
-  unsigned int dy;
-  unsigned int ncols[3];
-  unsigned int nrows[3];
-  unsigned int src_i;
-  unsigned int dst_i;
+  this->SeekFrom(ps, grid, cols, rows);
+}
+
+
+// SeekFrom: Seek() helper, loop through each particle.
+
+void
+Sys::SeekFrom(std::vector<Particle> &ps, Grid &grid,
+              unsigned int cols, unsigned int rows)
+{
   for (unsigned int col = 0; col < cols; ++col)
   {
     for (unsigned int row = 0; row < rows; ++row)
     {
       // for each particle index
-      for (unsigned int src_num = 0; src_num < grid[col][row].size(); ++src_num)
+      for (unsigned int p = 0; p < grid[col][row].size(); ++p)
       {
-        src_i = grid[col][row][src_num];
-        // neighboring columns
-        ncols[0] = col - 1; ncols[1] = col; ncols[2] = col + 1;
-        if      (col == 0)        { ncols[0] += cols; }
-        else if (col == cols - 1) { ncols[2] -= cols; }
-        for (unsigned int c : ncols)
-        {
-          // neighboring rows
-          nrows[0] = row - 1; nrows[1] = row; nrows[2] = row + 1;
-          if      (row == 0)        { nrows[0] += rows; }
-          else if (row == rows - 1) { nrows[2] -= rows; }
-          for (unsigned int r : nrows)
-          {
-            // for each particle index in the neighbor unit
-            std::vector<unsigned int> &unit = grid[c][r];
-            for (unsigned int dst_num = 0; dst_num < unit.size(); ++dst_num)
-            {
-              dst_i = unit[dst_num];
-              // avoid redundant calculations
-              if (src_i <= dst_i)
-              {
-                continue;
-              }
-              // update .n, .l, .r
-              Particle &old_src = os[src_i];
-              Particle &old_dst = os[dst_i];
-              Particle &new_src = ps[src_i];
-              Particle &new_dst = ps[dst_i];
-              dx = old_dst.x - old_src.x;
-              if (dx < -scope)
-                dx = fmod(old_dst.x - old_src.x + half_width, width) + half_width;
-              else if (dx > scope)
-                dx = fmod(old_dst.x - old_src.x + half_width, width) - half_width;
-              dy = old_dst.y - old_src.y;
-              if (dy < -scope)
-                dy = fmod(old_dst.y - old_src.y + half_height, height) + half_height;
-              else if (dy > scope)
-                dy = fmod(old_dst.y - old_src.y + half_height, height) - half_height;
-              // ignore comparisons outside the neighborhood radius
-              if (dx * dx + dy * dy > sqscope)
-              {
-                continue;
-              }
-              ++new_src.n;
-              ++new_dst.n;
-              // "dst" is to the right of "src"
-              if (0 > dx * old_src.s - dy * old_src.c) { ++new_src.r; }
-              else                                     { ++new_src.l; }
-              // "src" is to the right of "dst"
-              if (0 < dx * old_dst.s - dy * old_dst.c) { ++new_dst.r; }
-              else                                     { ++new_dst.l; }
-            }
-          }
-        }
+        this->SeekTo(ps, grid, col, row, cols, rows, grid[col][row][p]);
       }
     }
   }
 }
 
 
+// SeekTo: Seek() helper, loop through every other particle in the grid
+//         neighborhood.
+
+void
+Sys::SeekTo(std::vector<Particle> &ps, Grid &grid,
+            unsigned int col,  unsigned int row,
+            unsigned int cols, unsigned int rows,
+            unsigned int srci)
+{
+  unsigned int ncols[3];
+  unsigned int nrows[3];
+
+  // neighboring columns
+  ncols[0] = col - 1; ncols[1] = col; ncols[2] = col + 1;
+  if      (col == 0)        { ncols[0] += cols; }
+  else if (col == cols - 1) { ncols[2] -= cols; }
+  for (unsigned int c : ncols)
+  {
+    // neighboring rows
+    nrows[0] = row - 1; nrows[1] = row; nrows[2] = row + 1;
+    if      (row == 0)        { nrows[0] += rows; }
+    else if (row == rows - 1) { nrows[2] -= rows; }
+    for (unsigned int r : nrows)
+    {
+      // for each particle index in the neighbor unit
+      std::vector<unsigned int> &unit = grid[c][r];
+      for (unsigned int p = 0; p < unit.size(); ++p)
+      {
+        this->SeekTally(ps, srci, unit[p]);
+      }
+    }
+  }
+}
+
+
+// SeekTally: Seek() helper that updates N, L, R given the two particles given
+//            respectively by SeekFrom() and SeekTo()
+
+void
+Sys::SeekTally(std::vector<Particle> &ps,
+               unsigned int srci, unsigned int dsti)
+{
+  // avoid redundant calculations
+  if (srci <= dsti)
+  {
+    return;
+  }
+
+  Particle &src = ps[srci];
+  Particle &dst = ps[dsti];
+  int dx = dst.x - src.x;
+  int dy = dst.y - src.y;
+
+  // ignore comparisons outside the neighborhood radius (approx. scope)
+  if ((dx * dx) + (dy * dy) > this->state_.scope_squared_)
+  {
+    return;
+  }
+
+  int w = this->state_.half_width_;
+  int h = this->state_.half_height_;
+  dx = Util::ModI(dx + w, this->state_.width_) - w;
+  dy = Util::ModI(dy + h, this->state_.height_) - h;
+  ++src.n;
+  ++dst.n;
+  if (0.0f > (dx * src.s) - (dy * src.c)) { ++src.r; }
+  else                                    { ++src.l; }
+  if (0.0f < (dx * dst.s) - (dy * dst.c)) { ++dst.r; }
+  else                                    { ++dst.l; }
+}
+
+
+// Move: Update particles' location and direction
+
 void
 Sys::Move()
 {
-  unsigned int width = this->state_.width_;
-  unsigned int height = this->state_.height_;
-  float speed = this->state_.speed_;
-  float alpha = this->state_.alpha_;
-  float beta = this->state_.beta_;
-  float delta;
-  float phi_rad;
-
-  // do core calculation of move (ie. update .x, .y, .phi)
+  //std::cout << this->state_.particles_[0].s << ", " << this->state_.particles_[0].c << std::endl;
   for (auto &p : this->state_.particles_)
   {
-    p.phi += alpha + (beta * p.n * Util::Signum(static_cast<int>(p.r - p.l)));
-    if (p.phi < 0.0f)    { p.phi += 360.0f; }
-    if (p.phi >= 360.0f) { p.phi -= 360.0f; }
-    phi_rad = Util::DegToRad(p.phi);
-    p.s = sinf(phi_rad);
-    p.c = cosf(phi_rad);
-    p.x += speed * p.c;
-    p.y += speed * p.s;
-    if (p.x < 0)       { p.x += width; }
-    if (p.x >= width)  { p.x -= width; } // "else if" can result in == width!
-    if (p.y < 0)       { p.y += height; }
-    if (p.y >= height) { p.y -= height; } // "else if" can result in == height!
+    p.phi = Util::ModF(p.phi + this->state_.alpha_
+                       + (this->state_.beta_ * p.n
+                          * Util::Signum(static_cast<int>(p.r - p.l))), TAU);
+    p.s = sinf(p.phi);
+    p.c = cosf(p.phi);
+    p.x = Util::ModI(p.x + static_cast<int>(this->state_.speed_ * p.c),
+                     this->state_.width_);
+    p.y = Util::ModI(p.y + static_cast<int>(this->state_.speed_ * p.s),
+                     this->state_.height_);
   }
 }
 

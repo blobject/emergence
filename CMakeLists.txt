@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.18)
 set(CMAKE_CXX_COMPILER "clang++")
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 set(CMAKE_CXX_STANDARD 11)
@@ -7,6 +7,12 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 project(emergence)
 
 include_directories(${PROJECT_SOURCE_DIR}/opt)
+find_package(GLEW REQUIRED)
+find_package(glfw3 REQUIRED)
+find_path(GLM_INCLUDE_DIR glm/glm.hpp)
+include_directories(${GLM_INCLUDE_DIR})
+find_package(OpenCL REQUIRED)
+find_package(OpenGL REQUIRED)
 
 add_library(imgui OBJECT
   opt/imgui/imgui.cpp
@@ -16,14 +22,7 @@ add_library(imgui OBJECT
   opt/imgui/imgui_impl_opengl3.cpp
   opt/imgui/imgui_widgets.cpp)
 
-find_package(GLEW REQUIRED)
-find_package(glfw3 REQUIRED)
-find_path(GLM_INCLUDE_DIR glm/glm.hpp)
-include_directories(${GLM_INCLUDE_DIR})
-find_package(OpenCL REQUIRED)
-find_package(OpenGL REQUIRED)
-
-add_executable(emergence src/main.cc
+add_library(libemergence OBJECT
   # core
   src/sys/sys.cc
   src/state/state.cc
@@ -31,18 +30,27 @@ add_executable(emergence src/main.cc
   src/view/headless.cc
   src/view/visualiser.cc
   src/view/gui.cc
-  # util
-  src/util/debug.cc
-  src/util/io.cc
-  src/util/math.cc
-  src/util/random.cc
-  src/util/string.cc
   # gl
   src/gl/indexbuffer.cc
   src/gl/vertexarray.cc
   src/gl/vertexbuffer.cc
   src/gl/vertexbufferlayout.cc
-  src/gl/shader.cc)
+  src/gl/shader.cc
+  # util
+  src/util/debug.cc
+  src/util/io.cc
+  src/util/math.cc
+  src/util/random.cc
+  src/util/string.cc)
+target_link_libraries(libemergence
+  imgui)
 
-target_link_libraries(emergence imgui GLEW glfw OpenCL OpenGL)
+add_executable(emergence src/main.cc)
+target_link_libraries(emergence libemergence
+  imgui GLEW glfw OpenCL OpenGL)
+
+enable_testing()
+add_executable(testemergence test/test.cc)
+target_link_libraries(testemergence libemergence
+  imgui GLEW glfw OpenCL OpenGL)
 
