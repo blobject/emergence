@@ -22,7 +22,7 @@ This is a rewrite and extension of an [[https://github.com/blobject/mff/tree/mas
 - opencl c/c++ headers ~>= 2~
 - opencl loader (aka. ocl-icd) ~>= 2~
 - opencl runtime ~>= 2.1~
-  - Per your graphics card manufacturer, eg. [[https://software.intel.com/content/www/us/en/develop/articles/opencl-drivers.html][intel]], [[https://developer.nvidia.com/opencl][nvidia]], amd ([[https://www.amd.com/en/search?keyword=amdgpu-pro][this]], [[https://stackoverflow.com/questions/53070673/download-opencl-amd-app-sdk-3-0-for-windows-and-linux][this]], [[https://wiki.archlinux.org/index.php/AMDGPU_PRO][this]]).
+  - Per your graphics card manufacturer, eg. [[https://software.intel.com/content/www/us/en/develop/articles/opencl-drivers.html][intel]], [[https://developer.nvidia.com/opencl][nvidia]], amd ([[https://www.amd.com/en/search?keyword=amdgpu-pro][link]], [[https://stackoverflow.com/questions/53070673/download-opencl-amd-app-sdk-3-0-for-windows-and-linux][link]], [[https://wiki.archlinux.org/index.php/AMDGPU_PRO][link]]).
   - This project has only been tested using Intel Graphics Compute Runtime (aka. NEO) for OpenCL for Intel Gen9 graphics on Linux.
 
 *** Linux

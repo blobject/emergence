@@ -3,6 +3,19 @@
 #include "util.hh"
 
 
+// DebugCl: Print a message on OpenCl error.
+
+void
+Util::DebugCl(cl_int err, const std::string &name)
+{
+  if (err != CL_SUCCESS)
+  {
+    Util::ErrCl(name + ": " + std::to_string(err));
+    exit(EXIT_FAILURE);
+  }
+}
+
+
 // PrepDebugGl: Clear out all OpenGL errors.
 
 void

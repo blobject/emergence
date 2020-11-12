@@ -1,11 +1,11 @@
 #include <GL/glew.h>
 #include <glm/gtc/matrix_transform.hpp>
 
-#include "visualiser.hh"
+#include "canvas.hh"
 #include "../util/util.hh"
 
 
-Visualiser::Visualiser(Sys* sys, bool hide_ctrl)
+Canvas::Canvas(Sys* sys, bool hide_ctrl)
   : sys_(sys), shader_(NULL)
 {
   State &state = sys->state_;
@@ -23,31 +23,30 @@ Visualiser::Visualiser(Sys* sys, bool hide_ctrl)
     Util::Err("glewInit");
   }
   this->ago_ = glfwGetTime();
+  this->paused_ = false;
   this->camera_ = { 0, 0, 0 };
   this->model_ = glm::translate(glm::mat4(1.0f), this->camera_);
   this->projection_ = glm::ortho(0.0f, static_cast<float>(state.width_),
                                  0.0f, static_cast<float>(state.height_),
-                                -1.0f, 1.0f);
+                                 -1.0f, 1.0f);
   this->view_ = glm::translate(glm::mat4(1.0f), glm::vec3(0, 0, 0));
+  //glEnable(GL_DEPTH_TEST); // enable z-axis
 }
 
 
 void
-Visualiser::Exec()
+Canvas::Exec()
 {
-  this->gui_->SetVisualiser(this);
+  this->gui_->SetCanvas(this);
   Sys* sys = this->sys_;
   State &state = sys->state_;
 
   this->Spawn();
 
-  // shading
-  glm::mat4 projection = glm::ortho(0.0f, static_cast<float>(state.width_),
-                                    0.0f, static_cast<float>(state.height_),
-                                   -1.0f, 1.0f);
+  auto va = this->vertex_array_;
   auto shader = new Shader();
   shader->Bind();
-  shader->SetUniformMat4f("mvp", projection);
+  shader->SetUniformMat4f("mvp", this->projection_ * this->view_ * this->model_);
   this->shader_ = shader;
 
   /**
@@ -74,19 +73,16 @@ Visualiser::Exec()
     }
     this->ago_ = now;
 
-    // pre
-    this->Clear();
+    if (!this->paused_)
+    {
+      this->Clear();
+      this->Draw(GL_FLOAT, state.num_, va, shader);
+      sys->Next();
+      this->Next();
+    }
 
-    // render
-    //this->vertex_array_->Bind(); // optional bind
-    this->Draw(GL_FLOAT, state.num_, this->vertex_array_, shader);
-    //this->vertex_array_->Unbind(); // optional unbind
     this->gui_->Draw();
-
-    // post
-    sys->Next();
     this->gui_->Next();
-    this->Next();
 
     /**
     // profiling
@@ -111,7 +107,7 @@ Visualiser::Exec()
 //        them.
 
 void
-Visualiser::Spawn()
+Canvas::Spawn()
 {
   State &state = this->sys_->state_;
   // initialise vertex buffers
@@ -153,7 +149,7 @@ Visualiser::Spawn()
 // Respawn: Reinitialise OpenGL vertex constructs and redraw particles.
 
 void
-Visualiser::Respawn()
+Canvas::Respawn()
 {
   delete this->vertex_buffer_shape_;
   delete this->vertex_buffer_trans_;
@@ -163,8 +159,8 @@ Visualiser::Respawn()
 
 
 void
-Visualiser::Draw(unsigned int size, unsigned int count, VertexArray* va,
-                 Shader* shader)
+Canvas::Draw(unsigned int size, unsigned int count, VertexArray* va,
+             Shader* shader)
 {
   shader->Bind();
   va->Bind();
@@ -175,14 +171,14 @@ Visualiser::Draw(unsigned int size, unsigned int count, VertexArray* va,
 
 
 void
-Visualiser::Clear()
+Canvas::Clear()
 {
   DOGL(glClear(GL_COLOR_BUFFER_BIT));
 }
 
 
 void
-Visualiser::Next()
+Canvas::Next()
 {
   State &state = this->sys_->state_;
   float trans[2 * state.num_];
@@ -199,7 +195,14 @@ Visualiser::Next()
 
 
 void
-Visualiser::West()
+Canvas::Pause()
+{
+  this->paused_ = !this->paused_;
+}
+
+
+void
+Canvas::West()
 {
   this->camera_ += glm::vec3(this->sys_->state_.width_ / 100.0f, 0, 0);
   this->model_ = glm::translate(glm::mat4(1.0f), this->camera_);
@@ -210,7 +213,7 @@ Visualiser::West()
 
 
 void
-Visualiser::South()
+Canvas::South()
 {
   this->camera_ += glm::vec3(0, this->sys_->state_.height_ / 100.0f, 0);
   this->model_ = glm::translate(glm::mat4(1.0f), this->camera_);
@@ -221,7 +224,7 @@ Visualiser::South()
 
 
 void
-Visualiser::North()
+Canvas::North()
 {
   this->camera_ += glm::vec3(0, this->sys_->state_.height_ / -100.0f, 0);
   this->model_ = glm::translate(glm::mat4(1.0f), this->camera_);
@@ -232,7 +235,7 @@ Visualiser::North()
 
 
 void
-Visualiser::East()
+Canvas::East()
 {
   this->camera_ += glm::vec3(this->sys_->state_.width_ / -100.0f, 0, 0);
   this->model_ = glm::translate(glm::mat4(1.0f), this->camera_);
@@ -243,7 +246,7 @@ Visualiser::East()
 
 
 void
-Visualiser::NorthWest()
+Canvas::NorthWest()
 {
   this->North();
   this->West();
@@ -251,7 +254,7 @@ Visualiser::NorthWest()
 
 
 void
-Visualiser::NorthEast()
+Canvas::NorthEast()
 {
   this->North();
   this->East();
@@ -259,7 +262,7 @@ Visualiser::NorthEast()
 
 
 void
-Visualiser::SouthWest()
+Canvas::SouthWest()
 {
   this->South();
   this->West();
@@ -267,7 +270,7 @@ Visualiser::SouthWest()
 
 
 void
-Visualiser::SouthEast()
+Canvas::SouthEast()
 {
   this->South();
   this->East();

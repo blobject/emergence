@@ -14,23 +14,21 @@ Sys::Sys(State &state)
 }
 
 
-// InitCl: Initialise OpenCL
+// InitCl: Initialise OpenCL.
 
 void
 Sys::InitCl()
 {
   std::vector<cl::Platform> platforms;
-  cl::Platform default_platform;
   std::vector<cl::Device> devices;
-  cl::Device default_device;
 
   cl::Platform::get(&platforms);
   if (0 == platforms.size())
   {
-    Util::Err("no platforms found.");
+    Util::Err("no cl platforms found.");
     return;
   }
-  this->cl_platform_ = platforms[0];
+  this->cl_platform_ = platforms.front();
   for (auto &platform : platforms)
   {
     if ("FULL_PROFILE" != platform.getInfo<CL_PLATFORM_PROFILE>())
@@ -43,19 +41,20 @@ Sys::InitCl()
     {
       continue;
     }
-    cl_device_ = devices[0];
+    this->cl_device_ = devices.front();
     break;
   }
-  // TODO:
-  // check if cl_device_ not set
-  Util::Out("opencl platform: "
-            + this->cl_platform_.getInfo<CL_PLATFORM_NAME>());
-  Util::Out("opencl device: "
-            + this->cl_device_.getInfo<CL_DEVICE_NAME>());
+  if (this->cl_device_.getInfo<CL_DEVICE_NAME>().empty())
+  {
+    Util::Err("no cl devices found.");
+    return;
+  }
+
+  this->ExecCl();
 }
 
 
-// Reset: Make the neighborhood grid
+// Reset: Make the neighborhood grid.
 
 void
 Sys::InitGrid()
@@ -82,7 +81,68 @@ Sys::InitGrid()
 }
 
 
-// Next: Make the particle system act one iteration
+// ExecCl: Compute using the GPU.
+
+void
+Sys::ExecCl()
+{
+  /**
+  std::string source =
+    "__kernel void\n"
+    "foo(\n"
+    "  uint n,\n"
+    "  __global const float* a,\n"
+    "  __global const float* b,\n"
+    "  __global float* c)\n"
+    "{\n"
+    "  int i = get_global_id(0);\n"
+    "  if (i < n)\n"
+    "  {\n"
+    "    c[i] = a[i] + b[i];\n"
+    "  }\n"
+    "}\n";
+  const int N = 1 << 4;
+  try
+  {
+    cl::Context context(this->cl_device_);
+    cl::CommandQueue queue(context, this->cl_device_);
+    cl::Program program(context, source, CL_TRUE);
+    cl::Kernel foo(program, "foo");
+    std::vector<float> a(N, 12);
+    std::vector<float> b(N, 30);
+    std::vector<float> c(N);
+    cl::Buffer A(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+                a.size() * sizeof(float), a.data());
+    cl::Buffer B(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+                b.size() * sizeof(float), b.data());
+    cl::Buffer C(context, CL_MEM_READ_WRITE, c.size() * sizeof(float));
+    foo.setArg(0, static_cast<cl_int>(N));
+    foo.setArg(1, A);
+    foo.setArg(2, B);
+    foo.setArg(3, C);
+    queue.enqueueNDRangeKernel(foo, cl::NullRange, N, cl::NullRange);
+    queue.enqueueReadBuffer(C, CL_TRUE, 0, c.size() * sizeof(float), c.data());
+    for (int i = 0; i < c.size(); i++)
+    {
+      std::cout << c[i] << ", ";
+    }
+    std::cout << std::endl;
+  }
+  catch (cl_int err) {
+    std::cout << "Exception\n";
+    std::cerr << "ERROR: " << err << std::endl;
+  }
+  //*/
+}
+
+
+void
+Sys::ClSeek()
+{
+}
+
+
+// Next: Let the particle system perform one action step.
 
 void
 Sys::Next()
@@ -93,7 +153,7 @@ Sys::Next()
 }
 
 
-// Reset: Zero out particles' neighborhood count and remake the grid
+// Reset: Zero out particles' neighborhood count and remake the grid.
 
 void
 Sys::Reset()
@@ -141,6 +201,7 @@ Sys::Seek()
   unsigned int rows = grid[0].size();
 
   this->SeekFrom(ps, grid, cols, rows);
+  //this->ClSeek();
 }
 
 
@@ -173,26 +234,32 @@ Sys::SeekTo(std::vector<Particle> &ps, Grid &grid,
             unsigned int cols, unsigned int rows,
             unsigned int srci)
 {
-  unsigned int ncols[3];
-  unsigned int nrows[3];
+  bool c_under;
+  bool c_over;
+  bool r_under;
+  bool r_over;
 
   // neighboring columns
-  ncols[0] = col - 1; ncols[1] = col; ncols[2] = col + 1;
-  if      (col == 0)        { ncols[0] += cols; }
-  else if (col == cols - 1) { ncols[2] -= cols; }
-  for (unsigned int c : ncols)
+  for (int c : {col - 1, col, col + 1})
   {
+    c_under = false;
+    c_over = false;
+    if      (c < 0)     { c += cols; c_under = true; }
+    else if (c >= cols) { c -= cols; c_over = true; }
+
     // neighboring rows
-    nrows[0] = row - 1; nrows[1] = row; nrows[2] = row + 1;
-    if      (row == 0)        { nrows[0] += rows; }
-    else if (row == rows - 1) { nrows[2] -= rows; }
-    for (unsigned int r : nrows)
+    for (int r : {row - 1, row, row + 1})
     {
+      r_under = false;
+      r_over = false;
+      if      (r < 0)     { r += rows; r_under = true; }
+      else if (r >= rows) { r -= rows; r_over = true; }
+
       // for each particle index in the neighbor unit
       std::vector<unsigned int> &unit = grid[c][r];
-      for (unsigned int p = 0; p < unit.size(); ++p)
+      for (unsigned int p : unit)
       {
-        this->SeekTally(ps, srci, unit[p]);
+        this->SeekTally(ps, srci, p, c_under, c_over, r_under, r_over);
       }
     }
   }
@@ -200,11 +267,12 @@ Sys::SeekTo(std::vector<Particle> &ps, Grid &grid,
 
 
 // SeekTally: Seek() helper that updates N, L, R given the two particles given
-//            respectively by SeekFrom() and SeekTo()
+//            respectively by SeekFrom() and SeekTo().
 
 void
 Sys::SeekTally(std::vector<Particle> &ps,
-               unsigned int srci, unsigned int dsti)
+               unsigned int srci, unsigned int dsti,
+               bool c_under, bool c_over, bool r_under, bool r_over)
 {
   // avoid redundant calculations
   if (srci <= dsti)
@@ -214,8 +282,14 @@ Sys::SeekTally(std::vector<Particle> &ps,
 
   Particle &src = ps[srci];
   Particle &dst = ps[dsti];
+  int width = this->state_.width_;
+  int height = this->state_.height_;
   int dx = dst.x - src.x;
+  if      (c_under) { dx = -1 * Util::ModI(src.x - dst.x, width); }
+  else if (c_over)  { dx = Util::ModI(dx, width); }
   int dy = dst.y - src.y;
+  if      (r_under) { dy = -1 * Util::ModI(src.y - dst.y, height); }
+  else if (r_over)  { dy = Util::ModI(dy, height); }
 
   // ignore comparisons outside the neighborhood radius (approx. scope)
   if ((dx * dx) + (dy * dy) > this->state_.scope_squared_)
@@ -223,10 +297,6 @@ Sys::SeekTally(std::vector<Particle> &ps,
     return;
   }
 
-  int w = this->state_.half_width_;
-  int h = this->state_.half_height_;
-  dx = Util::ModI(dx + w, this->state_.width_) - w;
-  dy = Util::ModI(dy + h, this->state_.height_) - h;
   ++src.n;
   ++dst.n;
   if (0.0f > (dx * src.s) - (dy * src.c)) { ++src.r; }
@@ -236,23 +306,26 @@ Sys::SeekTally(std::vector<Particle> &ps,
 }
 
 
-// Move: Update particles' location and direction
+// Move: Update particles' location and direction.
 
 void
 Sys::Move()
 {
-  //std::cout << this->state_.particles_[0].s << ", " << this->state_.particles_[0].c << std::endl;
+  float width = this->state_.width_;
+  float height = this->state_.height_;
+  float alpha = this->state_.alpha_;
+  float beta = this->state_.beta_;
+  float speed = this->state_.speed_;
+
   for (auto &p : this->state_.particles_)
   {
-    p.phi = Util::ModF(p.phi + this->state_.alpha_
-                       + (this->state_.beta_ * p.n
+    p.phi = Util::ModF(p.phi + alpha
+                       + (beta * p.n
                           * Util::Signum(static_cast<int>(p.r - p.l))), TAU);
     p.s = sinf(p.phi);
     p.c = cosf(p.phi);
-    p.x = Util::ModI(p.x + static_cast<int>(this->state_.speed_ * p.c),
-                     this->state_.width_);
-    p.y = Util::ModI(p.y + static_cast<int>(this->state_.speed_ * p.s),
-                     this->state_.height_);
+    p.x = Util::ModI(p.x + static_cast<int>(speed * p.c), width);
+    p.y = Util::ModI(p.y + static_cast<int>(speed * p.s), height);
   }
 }
 

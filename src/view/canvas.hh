@@ -1,27 +1,22 @@
 #pragma once
 
-// allow version 330 core shader syntax (NOTE: may be unnecessary)
-#define MESA_GL_VERSION_OVERRIDE 3.3
-#define MESA_GLSL_VERSION_OVERRIDE 330
-
 #include <glm/glm.hpp>
 
+#include "gl.hh"
 #include "gui.hh"
 #include "view.hh"
-#include "../gl/vertexarray.hh"
-#include "../gl/vertexbuffer.hh"
-#include "../gl/shader.hh"
 #include "../sys/sys.hh"
 
 
-// Visualiser: The graphical view.
+// Canvas: The graphical view.
 
 class Gui;
 
-class Visualiser : public View
+class Canvas : public View
 {
  private:
   double ago_;
+  bool paused_;
   glm::vec3 camera_;
   glm::mat4 model_;
   glm::mat4 projection_;
@@ -35,7 +30,7 @@ class Visualiser : public View
   VertexArray*  vertex_array_;
   Shader*       shader_;
 
-  Visualiser(Sys* sys, bool hide_ctrl);
+  Canvas(Sys* sys, bool hide_ctrl);
 
   void Exec() override;
   void Spawn();
@@ -45,6 +40,7 @@ class Visualiser : public View
             //const IndexBuffer &ib,
             Shader* shader);
   void Next();
+  void Pause();
   void West();
   void South();
   void North();

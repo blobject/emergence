@@ -5,7 +5,7 @@
 #include "../sys/sys.hh"
 
 
-// View: Abstract class over the Visualiser and Headless views.
+// View: Abstract class over the Canvas and Headless views.
 
 class View
 {

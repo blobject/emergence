@@ -31,6 +31,15 @@ Util::Err(const std::string &s)
 }
 
 
+// ErrCl: Print cl error to stderr.
+
+void
+Util::ErrCl(const std::string &s)
+{
+  std::cerr << "Error (cl): " << s << std::endl;
+}
+
+
 // ErrGl: Print gl error to stderr.
 
 void

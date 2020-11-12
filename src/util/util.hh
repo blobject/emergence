@@ -1,5 +1,6 @@
 #pragma once
 
+#include <CL/cl2.hpp>
 #include <iostream>
 #include <math.h>
 #include <string>
@@ -20,6 +21,7 @@ class Util
  public:
 
   // debug.cc
+  static void DebugCl(cl_int err, const std::string &name);
   static void PrepDebugGl();
   static bool DebugGl(const std::string &func, const std::string &file,
                       int line);
@@ -28,6 +30,7 @@ class Util
   static void Out(const std::string &s);
   static void Warn(const std::string &s);
   static void Err(const std::string &s);
+  static void ErrCl(const std::string &s);
   static void ErrGl(const std::string &s);
   static bool LoadState(State &state, const std::string &path);
   static bool SaveState(State &state, const std::string &path);

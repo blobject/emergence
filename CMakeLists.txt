@@ -28,14 +28,9 @@ add_library(libemergence OBJECT
   src/state/state.cc
   src/view/view.cc
   src/view/headless.cc
-  src/view/visualiser.cc
+  src/view/canvas.cc
   src/view/gui.cc
-  # gl
-  src/gl/indexbuffer.cc
-  src/gl/vertexarray.cc
-  src/gl/vertexbuffer.cc
-  src/gl/vertexbufferlayout.cc
-  src/gl/shader.cc
+  src/view/gl.cc
   # util
   src/util/debug.cc
   src/util/io.cc

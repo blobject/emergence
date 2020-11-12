@@ -30,7 +30,6 @@ GuiState::GuiState(State &truth)
 bool
 GuiState::ChangeTruth()
 {
-  std::cout << this->alpha_ << std::endl;
   StateTransport next = { this->distribution_,
                           this->stop_,
                           this->num_,
@@ -86,6 +85,7 @@ Gui::Gui(GuiState state, Sys* sys, const std::string &version,
   glfwMakeContextCurrent(view);
   glfwSwapInterval(1);
   glfwSetKeyCallback(view, KeyCallback);
+  glfwSetWindowSizeCallback(view, SizeCallback);
 
   // imgui
   IMGUI_CHECKVERSION();
@@ -123,9 +123,9 @@ Gui::SetPointer()
 
 
 void
-Gui::SetVisualiser(Visualiser* visualiser)
+Gui::SetCanvas(Canvas* canvas)
 {
-  this->visualiser_ = visualiser;
+  this->canvas_ = canvas;
 }
 
 
@@ -160,8 +160,13 @@ Gui::KeyCallback(GLFWwindow* view, int key, int scancode, int action,
     {
       if (gui->state_.ChangeTruth())
       {
-        gui->visualiser_->Respawn();
+        gui->canvas_->Respawn();
       }
+      return;
+    }
+    if (key == GLFW_KEY_SPACE)
+    {
+      gui->canvas_->Pause();
       return;
     }
     if (key == GLFW_KEY_C) {
@@ -169,15 +174,21 @@ Gui::KeyCallback(GLFWwindow* view, int key, int scancode, int action,
       return;
     }
   }
-  if (key == GLFW_KEY_H) { gui->visualiser_->West();  return; }
-  if (key == GLFW_KEY_J) { gui->visualiser_->South(); return; }
-  if (key == GLFW_KEY_K) { gui->visualiser_->North(); return; }
-  if (key == GLFW_KEY_L) { gui->visualiser_->East();  return; }
-  if (key == GLFW_KEY_Y) { gui->visualiser_->NorthWest(); return; }
-  if (key == GLFW_KEY_U) { gui->visualiser_->NorthEast(); return; }
-  if (key == GLFW_KEY_B) { gui->visualiser_->SouthWest(); return; }
-  if (key == GLFW_KEY_N) { gui->visualiser_->SouthEast(); return; }
+  if (key == GLFW_KEY_H) { gui->canvas_->West(); return; }
+  if (key == GLFW_KEY_J) { gui->canvas_->South(); return; }
+  if (key == GLFW_KEY_K) { gui->canvas_->North(); return; }
+  if (key == GLFW_KEY_L) { gui->canvas_->East(); return; }
+  if (key == GLFW_KEY_Y) { gui->canvas_->NorthWest(); return; }
+  if (key == GLFW_KEY_U) { gui->canvas_->NorthEast(); return; }
+  if (key == GLFW_KEY_B) { gui->canvas_->SouthWest(); return; }
+  if (key == GLFW_KEY_N) { gui->canvas_->SouthEast(); return; }
   if (key == GLFW_KEY_PERIOD) { }
+}
+
+
+void
+Gui::SizeCallback(GLFWwindow* view, int w, int h)
+{
 }
 
 

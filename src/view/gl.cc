@@ -1,8 +1,39 @@
 #include <GL/glew.h>
 
-#include "shader.hh"
+#include "gl.hh"
 #include "../util/util.hh"
 
+
+// IndexBuffer
+
+IndexBuffer::IndexBuffer(const unsigned int* data, unsigned int count)
+  : count_(count)
+{
+  DOGL(glGenBuffers(1, &this->id_));
+  DOGL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->id_));
+  DOGL(glBufferData(GL_ELEMENT_ARRAY_BUFFER, count * sizeof(unsigned int),
+                    data, GL_STATIC_DRAW));
+}
+
+IndexBuffer::~IndexBuffer()
+{
+  DOGL(glDeleteBuffers(1, &this->id_));
+}
+
+void
+IndexBuffer::Bind() const
+{
+  DOGL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->id_));
+}
+
+void
+IndexBuffer::Unbind() const
+{
+  DOGL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
+}
+
+
+// Shader
 
 Shader::Shader()
   : id_(0)
@@ -10,12 +41,10 @@ Shader::Shader()
   this->id_ = Shader::CreateShader();
 }
 
-
 Shader::~Shader()
 {
   DOGL(glDeleteProgram(this->id_));
 }
-
 
 void
 Shader::Bind() const
@@ -23,13 +52,11 @@ Shader::Bind() const
   DOGL(glUseProgram(this->id_));
 }
 
-
 void
 Shader::Unbind() const
 {
   DOGL(glUseProgram(0));
 }
-
 
 unsigned int
 Shader::CreateShader()
@@ -80,7 +107,6 @@ Shader::CreateShader()
   return program;
 }
 
-
 unsigned int
 Shader::CompileShader(unsigned int type, const std::string &source)
 {
@@ -106,7 +132,6 @@ Shader::CompileShader(unsigned int type, const std::string &source)
   }
   return id;
 }
-
 
 int
 Shader::GetUniformLocation(const std::string &name)
@@ -143,5 +168,131 @@ Shader::SetUniformMat4f(const std::string &name, const glm::mat4 &mat)
 {
   DOGL(glUniformMatrix4fv(Shader::GetUniformLocation(name), 1, GL_FALSE,
                           &mat[0][0]));
+}
+
+
+// VertexArray
+
+VertexArray::VertexArray()
+{
+  DOGL(glGenVertexArrays(1, &this->id_));
+}
+
+VertexArray::~VertexArray()
+{
+  DOGL(glDeleteVertexArrays(1, &this->id_));
+}
+
+void
+VertexArray::AddBuffer(unsigned int id, const VertexBuffer &vb,
+                       const LayoutItem &item)
+{
+  this->Bind();
+  vb.Bind();
+  vb.Buffer();
+  DOGL(glEnableVertexAttribArray(id));
+  DOGL(glVertexAttribPointer(id, item.count, item.type, item.normalised,
+                             item.stride, static_cast<const void*>(0)));
+}
+
+void
+VertexArray::Bind() const
+{
+  DOGL(glBindVertexArray(this->id_));
+}
+
+void
+VertexArray::Unbind() const
+{
+  DOGL(glBindVertexArray(0));
+}
+
+
+// VertexBuffer
+
+VertexBuffer::VertexBuffer(const void* data, unsigned int size)
+  : data_(data), size_(size)
+{
+  DOGL(glGenBuffers(1, &this->id_));
+}
+
+VertexBuffer::~VertexBuffer()
+{
+  DOGL(glDeleteBuffers(1, &this->id_));
+}
+
+void
+VertexBuffer::Bind() const
+{
+  DOGL(glBindBuffer(GL_ARRAY_BUFFER, this->id_));
+}
+
+void
+VertexBuffer::Buffer() const
+{
+  DOGL(glBufferData(GL_ARRAY_BUFFER, this->size_, this->data_, GL_STATIC_DRAW));
+}
+
+void
+VertexBuffer::Update(const void* data)
+{
+  this->data_ = data;
+  //this->size_ = sizeof(data);
+  this->Bind();
+  this->Buffer();
+}
+
+void
+VertexBuffer::Unbind() const
+{
+  DOGL(glBindBuffer(GL_ARRAY_BUFFER, 0));
+}
+
+
+// LayoutItem
+
+// TypeSize: Convenience function that converts OpenGL data
+//           constants to corresponding data sizes.
+
+unsigned int
+LayoutItem::TypeSize(unsigned int type)
+{
+  switch (type)
+  {
+    case GL_FLOAT:         return 4;
+    case GL_UNSIGNED_INT:  return 4;
+    case GL_UNSIGNED_BYTE: return 1;
+  }
+  return 0;
+}
+
+
+// VertexBufferLayout
+
+template<typename T> LayoutItem
+VertexBufferLayout::Make(unsigned int count)
+{
+  //static_assert(false);
+}
+
+template<> LayoutItem
+VertexBufferLayout::Make<float>(unsigned int count)
+{
+  return { GL_FLOAT, count, GL_FALSE,
+           count * LayoutItem::TypeSize(GL_FLOAT) };
+}
+
+template<> LayoutItem
+VertexBufferLayout::Make<unsigned int>(unsigned int count)
+{
+  return { GL_UNSIGNED_INT, count, GL_FALSE,
+           count * LayoutItem::TypeSize(GL_UNSIGNED_INT) };
+}
+
+template<> LayoutItem
+VertexBufferLayout::Make<unsigned char>(unsigned int count)
+{
+  return { GL_UNSIGNED_BYTE, count, GL_TRUE,
+           count * LayoutItem::TypeSize(GL_UNSIGNED_BYTE) };
 }
 

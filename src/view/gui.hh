@@ -2,7 +2,7 @@
 
 #include <GLFW/glfw3.h>
 
-#include "visualiser.hh"
+#include "canvas.hh"
 #include "../sys/sys.hh"
 #include "../util/util.hh"
 
@@ -37,7 +37,7 @@ class GuiState
 
 // Gui: The part of the visualisation dealing with the user interface.
 
-class Visualiser;
+class Canvas;
 
 class Gui
 {
@@ -53,7 +53,7 @@ class Gui
 
  public:
   Sys*        sys_;
-  Visualiser* visualiser_;
+  Canvas*     canvas_;
   GLFWwindow* view_;
 
   Gui(GuiState state, Sys* sys, const std::string &version,
@@ -63,8 +63,9 @@ class Gui
   inline GuiState get_state() const { return this->state_; }
   static void KeyCallback(GLFWwindow* view, int key, int scancode, int action,
                           int mods);
+  static void SizeCallback(GLFWwindow* view, int w, int h);
   void SetPointer();
-  void SetVisualiser(Visualiser* visualiser);
+  void SetCanvas(Canvas* canvas);
   void Close();
   bool Closing() const;
   void Draw();
