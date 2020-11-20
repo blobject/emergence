@@ -7,7 +7,7 @@ Particle::Particle(Distribution distribution,
                    unsigned int width,
                    unsigned int height)
 {
-  this->size = 4.0f;
+  this->rad = 2.0f;
   if (distribution == Distribution::UNIFORM)
   {
     this->x = Util::Distribute<float>(0.0f, static_cast<float>(width));

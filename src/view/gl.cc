@@ -4,6 +4,47 @@
 #include "../util/util.hh"
 
 
+// VertexBuffer
+
+VertexBuffer::VertexBuffer(const void* data, unsigned int size)
+  : data_(data), size_(size)
+{
+  DOGL(glGenBuffers(1, &this->id_));
+}
+
+VertexBuffer::~VertexBuffer()
+{
+  DOGL(glDeleteBuffers(1, &this->id_));
+}
+
+void
+VertexBuffer::Bind() const
+{
+  DOGL(glBindBuffer(GL_ARRAY_BUFFER, this->id_));
+}
+
+void
+VertexBuffer::Buffer() const
+{
+  DOGL(glBufferData(GL_ARRAY_BUFFER, this->size_, this->data_, GL_STATIC_DRAW));
+}
+
+void
+VertexBuffer::Update(const void* data)
+{
+  this->data_ = data;
+  //this->size_ = sizeof(data);
+  this->Bind();
+  this->Buffer();
+}
+
+void
+VertexBuffer::Unbind() const
+{
+  DOGL(glBindBuffer(GL_ARRAY_BUFFER, 0));
+}
+
+
 // IndexBuffer
 
 IndexBuffer::IndexBuffer(const unsigned int* data, unsigned int count)
@@ -30,6 +71,99 @@ void
 IndexBuffer::Unbind() const
 {
   DOGL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
+}
+
+
+// LayoutItem
+
+// TypeSize: Convenience function that converts OpenGL data
+//           constants to corresponding data sizes.
+
+unsigned int
+LayoutItem::TypeSize(unsigned int type)
+{
+  switch (type)
+  {
+    case GL_FLOAT:         return sizeof(GL_FLOAT);
+    case GL_UNSIGNED_INT:  return sizeof(GL_UNSIGNED_INT);
+    case GL_UNSIGNED_BYTE: return sizeof(GL_UNSIGNED_BYTE);
+  }
+  return 0;
+}
+
+
+// VertexBufferLayout
+
+template<typename T> LayoutItem
+VertexBufferLayout::Make(unsigned int count)
+{
+  //static_assert(false);
+}
+
+template<> LayoutItem
+VertexBufferLayout::Make<float>(unsigned int count)
+{
+  return { GL_FLOAT, count, GL_FALSE,
+           count * LayoutItem::TypeSize(GL_FLOAT) };
+}
+
+template<> LayoutItem
+VertexBufferLayout::Make<unsigned int>(unsigned int count)
+{
+  return { GL_UNSIGNED_INT, count, GL_FALSE,
+           count * LayoutItem::TypeSize(GL_UNSIGNED_INT) };
+}
+
+template<> LayoutItem
+VertexBufferLayout::Make<unsigned char>(unsigned int count)
+{
+  return { GL_UNSIGNED_BYTE, count, GL_TRUE,
+           count * LayoutItem::TypeSize(GL_UNSIGNED_BYTE) };
+}
+
+
+// VertexArray
+
+VertexArray::VertexArray()
+{
+  DOGL(glGenVertexArrays(1, &this->id_));
+}
+
+VertexArray::~VertexArray()
+{
+  DOGL(glDeleteVertexArrays(1, &this->id_));
+}
+
+void
+VertexArray::AddBuffer(unsigned int id, const VertexBuffer &vb,
+                       const LayoutItem &item)
+{
+  this->Bind();
+  vb.Bind();
+  vb.Buffer();
+  DOGL(glEnableVertexAttribArray(id));
+  DOGL(glVertexAttribPointer(id, item.count, item.type, item.normalised,
+                             item.stride, static_cast<const void*>(0)));
+}
+
+void
+VertexArray::Bind() const
+{
+  DOGL(glBindVertexArray(this->id_));
+}
+
+void
+VertexArray::Unbind() const
+{
+  DOGL(glBindVertexArray(0));
+}
+
+
+// UniformBuffer
+
+UniformBuffer::UniformBuffer()
+  : id_(0)
+{
 }
 
 
@@ -63,22 +197,47 @@ Shader::CreateShader()
 {
   std::string vertex =
     "#version 330 core\n"
-    "layout (location = 0) in vec2 shape;\n"
-    "layout (location = 1) in vec2 trans;\n"
+    "layout (location = 0) in vec3 xyz;\n"
+    "layout (location = 1) in vec2 quad;\n"
     "uniform mat4 mvp;\n"
     "void main()\n"
     "{\n"
-    "  vec4 position = vec4(shape.x + trans.x, shape.y + trans.y, 0.0, 1.0);\n"
+    "  vec4 position = vec4(xyz.x + quad.x, xyz.y + quad.y, xyz.z, 1.0f);\n"
     "  gl_Position = mvp * position;\n"
     "}\n";
+
   std::string geometry = "";
+
   std::string fragment =
     "#version 330 core\n"
     "layout (location = 0) out vec4 color;\n"
     "void main()\n"
     "{\n"
-    "  color = vec4(1.0, 1.0, 1.0, 1.0f);\n"
+    "  color = vec4(1.0f, 1.0f, 1.0f, 1.0f);\n"
     "}\n";
+
+  /**
+  std::string vertex =
+    "#version 330 core\n"
+    "layout (location = 0) in vec3 xyz;\n"
+    "layout (location = 1) in vec3 rgb;\n"
+    "out vec3 frag_color;\n"
+    "uniform mat4 mvp;\n"
+    "void main()\n"
+    "{\n"
+    "  gl_Position = mvp * vec4(xyz, 1.0f);\n"
+    "  frag_color = rgb;\n"
+    "}\n";
+  std::string geometry = "";
+  std::string fragment =
+    "#version 330 core\n"
+    "in vec3 frag_color;\n"
+    "out vec4 color;\n"
+    "void main()\n"
+    "{\n"
+    "  color = vec4(frag_color, 1.0f);\n"
+    "}\n";
+  //*/
 
   DOGL(unsigned int program = glCreateProgram());
   unsigned int v;
@@ -168,131 +327,5 @@ Shader::SetUniformMat4f(const std::string &name, const glm::mat4 &mat)
 {
   DOGL(glUniformMatrix4fv(Shader::GetUniformLocation(name), 1, GL_FALSE,
                           &mat[0][0]));
-}
-
-
-// VertexArray
-
-VertexArray::VertexArray()
-{
-  DOGL(glGenVertexArrays(1, &this->id_));
-}
-
-VertexArray::~VertexArray()
-{
-  DOGL(glDeleteVertexArrays(1, &this->id_));
-}
-
-void
-VertexArray::AddBuffer(unsigned int id, const VertexBuffer &vb,
-                       const LayoutItem &item)
-{
-  this->Bind();
-  vb.Bind();
-  vb.Buffer();
-  DOGL(glEnableVertexAttribArray(id));
-  DOGL(glVertexAttribPointer(id, item.count, item.type, item.normalised,
-                             item.stride, static_cast<const void*>(0)));
-}
-
-void
-VertexArray::Bind() const
-{
-  DOGL(glBindVertexArray(this->id_));
-}
-
-void
-VertexArray::Unbind() const
-{
-  DOGL(glBindVertexArray(0));
-}
-
-
-// VertexBuffer
-
-VertexBuffer::VertexBuffer(const void* data, unsigned int size)
-  : data_(data), size_(size)
-{
-  DOGL(glGenBuffers(1, &this->id_));
-}
-
-VertexBuffer::~VertexBuffer()
-{
-  DOGL(glDeleteBuffers(1, &this->id_));
-}
-
-void
-VertexBuffer::Bind() const
-{
-  DOGL(glBindBuffer(GL_ARRAY_BUFFER, this->id_));
-}
-
-void
-VertexBuffer::Buffer() const
-{
-  DOGL(glBufferData(GL_ARRAY_BUFFER, this->size_, this->data_, GL_STATIC_DRAW));
-}
-
-void
-VertexBuffer::Update(const void* data)
-{
-  this->data_ = data;
-  //this->size_ = sizeof(data);
-  this->Bind();
-  this->Buffer();
-}
-
-void
-VertexBuffer::Unbind() const
-{
-  DOGL(glBindBuffer(GL_ARRAY_BUFFER, 0));
-}
-
-
-// LayoutItem
-
-// TypeSize: Convenience function that converts OpenGL data
-//           constants to corresponding data sizes.
-
-unsigned int
-LayoutItem::TypeSize(unsigned int type)
-{
-  switch (type)
-  {
-    case GL_FLOAT:         return 4;
-    case GL_UNSIGNED_INT:  return 4;
-    case GL_UNSIGNED_BYTE: return 1;
-  }
-  return 0;
-}
-
-
-// VertexBufferLayout
-
-template<typename T> LayoutItem
-VertexBufferLayout::Make(unsigned int count)
-{
-  //static_assert(false);
-}
-
-template<> LayoutItem
-VertexBufferLayout::Make<float>(unsigned int count)
-{
-  return { GL_FLOAT, count, GL_FALSE,
-           count * LayoutItem::TypeSize(GL_FLOAT) };
-}
-
-template<> LayoutItem
-VertexBufferLayout::Make<unsigned int>(unsigned int count)
-{
-  return { GL_UNSIGNED_INT, count, GL_FALSE,
-           count * LayoutItem::TypeSize(GL_UNSIGNED_INT) };
-}
-
-template<> LayoutItem
-VertexBufferLayout::Make<unsigned char>(unsigned int count)
-{
-  return { GL_UNSIGNED_BYTE, count, GL_TRUE,
-           count * LayoutItem::TypeSize(GL_UNSIGNED_BYTE) };
 }
 

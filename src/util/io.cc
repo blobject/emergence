@@ -131,7 +131,7 @@ Util::LoadState(State &state, const std::string &path)
     unsigned int x;
     unsigned int y;
     float phi;
-    unsigned size;
+    unsigned rad;
     state.particles_.clear();
     while (std::getline(stream, line))
     {
@@ -145,7 +145,7 @@ Util::LoadState(State &state, const std::string &path)
       if (linestream >> x) particle.x = x;
       if (linestream >> y) particle.y = y;
       if (linestream >> phi) particle.phi = phi;
-      if (linestream >> size) particle.size = size;
+      if (linestream >> rad) particle.rad = rad;
       state.particles_.push_back(particle);
     }
     if (state.particles_.empty())
@@ -184,7 +184,7 @@ Util::SaveState(State &state, const std::string &path)
       stream << particle.x << ' '
              << particle.y << ' '
              << particle.phi << ' '
-             << particle.size << '\n';
+             << particle.rad << '\n';
     }
     stream.close();
   }

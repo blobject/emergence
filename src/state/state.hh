@@ -23,7 +23,7 @@ struct Particle
   unsigned int r; // volatile
   float s;        // volatile
   float c;        // volatile
-  float size;     // adjustable
+  float rad;      // adjustable
 
   Particle(Distribution distribution,
            unsigned int width,

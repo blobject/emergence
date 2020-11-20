@@ -151,7 +151,7 @@ Gui::KeyCallback(GLFWwindow* view, int key, int scancode, int action,
 
   if (action == GLFW_PRESS)
   {
-    if (key == GLFW_KEY_ESCAPE || key == GLFW_KEY_Q)
+    if (key == GLFW_KEY_ESCAPE)
     {
       gui->Close();
       return;
@@ -169,20 +169,38 @@ Gui::KeyCallback(GLFWwindow* view, int key, int scancode, int action,
       gui->canvas_->Pause();
       return;
     }
-    if (key == GLFW_KEY_C) {
+    if (key == GLFW_KEY_TAB)
+    {
       gui->control_ = ! gui->control_;
       return;
     }
+    if (key == GLFW_KEY_BACKSPACE)
+    {
+      gui->canvas_->CameraReset();
+      return;
+    }
   }
-  if (key == GLFW_KEY_H) { gui->canvas_->West(); return; }
-  if (key == GLFW_KEY_J) { gui->canvas_->South(); return; }
-  if (key == GLFW_KEY_K) { gui->canvas_->North(); return; }
-  if (key == GLFW_KEY_L) { gui->canvas_->East(); return; }
-  if (key == GLFW_KEY_Y) { gui->canvas_->NorthWest(); return; }
-  if (key == GLFW_KEY_U) { gui->canvas_->NorthEast(); return; }
-  if (key == GLFW_KEY_B) { gui->canvas_->SouthWest(); return; }
-  if (key == GLFW_KEY_N) { gui->canvas_->SouthEast(); return; }
-  if (key == GLFW_KEY_PERIOD) { }
+  // camera translate x y
+  if (key == GLFW_KEY_W) { gui->canvas_->DollyNorth(); return; }
+  if (key == GLFW_KEY_A) { gui->canvas_->DollyWest(); return; }
+  if (key == GLFW_KEY_X) { gui->canvas_->DollySouth(); return; }
+  if (key == GLFW_KEY_D) { gui->canvas_->DollyEast(); return; }
+  if (key == GLFW_KEY_Q) { gui->canvas_->DollyNorthWest(); return; }
+  if (key == GLFW_KEY_E) { gui->canvas_->DollyNorthEast(); return; }
+  if (key == GLFW_KEY_Z) { gui->canvas_->DollySouthWest(); return; }
+  if (key == GLFW_KEY_C) { gui->canvas_->DollySouthEast(); return; }
+  // camera rotate
+  if (key == GLFW_KEY_I) { gui->canvas_->PanNorth(); return; }
+  if (key == GLFW_KEY_J) { gui->canvas_->PanWest(); return; }
+  if (key == GLFW_KEY_COMMA) { gui->canvas_->PanSouth(); return; }
+  if (key == GLFW_KEY_L) { gui->canvas_->PanEast(); return; }
+  if (key == GLFW_KEY_U) { gui->canvas_->PanNorthWest(); return; }
+  if (key == GLFW_KEY_O) { gui->canvas_->PanNorthEast(); return; }
+  if (key == GLFW_KEY_M) { gui->canvas_->PanSouthWest(); return; }
+  if (key == GLFW_KEY_PERIOD) { gui->canvas_->PanSouthEast(); return; }
+  // camera translate z
+  if (key == GLFW_KEY_Y) { gui->canvas_->PushIn(); return; }
+  if (key == GLFW_KEY_H) { gui->canvas_->PullOut(); return; }
 }
 
 
