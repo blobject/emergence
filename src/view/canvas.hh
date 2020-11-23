@@ -15,19 +15,26 @@ class Gui;
 class Canvas : public View
 {
  private:
+  std::vector<GLfloat> xyz_;
+  std::vector<GLfloat> rgba_;
   glm::mat4 orth_;
   glm::mat4 model_;
   glm::mat4 view_;
   glm::mat4 proj_;
   glm::vec3 dolly_;
-  float zoomdef_;
-  float panax_;
-  float panay_;
-  float panx_;
-  float pany_;
-  float dollyd_;
-  float pand_;
-  float zoomd_;
+  GLfloat panax_;
+  GLfloat panay_;
+  GLfloat panx_;
+  GLfloat pany_;
+  GLfloat dollyd_;
+  GLfloat pand_;
+  GLfloat zoomd_;
+  GLfloat zoomdef_;
+  GLfloat neardef_;
+  unsigned int levels_;
+  unsigned int level_;
+  unsigned int level_shift_counts_;
+  unsigned int level_shift_count_;
   double ago_;
   bool paused_;
 
@@ -35,6 +42,7 @@ class Canvas : public View
   Sys*          sys_;
   Gui*          gui_;
   VertexBuffer* vertex_buffer_xyz_;
+  VertexBuffer* vertex_buffer_rgba_;
   VertexBuffer* vertex_buffer_quad_;
   VertexArray*  vertex_array_;
   Shader*       shader_;
@@ -45,12 +53,12 @@ class Canvas : public View
   void Spawn();
   void Respawn();
   void Clear();
-  void Draw(unsigned int size, unsigned int count, VertexArray* va,
-            //const IndexBuffer &ib,
+  void Draw(GLuint instances, GLuint instance_count, VertexArray* va,
             Shader* shader);
   void Next();
   void Pause();
-  void CameraReset();
+  void CameraSet();
+  void CameraDefault();
   void DollyWest();
   void DollySouth();
   void DollyNorth();

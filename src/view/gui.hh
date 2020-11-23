@@ -43,11 +43,13 @@ class Gui
 {
  private:
   GuiState     state_;
+  unsigned int gui_width_;
+  unsigned int gui_height_;
+  bool         control_;
+  unsigned int control_width_;
   double       ago_;
   unsigned int frames_;
   float        fps_;
-  bool         control_;
-  unsigned int control_width_;
 
   bool IsItemJustReleased();
 

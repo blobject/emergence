@@ -23,6 +23,10 @@ Canvas::Canvas(Sys* sys, bool hide_ctrl)
   {
     Util::Err("glewInit");
   }
+  this->levels_ = 10;
+  this->level_ = 1;
+  this->level_shift_counts_ = 5;
+  this->level_shift_count_ = 0;
   this->ago_ = glfwGetTime();
   this->paused_ = false;
 }
@@ -32,26 +36,31 @@ void
 Canvas::Exec()
 {
   DOGL(glEnable(GL_DEPTH_TEST));
+  DOGL(glEnable(GL_BLEND));
+  DOGL(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
 
   Sys* sys = this->sys_;
   State &state = sys->state_;
+  Gui* gui = this->gui_;
 
-  auto w = state.width_;
-  auto h = state.height_;
+  unsigned int w = state.width_;
+  unsigned int h = state.height_;
 
-  float     zoomdef = -3.2f;
+  GLfloat   zoomdef = -3.2f;
+  GLfloat   neardef = -50.0f;
   glm::vec3 dolly = glm::vec3(0.0f, 0.0f, zoomdef);
-  float     panax = 0.0f;
-  float     panay = 0.0f;
-  float     panx = 1.0f;
-  float     pany = 1.0f;
+  GLfloat   panax = 0.0f;
+  GLfloat   panay = 0.0f;
+  GLfloat   panx = 1.0f;
+  GLfloat   pany = 1.0f;
   glm::mat4 view = glm::mat4(1.0f);
   view = glm::translate(view, dolly);
   view = glm::rotate(view, glm::radians(panax), glm::vec3(panx, pany, 1.0f));
-  glm::mat4 orth = glm::ortho(0.0f, (float)w, 0.0f, (float)h, -50.0f, 50.0f);
+  glm::mat4 orth = glm::ortho(0.0f, (GLfloat)w, 0.0f, (GLfloat)h,
+                              neardef, neardef + 100.0f);
   glm::mat4 model = glm::mat4(1.0f);
   glm::mat4 proj = glm::perspective(glm::radians(50.0f),
-                          (float)w / (float)h, 0.1f, 100.0f);
+                                    (GLfloat)w / (GLfloat)h, 0.1f, 100.0f);
   this->dolly_ = dolly;
   this->panax_ = panax;
   this->panay_ = panay;
@@ -62,10 +71,11 @@ Canvas::Exec()
   this->model_ = model;
   this->proj_ = proj;
 
-  this->zoomdef_ = zoomdef;
   this->dollyd_ = 0.05f;
-  this->pand_ = 0.5f;
+  this->pand_ = 1.0f;
   this->zoomd_ = 0.05f;
+  this->zoomdef_ = zoomdef;
+  this->neardef_ = neardef;
 
   this->Spawn();
 
@@ -81,34 +91,37 @@ Canvas::Exec()
 
   auto va = this->vertex_array_;
   auto shader = new Shader();
-  shader->Bind();
-  shader->SetUniformMat4f("mvp", proj * view * model * orth);
   this->shader_ = shader;
+  shader->Bind();
+  shader->SetUniform1f("prad", state.particles_.front().rad);
+  this->CameraSet();
 
   // timing
   double now;
 
   // render loop
-  while (! this->gui_->Closing())
+  while (! gui->Closing())
   {
     // timing
+    /**
     now = glfwGetTime();
     if (now - this->ago_ < 1.0f / 60.0f)
     {
       continue;
     }
     this->ago_ = now;
+    //*/
 
     if (!this->paused_)
     {
       this->Clear();
-      this->Draw(GL_FLOAT, state.num_, va, shader);
+      this->Draw(4, this->level_ * state.num_, va, shader);
       sys->Next();
       this->Next();
     }
 
-    this->gui_->Draw();
-    this->gui_->Next();
+    gui->Draw();
+    gui->Next();
 
     /**
     // profiling
@@ -136,39 +149,44 @@ void
 Canvas::Spawn()
 {
   State &state = this->sys_->state_;
-  // initialise vertex buffers
   auto &particles = state.particles_;
-
-  GLfloat prad = particles[0].rad;
-
-  GLfloat xyz[3 * state.num_];
-  int pindex = 0;
+  auto &ps = this->xyz_;
+  auto &cs = this->rgba_;
+  GLfloat near = this->neardef_;
   for (const Particle &particle : particles)
   {
-    xyz[pindex++] = particle.x;
-    xyz[pindex++] = particle.y;
-    xyz[pindex++] = -50.0f;
+    /* x */ ps.push_back(particle.x);
+    /* y */ ps.push_back(particle.y);
+    /* z */ ps.push_back(near);
+    /* r */ cs.push_back(1.0f);
+    /* g */ cs.push_back(1.0f);
+    /* b */ cs.push_back(1.0f);
+    /* a */ cs.push_back(1.0f);
   }
-
+  GLfloat prad = particles.front().rad;
   GLfloat quad[] = { 0.0f, prad,
                     -prad, 0.0f,
                      prad, 0.0f,
                      0.0f,-prad };
 
-  // gpu buffers
-  auto vbx = new VertexBuffer(xyz, sizeof(xyz));
+  GLfloat* psarray = &ps[0];
+  GLfloat* csarray = &cs[0];
+  auto vbp = new VertexBuffer(psarray, ps.size() * sizeof(float));
+  auto vbc = new VertexBuffer(csarray, cs.size() * sizeof(float));
   auto vbq = new VertexBuffer(quad, sizeof(quad));
   auto va = new VertexArray();
-  va->AddBuffer(0, *vbx, VertexBufferLayout::Make<float>(3));
-  va->AddBuffer(1, *vbq, VertexBufferLayout::Make<float>(2));
+  va->AddBuffer(0, *vbp, VertexBufferAttribs::Gen<GLfloat>(3, 3, 0));
+  va->AddBuffer(1, *vbc, VertexBufferAttribs::Gen<GLfloat>(4, 4, 0));
+  va->AddBuffer(2, *vbq, VertexBufferAttribs::Gen<GLfloat>(2, 2, 0));
 
-  // instancing
-  glVertexAttribDivisor(0, 1);
+  glVertexAttribDivisor(0, 1); // instancing
 
-  vbx->Unbind();
+  vbp->Unbind();
+  vbc->Unbind();
   vbq->Unbind();
   va->Unbind();
-  this->vertex_buffer_xyz_ = vbx;
+  this->vertex_buffer_xyz_ = vbp;
+  this->vertex_buffer_rgba_ = vbc;
   this->vertex_buffer_quad_ = vbq;
   this->vertex_array_ = va;
 }
@@ -180,6 +198,7 @@ void
 Canvas::Respawn()
 {
   delete this->vertex_buffer_xyz_;
+  delete this->vertex_buffer_rgba_;
   delete this->vertex_buffer_quad_;
   delete this->vertex_array_;
   this->Spawn();
@@ -187,12 +206,12 @@ Canvas::Respawn()
 
 
 void
-Canvas::Draw(unsigned int size, unsigned int count, VertexArray* va,
+Canvas::Draw(GLuint instances, GLuint instance_count, VertexArray* va,
              Shader* shader)
 {
   shader->Bind();
   va->Bind();
-  DOGL(glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, size, count));
+  DOGL(glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, instances, instance_count));
 }
 
 
@@ -206,16 +225,103 @@ Canvas::Clear()
 void
 Canvas::Next()
 {
-  State &state = this->sys_->state_;
-  GLfloat xyz[3 * state.num_];
+  auto &particles = this->sys_->state_.particles_;
+  auto &ps = this->xyz_;
+  auto &cs = this->rgba_;
+  auto &vbp = this->vertex_buffer_xyz_;
+  auto &vbc = this->vertex_buffer_rgba_;
+  auto &va = this->vertex_array_;
+  GLfloat near = this->neardef_;
+  bool shift = this->level_shift_count_ == this->level_shift_counts_;
+  int pspan = 3 * particles.size();
+  int cspan = 4 * particles.size();
   int pindex = 0;
-  for (auto &particle : state.particles_)
+  int cindex = 0;
+  unsigned int levels = this->levels_;
+  unsigned int level = this->level_;
+
+  if (shift)
   {
-    xyz[pindex++] = particle.x;
-    xyz[pindex++] = particle.y;
-    xyz[pindex++] = -50.0f;
+    ps.resize(std::min(levels, level + 1) * pspan);
+    cs.resize(std::min(levels, level + 1) * cspan);
   }
-  this->vertex_buffer_xyz_->Update(xyz);
+
+  // insert updated particle positions into the buffer
+  for (auto &particle : particles)
+  {
+    // shift particle levels (ie. represent passage of time via z & a)
+    // x
+    if (shift)
+      for (int i = level; i >= 1; --i)
+        ps[pindex + (i * pspan)] = ps[pindex + ((i - 1) * pspan)];
+    ps[pindex++] = particle.x;
+
+    // y
+    if (shift)
+      for (int i = level; i >= 1; --i)
+        ps[pindex + (i * pspan)] = ps[pindex + ((i - 1) * pspan)];
+    ps[pindex++] = particle.y;
+
+    // z
+    if (shift)
+      for (int i = level; i >= 1; --i)
+        ps[pindex + (i * pspan)] = ps[pindex + ((i - 1) * pspan)] + 1.0f;
+    ps[pindex++] = near;
+
+    // r
+    if (shift)
+      for (int i = level; i >= 1; --i)
+        cs[cindex + (i * cspan)] = cs[cindex + ((i - 1) * cspan)];
+    cs[cindex++] = 1.0f;
+
+    // g
+    if (shift)
+      for (int i = level; i >= 1; --i)
+        cs[cindex + (i * cspan)] = cs[cindex + ((i - 1) * cspan)];
+    cs[cindex++] = 1.0f;
+
+    // b
+    if (shift)
+      for (int i = level; i >= 1; --i)
+        cs[cindex + (i * cspan)] = cs[cindex + ((i - 1) * cspan)];
+    cs[cindex++] = 1.0f;
+
+    // a
+    if (shift)
+      for (int i = level; i >= 1; --i)
+        cs[cindex + (i * cspan)] =
+          static_cast<float>(levels - level) / static_cast<float>(levels);
+    cs[cindex++] = 1.0f;
+  }
+
+  /**
+  for (int i = 0; i < ps.size(); ++i)
+  {
+    if (i % 7 == 0) std::cout << "\n" << i << ":";
+    std::cout << ps[i] << ",";
+  }
+  std::cout << std::endl;
+  //*/
+
+  // restrict size of levels
+  if (shift && level < levels)
+  {
+    ++this->level_;
+  }
+
+  // control when level shift happens
+  ++this->level_shift_count_;
+  if (this->level_shift_count_ > this->level_shift_counts_)
+  {
+    this->level_shift_count_ = 0;
+  }
+
+  GLfloat* psarray = &ps[0];
+  GLfloat* csarray = &cs[0];
+  vbp->Update(psarray, ps.size() * sizeof(float));
+  vbc->Update(csarray, cs.size() * sizeof(float));
+  va->AddBuffer(0, *vbp, VertexBufferAttribs::Gen<GLfloat>(3, 3, 0));
+  va->AddBuffer(1, *vbc, VertexBufferAttribs::Gen<GLfloat>(4, 4, 0));
 }
 
 
@@ -227,7 +333,15 @@ Canvas::Pause()
 
 
 void
-Canvas::CameraReset()
+Canvas::CameraSet()
+{
+  this->shader_->SetUniformMat4f(
+    "mvp", this->proj_ * this->view_ * this->model_ * this->orth_);
+}
+
+
+void
+Canvas::CameraDefault()
 {
   unsigned int w = this->sys_->state_.width_;
   unsigned int h = this->sys_->state_.height_;
@@ -238,14 +352,14 @@ Canvas::CameraReset()
   this->pany_ = 1.0f;
   glm::mat4 view = glm::mat4(1.0f);
   view = glm::translate(view, this->dolly_);
-  this->orth_ = glm::ortho(0.0f, (float)w, 0.0f, (float)h, -50.0f, 50.0f);
+  this->orth_ = glm::ortho(0.0f, (GLfloat)w, 0.0f, (GLfloat)h,
+                           this->neardef_, this->neardef_ + 100.0f);
   this->model_ = glm::mat4(1.0f);
   this->view_ = glm::rotate(view, glm::radians(this->panax_),
                             glm::vec3(this->panx_, this->pany_, 1.0f));
   this->proj_ = glm::perspective(glm::radians(50.0f),
-                                 (float)w / (float)h, 0.1f, 100.0f);
-  this->shader_->SetUniformMat4f(
-    "mvp", this->proj_ * this->view_ * this->model_ * this->orth_);
+                                 (GLfloat)w / (GLfloat)h, 0.1f, 100.0f);
+  this->CameraSet();
 }
 
 
@@ -260,8 +374,7 @@ Canvas::DollyNorth()
   this->view_ = glm::translate(glm::mat4(1.0f), this->dolly_);
   this->view_ = glm::rotate(this->view_, glm::radians(this->panax_), panvx);
   this->view_ = glm::rotate(this->view_, glm::radians(this->panay_), panvy);
-  this->shader_->SetUniformMat4f(
-    "mvp", this->proj_ * this->view_ * this->model_ * this->orth_);
+  this->CameraSet();
 }
 
 
@@ -276,8 +389,7 @@ Canvas::DollyWest()
   this->view_ = glm::translate(glm::mat4(1.0f), this->dolly_);
   this->view_ = glm::rotate(this->view_, glm::radians(this->panax_), panvx);
   this->view_ = glm::rotate(this->view_, glm::radians(this->panay_), panvy);
-  this->shader_->SetUniformMat4f(
-    "mvp", this->proj_ * this->view_ * this->model_ * this->orth_);
+  this->CameraSet();
 }
 
 
@@ -292,8 +404,7 @@ Canvas::DollySouth()
   this->view_ = glm::translate(glm::mat4(1.0f), this->dolly_);
   this->view_ = glm::rotate(this->view_, glm::radians(this->panax_), panvx);
   this->view_ = glm::rotate(this->view_, glm::radians(this->panay_), panvy);
-  this->shader_->SetUniformMat4f(
-    "mvp", this->proj_ * this->view_ * this->model_ * this->orth_);
+  this->CameraSet();
 }
 
 
@@ -308,22 +419,44 @@ Canvas::DollyEast()
   this->view_ = glm::translate(glm::mat4(1.0f), this->dolly_);
   this->view_ = glm::rotate(this->view_, glm::radians(this->panax_), panvx);
   this->view_ = glm::rotate(this->view_, glm::radians(this->panay_), panvy);
-  this->shader_->SetUniformMat4f(
-    "mvp", this->proj_ * this->view_ * this->model_ * this->orth_);
+  this->CameraSet();
 }
 
 
 void
-Canvas::DollyNorthWest() { this->DollyNorth(); this->DollyWest(); }
+Canvas::DollyNorthWest()
+{
+  this->DollyNorth();
+  this->DollyWest();
+  this->CameraSet();
+}
+
 
 void
-Canvas::DollyNorthEast() { this->DollyNorth(); this->DollyEast(); }
+Canvas::DollyNorthEast()
+{
+  this->DollyNorth();
+  this->DollyEast();
+  this->CameraSet();
+}
+
 
 void
-Canvas::DollySouthWest() { this->DollySouth(); this->DollyWest(); }
+Canvas::DollySouthWest()
+{
+  this->DollySouth();
+  this->DollyWest();
+  this->CameraSet();
+}
+
 
 void
-Canvas::DollySouthEast() { this->DollySouth(); this->DollyEast(); }
+Canvas::DollySouthEast()
+{
+  this->DollySouth();
+  this->DollyEast();
+  this->CameraSet();
+}
 
 
 void
@@ -338,8 +471,7 @@ Canvas::PanNorth()
   this->view_ = glm::translate(glm::mat4(1.0f), this->dolly_);
   this->view_ = glm::rotate(this->view_, glm::radians(this->panax_), panvx);
   this->view_ = glm::rotate(this->view_, glm::radians(this->panay_), panvy);
-  this->shader_->SetUniformMat4f(
-    "mvp", this->proj_ * this->view_ * this->model_ * this->orth_);
+  this->CameraSet();
 }
 
 
@@ -355,8 +487,7 @@ Canvas::PanWest()
   this->view_ = glm::translate(glm::mat4(1.0f), this->dolly_);
   this->view_ = glm::rotate(this->view_, glm::radians(this->panax_), panvx);
   this->view_ = glm::rotate(this->view_, glm::radians(this->panay_), panvy);
-  this->shader_->SetUniformMat4f(
-    "mvp", this->proj_ * this->view_ * this->model_ * this->orth_);
+  this->CameraSet();
 }
 
 
@@ -372,8 +503,7 @@ Canvas::PanSouth()
   this->view_ = glm::translate(glm::mat4(1.0f), this->dolly_);
   this->view_ = glm::rotate(this->view_, glm::radians(this->panax_), panvx);
   this->view_ = glm::rotate(this->view_, glm::radians(this->panay_), panvy);
-  this->shader_->SetUniformMat4f(
-    "mvp", this->proj_ * this->view_ * this->model_ * this->orth_);
+  this->CameraSet();
 }
 
 
@@ -389,22 +519,44 @@ Canvas::PanEast()
   this->view_ = glm::translate(glm::mat4(1.0f), this->dolly_);
   this->view_ = glm::rotate(this->view_, glm::radians(this->panax_), panvx);
   this->view_ = glm::rotate(this->view_, glm::radians(this->panay_), panvy);
-  this->shader_->SetUniformMat4f(
-    "mvp", this->proj_ * this->view_ * this->model_ * this->orth_);
+  this->CameraSet();
 }
 
 
 void
-Canvas::PanNorthWest() { this->PanNorth(); this->PanWest(); }
+Canvas::PanNorthWest()
+{
+  this->PanNorth();
+  this->PanWest();
+  this->CameraSet();
+}
+
 
 void
-Canvas::PanNorthEast() { this->PanNorth(); this->PanEast(); }
+Canvas::PanNorthEast()
+{
+  this->PanNorth();
+  this->PanEast();
+  this->CameraSet();
+}
+
 
 void
-Canvas::PanSouthWest() { this->PanSouth(); this->PanWest(); }
+Canvas::PanSouthWest()
+{
+  this->PanSouth();
+  this->PanWest();
+  this->CameraSet();
+}
+
 
 void
-Canvas::PanSouthEast() { this->PanSouth(); this->PanEast(); }
+Canvas::PanSouthEast()
+{
+  this->PanSouth();
+  this->PanEast();
+  this->CameraSet();
+}
 
 
 void
@@ -418,8 +570,7 @@ Canvas::PushIn()
   this->view_ = glm::translate(glm::mat4(1.0f), this->dolly_);
   this->view_ = glm::rotate(this->view_, glm::radians(this->panax_), panvx);
   this->view_ = glm::rotate(this->view_, glm::radians(this->panay_), panvy);
-  this->shader_->SetUniformMat4f(
-    "mvp", this->proj_ * this->view_ * this->model_ * this->orth_);
+  this->CameraSet();
 }
 
 
@@ -434,7 +585,6 @@ Canvas::PullOut()
   this->view_ = glm::translate(glm::mat4(1.0f), this->dolly_);
   this->view_ = glm::rotate(this->view_, glm::radians(this->panax_), panvx);
   this->view_ = glm::rotate(this->view_, glm::radians(this->panay_), panvy);
-  this->shader_->SetUniformMat4f(
-    "mvp", this->proj_ * this->view_ * this->model_ * this->orth_);
+  this->CameraSet();
 }
 

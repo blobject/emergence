@@ -72,10 +72,12 @@ Gui::Gui(GuiState state, Sys* sys, const std::string &version,
     Util::Err("glfwInit");
     return;
   }
+  unsigned int gui_width = 1000;
+  unsigned int gui_height = 1000;
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
   glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-  view = glfwCreateWindow(width, height, ME, NULL, NULL);
+  view = glfwCreateWindow(gui_width, gui_height, ME, NULL, NULL);
   if (! view)
   {
     Util::Err("glfwCreateWindow");
@@ -97,11 +99,13 @@ Gui::Gui(GuiState state, Sys* sys, const std::string &version,
   ImGui::StyleColorsDark();
 
   this->view_ = view;
+  this->gui_width_ = gui_width;
+  this->gui_height_ = gui_height;
+  this->control_ = true;
+  this->control_width_ = 300;
   this->ago_ = glfwGetTime();
   this->frames_ = 0;
   this->fps_ = 0;
-  this->control_ = true;
-  this->control_width_ = 300;
 }
 
 
@@ -176,7 +180,7 @@ Gui::KeyCallback(GLFWwindow* view, int key, int scancode, int action,
     }
     if (key == GLFW_KEY_BACKSPACE)
     {
-      gui->canvas_->CameraReset();
+      gui->canvas_->CameraDefault();
       return;
     }
   }
@@ -199,8 +203,8 @@ Gui::KeyCallback(GLFWwindow* view, int key, int scancode, int action,
   if (key == GLFW_KEY_M) { gui->canvas_->PanSouthWest(); return; }
   if (key == GLFW_KEY_PERIOD) { gui->canvas_->PanSouthEast(); return; }
   // camera translate z
-  if (key == GLFW_KEY_Y) { gui->canvas_->PushIn(); return; }
-  if (key == GLFW_KEY_H) { gui->canvas_->PullOut(); return; }
+  if (key == GLFW_KEY_EQUAL) { gui->canvas_->PushIn(); return; }
+  if (key == GLFW_KEY_MINUS) { gui->canvas_->PullOut(); return; }
 }
 
 
@@ -229,14 +233,14 @@ Gui::IsItemJustReleased()
 void
 Gui::Draw()
 {
-  //double now = glfwGetTime();
-  //++this->frames_;
-  //if (now - this->ago_ >= 1.0)
-  //{
-  //  this->fps_ = this->frames_;
-  //  this->frames_ = 0;
-  //  this->ago_ = now;
-  //}
+  double now = glfwGetTime();
+  ++this->frames_;
+  if (now - this->ago_ >= 1.0)
+  {
+    this->fps_ = this->frames_;
+    this->frames_ = 0;
+    this->ago_ = now;
+  }
 
   ImGui_ImplOpenGL3_NewFrame();
   ImGui_ImplGlfw_NewFrame();
