@@ -5,7 +5,7 @@
 #include "gl.hh"
 #include "gui.hh"
 #include "view.hh"
-#include "../sys/sys.hh"
+#include "../proc/proc.hh"
 
 
 // Canvas: The graphical view.
@@ -39,7 +39,7 @@ class Canvas : public View
   bool paused_;
 
  public:
-  Sys*          sys_;
+  Proc*         proc_;
   Gui*          gui_;
   VertexBuffer* vertex_buffer_xyz_;
   VertexBuffer* vertex_buffer_rgba_;
@@ -47,7 +47,7 @@ class Canvas : public View
   VertexArray*  vertex_array_;
   Shader*       shader_;
 
-  Canvas(Sys* sys, bool hide_ctrl);
+  Canvas(Proc* proc, bool hide_ctrl);
 
   void Exec() override;
   void Spawn();

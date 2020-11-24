@@ -30,19 +30,6 @@ TEST_CASE("Util/RadToDeg")
   REQUIRE(Approx(360) == Util::RadToDeg(6.283185f));
 }
 
-TEST_CASE("Util/ModI")
-{
-  REQUIRE(2 == Util::ModI(7, 5));
-  REQUIRE(3 == Util::ModI(15, 6));
-  REQUIRE(1 == Util::ModI(-9, 5));
-}
-
-TEST_CASE("Util/ModF")
-{
-  REQUIRE(0.5 == Util::ModF(1.5, 1.0));
-  REQUIRE(9.75 == Util::ModF(-20.25, 10.0));
-}
-
 TEST_CASE("Util/Signum")
 {
   REQUIRE(-1 == Util::Signum(-5));

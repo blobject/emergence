@@ -61,9 +61,9 @@ GuiState::Untrue()
 }
 
 
-Gui::Gui(GuiState state, Sys* sys, const std::string &version,
+Gui::Gui(GuiState state, Proc* proc, const std::string &version,
          unsigned int width, unsigned int height)
-  : state_(state), sys_(sys)
+  : state_(state), proc_(proc)
 {
   // glfw
   GLFWwindow* view;

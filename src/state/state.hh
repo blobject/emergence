@@ -45,15 +45,22 @@ struct StateTransport
 class State //: public Subject
 {
  public:
+  /// particle data
+  // location & direction
   std::vector<float> px_;        // volatile
   std::vector<float> py_;        // volatile
   std::vector<float> pf_;        // volatile
-  std::vector<float> ps_;        // volatile
   std::vector<float> pc_;        // volatile
+  std::vector<float> ps_;        // volatile
+  // neighborhood
   std::vector<unsigned int> pn_; // volatile
   std::vector<unsigned int> pl_; // volatile
   std::vector<unsigned int> pr_; // volatile
+  // visualisation
   std::vector<float> prad_;      // adjustable
+  // grid
+  std::vector<int> pgcol_;       // volatile
+  std::vector<int> pgrow_;       // volatile
 
   // sedentary data
   History history_;     // cumulative
@@ -71,9 +78,7 @@ class State //: public Subject
   float        beta_;         // (adjustable) beta in main formula (degrees)
 
   // derived data
-  unsigned int          half_width_;
-  unsigned int          half_height_;
-  float                 scope_squared_;
+  float scope_squared_;
 
   State(const std::string &path);
 

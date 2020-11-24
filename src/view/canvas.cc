@@ -5,12 +5,12 @@
 #include "../util/util.hh"
 
 
-Canvas::Canvas(Sys* sys, bool hide_ctrl)
-  : sys_(sys), shader_(NULL)
+Canvas::Canvas(Proc* proc, bool hide_ctrl)
+  : proc_(proc), shader_(NULL)
 {
-  State &state = sys->state_;
+  State &state = proc->state_;
   auto gui_state = GuiState(state);
-  this->gui_ = new Gui(gui_state, sys, "#version 330 core", state.width_,
+  this->gui_ = new Gui(gui_state, proc, "#version 330 core", state.width_,
                        state.height_);
   this->gui_->SetCanvas(this);
   if (nullptr == this->gui_->view_)
@@ -38,10 +38,12 @@ Canvas::Exec()
   DOGL(glClearColor(0.0f, 0.0f, 0.0f, 0.0f));
   DOGL(glEnable(GL_DEPTH_TEST));
   DOGL(glEnable(GL_BLEND));
-  DOGL(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
+  //DOGL(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
+  DOGL(glBlendFunc(GL_ONE, GL_ONE));
+  DOGL(glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE));
 
-  Sys* sys = this->sys_;
-  State &state = sys->state_;
+  Proc* proc = this->proc_;
+  State &state = proc->state_;
   Gui* gui = this->gui_;
 
   unsigned int w = state.width_;
@@ -117,7 +119,8 @@ Canvas::Exec()
     {
       this->Clear();
       this->Draw(4, this->level_ * state.num_, va, shader);
-      sys->Next();
+      //this->Draw(4, state.num_, va, shader); // DEBUG: draw 2d
+      proc->Next();
       this->Next();
     }
 
@@ -149,7 +152,7 @@ Canvas::Exec()
 void
 Canvas::Spawn()
 {
-  State &state = this->sys_->state_;
+  State &state = this->proc_->state_;
   auto &xyz = this->xyz_;
   auto &rgba = this->rgba_;
   GLfloat near = this->neardef_;
@@ -172,23 +175,23 @@ Canvas::Spawn()
 
   GLfloat* xyzarray = &xyz[0];
   GLfloat* rgbaarray = &rgba[0];
-  VertexBuffer* vbp = new VertexBuffer(xyzarray, xyz.size() * sizeof(float));
-  VertexBuffer* vbc = new VertexBuffer(rgbaarray, rgba.size() * sizeof(float));
-  VertexBuffer* vbq = new VertexBuffer(quad, sizeof(quad));
+  VertexBuffer* vbxyz = new VertexBuffer(xyzarray, xyz.size() * sizeof(float));
+  VertexBuffer* vbrgba = new VertexBuffer(rgbaarray, rgba.size() * sizeof(float));
+  VertexBuffer* vbquad = new VertexBuffer(quad, sizeof(quad));
   VertexArray* va = new VertexArray();
-  va->AddBuffer(0, *vbp, VertexBufferAttribs::Gen<GLfloat>(3, 3, 0));
-  va->AddBuffer(1, *vbc, VertexBufferAttribs::Gen<GLfloat>(4, 4, 0));
-  va->AddBuffer(2, *vbq, VertexBufferAttribs::Gen<GLfloat>(2, 2, 0));
+  va->AddBuffer(0, *vbxyz, VertexBufferAttribs::Gen<GLfloat>(3, 3, 0));
+  va->AddBuffer(1, *vbrgba, VertexBufferAttribs::Gen<GLfloat>(4, 4, 0));
+  va->AddBuffer(2, *vbquad, VertexBufferAttribs::Gen<GLfloat>(2, 2, 0));
 
   glVertexAttribDivisor(0, 1); // instancing
 
-  vbp->Unbind();
-  vbc->Unbind();
-  vbq->Unbind();
+  vbxyz->Unbind();
+  vbrgba->Unbind();
+  vbquad->Unbind();
   va->Unbind();
-  this->vertex_buffer_xyz_ = vbp;
-  this->vertex_buffer_rgba_ = vbc;
-  this->vertex_buffer_quad_ = vbq;
+  this->vertex_buffer_xyz_ = vbxyz;
+  this->vertex_buffer_rgba_ = vbrgba;
+  this->vertex_buffer_quad_ = vbquad;
   this->vertex_array_ = va;
 }
 
@@ -226,21 +229,21 @@ Canvas::Clear()
 void
 Canvas::Next()
 {
-  State &state = this->sys_->state_;
+  State &state = this->proc_->state_;
   unsigned int num = state.num_;
   std::vector<float> &px = state.px_;
   std::vector<float> &py = state.py_;
   std::vector<GLfloat> &xyz = this->xyz_;
   std::vector<GLfloat> &rgba = this->rgba_;
-  VertexBuffer* vbp = this->vertex_buffer_xyz_;
-  VertexBuffer* vbc = this->vertex_buffer_rgba_;
+  VertexBuffer* vbxyz = this->vertex_buffer_xyz_;
+  VertexBuffer* vbrgba = this->vertex_buffer_rgba_;
   VertexArray* va = this->vertex_array_;
   GLfloat near = this->neardef_;
   bool shift = this->level_shift_count_ == this->level_shift_counts_;
   int xyzspan = 3 * num;
   int rgbaspan = 4 * num;
-  int pindex = 0;
-  int cindex = 0;
+  int xyzi = 0;
+  int rgbai = 0;
   unsigned int levels = this->levels_;
   unsigned int level = this->level_;
 
@@ -257,45 +260,45 @@ Canvas::Next()
     // x
     if (shift)
       for (int l = level; l >= 1; --l)
-        xyz[pindex + (l * xyzspan)] = xyz[pindex + ((l - 1) * xyzspan)];
-    xyz[pindex++] = px[p];
+        xyz[xyzi + (l * xyzspan)] = xyz[xyzi + ((l - 1) * xyzspan)];
+    xyz[xyzi++] = px[p];
 
     // y
     if (shift)
       for (int l = level; l >= 1; --l)
-        xyz[pindex + (l * xyzspan)] = xyz[pindex + ((l - 1) * xyzspan)];
-    xyz[pindex++] = py[p];
+        xyz[xyzi + (l * xyzspan)] = xyz[xyzi + ((l - 1) * xyzspan)];
+    xyz[xyzi++] = py[p];
 
     // z
     if (shift)
       for (int l = level; l >= 1; --l)
-        xyz[pindex + (l * xyzspan)] = xyz[pindex + ((l - 1) * xyzspan)] + 1.0f;
-    xyz[pindex++] = near;
+        xyz[xyzi + (l * xyzspan)] = xyz[xyzi + ((l - 1) * xyzspan)] + 1.0f;
+    xyz[xyzi++] = near;
 
     // r
     if (shift)
       for (int l = level; l >= 1; --l)
-        rgba[cindex + (l * rgbaspan)] = rgba[cindex + ((l - 1) * rgbaspan)];
-    rgba[cindex++] = 1.0f;
+        rgba[rgbai + (l * rgbaspan)] = rgba[rgbai + ((l - 1) * rgbaspan)];
+    rgba[rgbai++] = 1.0f;
 
     // g
     if (shift)
       for (int l = level; l >= 1; --l)
-        rgba[cindex + (l * rgbaspan)] = rgba[cindex + ((l - 1) * rgbaspan)];
-    rgba[cindex++] = 1.0f;
+        rgba[rgbai + (l * rgbaspan)] = rgba[rgbai + ((l - 1) * rgbaspan)];
+    rgba[rgbai++] = 1.0f;
 
     // b
     if (shift)
       for (int l = level; l >= 1; --l)
-        rgba[cindex + (l * rgbaspan)] = rgba[cindex + ((l - 1) * rgbaspan)];
-    rgba[cindex++] = 1.0f;
+        rgba[rgbai + (l * rgbaspan)] = rgba[rgbai + ((l - 1) * rgbaspan)];
+    rgba[rgbai++] = 1.0f;
 
     // a
     if (shift)
       for (int l = level; l >= 1; --l)
-        rgba[cindex + (l * rgbaspan)] =
+        rgba[rgbai + (l * rgbaspan)] =
           0.5f - static_cast<float>(level) / levels / 2;
-    rgba[cindex++] = 1.0f;
+    rgba[rgbai++] = 1.0f;
   }
 
   /**
@@ -322,10 +325,10 @@ Canvas::Next()
 
   GLfloat* xyzarray = &xyz[0];
   GLfloat* rgbaarray = &rgba[0];
-  vbp->Update(xyzarray, xyz.size() * sizeof(float));
-  vbc->Update(rgbaarray, rgba.size() * sizeof(float));
-  va->AddBuffer(0, *vbp, VertexBufferAttribs::Gen<GLfloat>(3, 3, 0));
-  va->AddBuffer(1, *vbc, VertexBufferAttribs::Gen<GLfloat>(4, 4, 0));
+  vbxyz->Update(xyzarray, xyz.size() * sizeof(float));
+  vbrgba->Update(rgbaarray, rgba.size() * sizeof(float));
+  va->AddBuffer(0, *vbxyz, VertexBufferAttribs::Gen<GLfloat>(3, 3, 0));
+  va->AddBuffer(1, *vbrgba, VertexBufferAttribs::Gen<GLfloat>(4, 4, 0));
 }
 
 
@@ -347,8 +350,8 @@ Canvas::CameraSet()
 void
 Canvas::CameraDefault()
 {
-  unsigned int w = this->sys_->state_.width_;
-  unsigned int h = this->sys_->state_.height_;
+  unsigned int w = this->proc_->state_.width_;
+  unsigned int h = this->proc_->state_.height_;
   this->dolly_ = glm::vec3(0.0f, 0.0f, this->zoomdef_);
   this->panax_ = 0.0f;
   this->panay_ = 0.0f;

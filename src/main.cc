@@ -8,7 +8,7 @@
 
 #include "util/common.hh"
 #include "util/util.hh"
-#include "sys/sys.hh"
+#include "proc/proc.hh"
 #include "view/view.hh"
 
 
@@ -36,9 +36,9 @@ main(int argc, char* argv[])
 
   // main objects
   State state = State(load);
-  Sys sys = Sys(state);
+  Proc proc = Proc(state);
   std::unique_ptr<View> view = std::move(
-    View::Init(&sys, visual, hidectrl));
+    View::Init(&proc, visual, hidectrl));
 
   // main execution
   //Util::SaveState(&state, "foosave");
@@ -58,8 +58,8 @@ Help()
             + "Primordial particle system visualiser/processor.\n\n"
             + "Options:\n"
             + "  -f FILE  supply an initial state\n"
-            + "  -c       run in headless mode\n"
-            + "  -i       hide the visualiser controls\n"
+            + "  -g       run in headless mode\n"
+            + "  -c       hide the visualiser controls\n"
             + "  -v       show version\n"
             + "  -h       show this help");
 }
@@ -81,8 +81,8 @@ Args(int argc, char* argv[])
   {
     switch (opt)
     {
-      case 'c': opts["headless"] = "y"; break;
-      case 'u': opts["hidectrl"] = "y"; break;
+      case 'g': opts["headless"] = "y"; break;
+      case 'c': opts["hidectrl"] = "y"; break;
       case 'v': opts["quit"] = "version";  opts["return"] =  "0"; break;
       case 'h': opts["quit"] = "help";     opts["return"] =  "0"; break;
       case ':': opts["quit"] = "bad_file"; opts["return"] = "-1"; break;

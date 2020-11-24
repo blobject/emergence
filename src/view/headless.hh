@@ -1,7 +1,7 @@
 #pragma once
 
 #include "view.hh"
-#include "../sys/sys.hh"
+#include "../proc/proc.hh"
 
 
 // Headless: The non-graphical (commandline-only) view.
@@ -9,9 +9,9 @@
 class Headless : public View
 {
  public:
-  Sys* sys_;
+  Proc* proc_;
 
-  Headless(Sys* sys);
+  Headless(Proc* proc);
 
   void Exec() override;
 };

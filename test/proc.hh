@@ -1,4 +1,4 @@
-#include "../src/sys/sys.hh"
+#include "../src/proc/proc.hh"
 
 TEST_CASE()
 {

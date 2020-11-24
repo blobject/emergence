@@ -3,7 +3,7 @@
 #include <GLFW/glfw3.h>
 
 #include "canvas.hh"
-#include "../sys/sys.hh"
+#include "../proc/proc.hh"
 #include "../util/util.hh"
 
 
@@ -54,11 +54,11 @@ class Gui
   bool IsItemJustReleased();
 
  public:
-  Sys*        sys_;
+  Proc*       proc_;
   Canvas*     canvas_;
   GLFWwindow* view_;
 
-  Gui(GuiState state, Sys* sys, const std::string &version,
+  Gui(GuiState state, Proc* proc, const std::string &version,
       unsigned int width, unsigned int height);
   ~Gui();
 

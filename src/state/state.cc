@@ -25,12 +25,11 @@ State::State(const std::string &load)
   this->beta_ =  0.296705972839036L; // 17 degrees
   this->scope_ = 24.0f;
   this->speed_ = 4.0f;
-  this->Spawn();
 
   // derived
-  this->half_width_ = this->width_ / 2;
-  this->half_height_ = this->height_ / 2;
   this->scope_squared_ = this->scope_ * this->scope_;
+
+  this->Spawn(); // particles
 
   if (! load.empty())
   {
@@ -55,12 +54,14 @@ State::Spawn()
     this->px_.push_back(Util::Distribute<float>(dist, 0.0f, static_cast<float>(w)));
     this->py_.push_back(Util::Distribute<float>(dist, 0.0f, static_cast<float>(h)));
     this->pf_.push_back(Util::Distribute<float>(dist, 0.0f, TAU));
-    this->ps_.push_back(sinf(this->pf_[i]));
     this->pc_.push_back(cosf(this->pf_[i]));
+    this->ps_.push_back(sinf(this->pf_[i]));
     this->pn_.push_back(0);
     this->pl_.push_back(0);
     this->pr_.push_back(0);
     this->prad_.push_back(rad);
+    this->pgcol_.push_back(0);
+    this->pgrow_.push_back(0);
   }
 }
 
@@ -101,8 +102,6 @@ State::Change(StateTransport &next)
   this->colorscheme_ = next.colorscheme;
 
   // derived
-  this->half_width_ = next.width / 2;
-  this->half_height_ = next.height / 2;
   this->scope_squared_ = next.scope * next.scope;
 
   if (respawn)
@@ -121,12 +120,14 @@ State::Respawn()
   this->px_.clear();
   this->py_.clear();
   this->pf_.clear();
-  this->ps_.clear();
   this->pc_.clear();
+  this->ps_.clear();
   this->pn_.clear();
   this->pl_.clear();
   this->pr_.clear();
   this->prad_.clear();
+  this->pgcol_.clear();
+  this->pgrow_.clear();
   this->Spawn();
   //std::vector<Particle>().swap(this->particles_); // resize to fit
 }

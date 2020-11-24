@@ -40,8 +40,6 @@ class Util
   template<> float Distribute<float>(Distribution d, float a, float b);
   static float DegToRad(float d);
   static float RadToDeg(float r);
-  static int   ModI(int n, int m);
-  static float ModF(float n, float m);
   static int   Signum(int n);
 
   // string.cc

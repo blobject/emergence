@@ -2,6 +2,6 @@
 
 #include <catch2/catch.hpp>
 
-#include "sys.hh"
+#include "proc.hh"
 #include "util.hh"
 
