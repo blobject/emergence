@@ -23,7 +23,7 @@ Canvas::Canvas(Sys* sys, bool hide_ctrl)
   {
     Util::Err("glewInit");
   }
-  this->levels_ = 10;
+  this->levels_ = 50;
   this->level_ = 1;
   this->level_shift_counts_ = 5;
   this->level_shift_count_ = 0;
@@ -35,6 +35,7 @@ Canvas::Canvas(Sys* sys, bool hide_ctrl)
 void
 Canvas::Exec()
 {
+  DOGL(glClearColor(0.0f, 0.0f, 0.0f, 0.0f));
   DOGL(glEnable(GL_DEPTH_TEST));
   DOGL(glEnable(GL_BLEND));
   DOGL(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
@@ -93,7 +94,7 @@ Canvas::Exec()
   auto shader = new Shader();
   this->shader_ = shader;
   shader->Bind();
-  shader->SetUniform1f("prad", state.particles_.front().rad);
+  shader->SetUniform1f("prad", state.prad_.front());
   this->CameraSet();
 
   // timing
@@ -112,7 +113,7 @@ Canvas::Exec()
     this->ago_ = now;
     //*/
 
-    if (!this->paused_)
+    if (! this->paused_)
     {
       this->Clear();
       this->Draw(4, this->level_ * state.num_, va, shader);
@@ -149,32 +150,32 @@ void
 Canvas::Spawn()
 {
   State &state = this->sys_->state_;
-  auto &particles = state.particles_;
-  auto &ps = this->xyz_;
-  auto &cs = this->rgba_;
+  auto &xyz = this->xyz_;
+  auto &rgba = this->rgba_;
   GLfloat near = this->neardef_;
-  for (const Particle &particle : particles)
+  for (int i = 0; i < state.num_; ++i)
   {
-    /* x */ ps.push_back(particle.x);
-    /* y */ ps.push_back(particle.y);
-    /* z */ ps.push_back(near);
-    /* r */ cs.push_back(1.0f);
-    /* g */ cs.push_back(1.0f);
-    /* b */ cs.push_back(1.0f);
-    /* a */ cs.push_back(1.0f);
+    /* x */ xyz.push_back(state.px_[i]);
+    /* y */ xyz.push_back(state.py_[i]);
+    /* z */ xyz.push_back(near);
+    /* r */ rgba.push_back(1.0f);
+    /* g */ rgba.push_back(1.0f);
+    /* b */ rgba.push_back(1.0f);
+    /* a */ rgba.push_back(1.0f);
   }
-  GLfloat prad = particles.front().rad;
+  // TODO: dynamic particle radii
+  GLfloat prad = state.prad_.front();
   GLfloat quad[] = { 0.0f, prad,
                     -prad, 0.0f,
                      prad, 0.0f,
                      0.0f,-prad };
 
-  GLfloat* psarray = &ps[0];
-  GLfloat* csarray = &cs[0];
-  auto vbp = new VertexBuffer(psarray, ps.size() * sizeof(float));
-  auto vbc = new VertexBuffer(csarray, cs.size() * sizeof(float));
-  auto vbq = new VertexBuffer(quad, sizeof(quad));
-  auto va = new VertexArray();
+  GLfloat* xyzarray = &xyz[0];
+  GLfloat* rgbaarray = &rgba[0];
+  VertexBuffer* vbp = new VertexBuffer(xyzarray, xyz.size() * sizeof(float));
+  VertexBuffer* vbc = new VertexBuffer(rgbaarray, rgba.size() * sizeof(float));
+  VertexBuffer* vbq = new VertexBuffer(quad, sizeof(quad));
+  VertexArray* va = new VertexArray();
   va->AddBuffer(0, *vbp, VertexBufferAttribs::Gen<GLfloat>(3, 3, 0));
   va->AddBuffer(1, *vbc, VertexBufferAttribs::Gen<GLfloat>(4, 4, 0));
   va->AddBuffer(2, *vbq, VertexBufferAttribs::Gen<GLfloat>(2, 2, 0));
@@ -225,16 +226,19 @@ Canvas::Clear()
 void
 Canvas::Next()
 {
-  auto &particles = this->sys_->state_.particles_;
-  auto &ps = this->xyz_;
-  auto &cs = this->rgba_;
-  auto &vbp = this->vertex_buffer_xyz_;
-  auto &vbc = this->vertex_buffer_rgba_;
-  auto &va = this->vertex_array_;
+  State &state = this->sys_->state_;
+  unsigned int num = state.num_;
+  std::vector<float> &px = state.px_;
+  std::vector<float> &py = state.py_;
+  std::vector<GLfloat> &xyz = this->xyz_;
+  std::vector<GLfloat> &rgba = this->rgba_;
+  VertexBuffer* vbp = this->vertex_buffer_xyz_;
+  VertexBuffer* vbc = this->vertex_buffer_rgba_;
+  VertexArray* va = this->vertex_array_;
   GLfloat near = this->neardef_;
   bool shift = this->level_shift_count_ == this->level_shift_counts_;
-  int pspan = 3 * particles.size();
-  int cspan = 4 * particles.size();
+  int xyzspan = 3 * num;
+  int rgbaspan = 4 * num;
   int pindex = 0;
   int cindex = 0;
   unsigned int levels = this->levels_;
@@ -242,63 +246,63 @@ Canvas::Next()
 
   if (shift)
   {
-    ps.resize(std::min(levels, level + 1) * pspan);
-    cs.resize(std::min(levels, level + 1) * cspan);
+    xyz.resize(std::min(levels, level + 1) * xyzspan);
+    rgba.resize(std::min(levels, level + 1) * rgbaspan);
   }
 
   // insert updated particle positions into the buffer
-  for (auto &particle : particles)
+  for (int p = 0; p < num; ++p)
   {
     // shift particle levels (ie. represent passage of time via z & a)
     // x
     if (shift)
-      for (int i = level; i >= 1; --i)
-        ps[pindex + (i * pspan)] = ps[pindex + ((i - 1) * pspan)];
-    ps[pindex++] = particle.x;
+      for (int l = level; l >= 1; --l)
+        xyz[pindex + (l * xyzspan)] = xyz[pindex + ((l - 1) * xyzspan)];
+    xyz[pindex++] = px[p];
 
     // y
     if (shift)
-      for (int i = level; i >= 1; --i)
-        ps[pindex + (i * pspan)] = ps[pindex + ((i - 1) * pspan)];
-    ps[pindex++] = particle.y;
+      for (int l = level; l >= 1; --l)
+        xyz[pindex + (l * xyzspan)] = xyz[pindex + ((l - 1) * xyzspan)];
+    xyz[pindex++] = py[p];
 
     // z
     if (shift)
-      for (int i = level; i >= 1; --i)
-        ps[pindex + (i * pspan)] = ps[pindex + ((i - 1) * pspan)] + 1.0f;
-    ps[pindex++] = near;
+      for (int l = level; l >= 1; --l)
+        xyz[pindex + (l * xyzspan)] = xyz[pindex + ((l - 1) * xyzspan)] + 1.0f;
+    xyz[pindex++] = near;
 
     // r
     if (shift)
-      for (int i = level; i >= 1; --i)
-        cs[cindex + (i * cspan)] = cs[cindex + ((i - 1) * cspan)];
-    cs[cindex++] = 1.0f;
+      for (int l = level; l >= 1; --l)
+        rgba[cindex + (l * rgbaspan)] = rgba[cindex + ((l - 1) * rgbaspan)];
+    rgba[cindex++] = 1.0f;
 
     // g
     if (shift)
-      for (int i = level; i >= 1; --i)
-        cs[cindex + (i * cspan)] = cs[cindex + ((i - 1) * cspan)];
-    cs[cindex++] = 1.0f;
+      for (int l = level; l >= 1; --l)
+        rgba[cindex + (l * rgbaspan)] = rgba[cindex + ((l - 1) * rgbaspan)];
+    rgba[cindex++] = 1.0f;
 
     // b
     if (shift)
-      for (int i = level; i >= 1; --i)
-        cs[cindex + (i * cspan)] = cs[cindex + ((i - 1) * cspan)];
-    cs[cindex++] = 1.0f;
+      for (int l = level; l >= 1; --l)
+        rgba[cindex + (l * rgbaspan)] = rgba[cindex + ((l - 1) * rgbaspan)];
+    rgba[cindex++] = 1.0f;
 
     // a
     if (shift)
-      for (int i = level; i >= 1; --i)
-        cs[cindex + (i * cspan)] =
-          static_cast<float>(levels - level) / static_cast<float>(levels);
-    cs[cindex++] = 1.0f;
+      for (int l = level; l >= 1; --l)
+        rgba[cindex + (l * rgbaspan)] =
+          0.5f - static_cast<float>(level) / levels / 2;
+    rgba[cindex++] = 1.0f;
   }
 
   /**
-  for (int i = 0; i < ps.size(); ++i)
+  for (int i = 0; i < rgba.size(); ++i)
   {
-    if (i % 7 == 0) std::cout << "\n" << i << ":";
-    std::cout << ps[i] << ",";
+    if (i % 4 == 0) std::cout << "\n" << i << ":";
+    std::cout << rgba[i] << ",";
   }
   std::cout << std::endl;
   //*/
@@ -316,10 +320,10 @@ Canvas::Next()
     this->level_shift_count_ = 0;
   }
 
-  GLfloat* psarray = &ps[0];
-  GLfloat* csarray = &cs[0];
-  vbp->Update(psarray, ps.size() * sizeof(float));
-  vbc->Update(csarray, cs.size() * sizeof(float));
+  GLfloat* xyzarray = &xyz[0];
+  GLfloat* rgbaarray = &rgba[0];
+  vbp->Update(xyzarray, xyz.size() * sizeof(float));
+  vbc->Update(rgbaarray, rgba.size() * sizeof(float));
   va->AddBuffer(0, *vbp, VertexBufferAttribs::Gen<GLfloat>(3, 3, 0));
   va->AddBuffer(1, *vbc, VertexBufferAttribs::Gen<GLfloat>(4, 4, 0));
 }
@@ -328,7 +332,7 @@ Canvas::Next()
 void
 Canvas::Pause()
 {
-  this->paused_ = !this->paused_;
+  this->paused_ = ! this->paused_;
 }
 
 

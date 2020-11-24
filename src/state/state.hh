@@ -10,27 +10,6 @@
 enum class Distribution { UNIFORM = 0, GAUSSIAN = 1 };
 
 
-// Particle: A particle in the primordial particle system.
-
-struct Particle
-{
-  // transportable data
-  float x;        // volatile
-  float y;        // volatile
-  float phi;      // volatile
-  unsigned int n; // volatile
-  unsigned int l; // volatile
-  unsigned int r; // volatile
-  float s;        // volatile
-  float c;        // volatile
-  float rad;      // adjustable
-
-  Particle(Distribution distribution,
-           unsigned int width,
-           unsigned int height);
-};
-
-
 // History: Record of particle system instances.
 
 class History
@@ -66,7 +45,15 @@ struct StateTransport
 class State //: public Subject
 {
  public:
-  std::vector<Particle> particles_; // volatile/adjustable
+  std::vector<float> px_;        // volatile
+  std::vector<float> py_;        // volatile
+  std::vector<float> pf_;        // volatile
+  std::vector<float> ps_;        // volatile
+  std::vector<float> pc_;        // volatile
+  std::vector<unsigned int> pn_; // volatile
+  std::vector<unsigned int> pl_; // volatile
+  std::vector<unsigned int> pr_; // volatile
+  std::vector<float> prad_;      // adjustable
 
   // sedentary data
   History history_;     // cumulative
@@ -90,6 +77,7 @@ class State //: public Subject
 
   State(const std::string &path);
 
+  void Spawn();
   bool Change(StateTransport &next);
   void Respawn();
 };

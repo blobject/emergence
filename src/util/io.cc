@@ -132,6 +132,7 @@ Util::LoadState(State &state, const std::string &path)
     unsigned int y;
     float phi;
     unsigned rad;
+    /**
     state.particles_.clear();
     while (std::getline(stream, line))
     {
@@ -154,6 +155,7 @@ Util::LoadState(State &state, const std::string &path)
         (1000, Particle(state.distribution_, state.width_,
                         state.height_));
     }
+    //*/
   }
   else
   {
@@ -168,6 +170,7 @@ Util::LoadState(State &state, const std::string &path)
 bool
 Util::SaveState(State &state, const std::string &path)
 {
+  /**
   std::ofstream stream(path);
   if (stream)
   {
@@ -192,6 +195,7 @@ Util::SaveState(State &state, const std::string &path)
   {
     return false;
   }
+  //*/
   return true;
 }
 

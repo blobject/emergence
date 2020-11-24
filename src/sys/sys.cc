@@ -1,5 +1,4 @@
 #include <GL/glew.h>
-#include <thread>
 
 #include "sys.hh"
 #include "../util/common.hh"
@@ -9,57 +8,21 @@
 Sys::Sys(State &state)
   : state_(state)
 {
-  this->InitCl();
-  this->InitGrid();
+  this->cl_ = new Cl();
+  this->cl_good_ = this->cl_->Good();
+  if (! this->cl_good_)
+  {
+    Util::Out("Proceeding without OpenCL parallelisation.");
+  }
+  this->GenGrid();
 }
 
 
-// InitCl: Initialise OpenCL.
+// GenGrid: Make the neighborhood grid.
 
 void
-Sys::InitCl()
+Sys::GenGrid()
 {
-  std::vector<cl::Platform> platforms;
-  std::vector<cl::Device> devices;
-
-  cl::Platform::get(&platforms);
-  if (0 == platforms.size())
-  {
-    Util::Err("no cl platforms found.");
-    return;
-  }
-  this->cl_platform_ = platforms.front();
-  for (auto &platform : platforms)
-  {
-    if ("FULL_PROFILE" != platform.getInfo<CL_PLATFORM_PROFILE>())
-    {
-      continue;
-    }
-    this->cl_platform_ = platform;
-    platform.getDevices(CL_DEVICE_TYPE_GPU, &devices);
-    if (0 == devices.size())
-    {
-      continue;
-    }
-    this->cl_device_ = devices.front();
-    break;
-  }
-  if (this->cl_device_.getInfo<CL_DEVICE_NAME>().empty())
-  {
-    Util::Err("no cl devices found.");
-    return;
-  }
-
-  this->ExecCl();
-}
-
-
-// Reset: Make the neighborhood grid.
-
-void
-Sys::InitGrid()
-{
-  auto &ps = this->state_.particles_;
   unsigned int width = this->state_.width_;
   unsigned int height = this->state_.height_;
   unsigned int scope = this->state_.scope_;
@@ -77,68 +40,7 @@ Sys::InitGrid()
     rows = floor(height / scope);
     unit_height = height / static_cast<float>(cols);
   }
-  this->grid_ = Grid (cols, std::vector<std::vector<unsigned int> >(rows));
-}
-
-
-// ExecCl: Compute using the GPU.
-
-void
-Sys::ExecCl()
-{
-  /**
-  std::string source =
-    "__kernel void\n"
-    "foo(\n"
-    "  uint n,\n"
-    "  __global const float* a,\n"
-    "  __global const float* b,\n"
-    "  __global float* c)\n"
-    "{\n"
-    "  int i = get_global_id(0);\n"
-    "  if (i < n)\n"
-    "  {\n"
-    "    c[i] = a[i] + b[i];\n"
-    "  }\n"
-    "}\n";
-  const int N = 1 << 4;
-  try
-  {
-    cl::Context context(this->cl_device_);
-    cl::CommandQueue queue(context, this->cl_device_);
-    cl::Program program(context, source, CL_TRUE);
-    cl::Kernel foo(program, "foo");
-    std::vector<float> a(N, 12);
-    std::vector<float> b(N, 30);
-    std::vector<float> c(N);
-    cl::Buffer A(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-                a.size() * sizeof(float), a.data());
-    cl::Buffer B(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-                b.size() * sizeof(float), b.data());
-    cl::Buffer C(context, CL_MEM_READ_WRITE, c.size() * sizeof(float));
-    foo.setArg(0, static_cast<cl_int>(N));
-    foo.setArg(1, A);
-    foo.setArg(2, B);
-    foo.setArg(3, C);
-    queue.enqueueNDRangeKernel(foo, cl::NullRange, N, cl::NullRange);
-    queue.enqueueReadBuffer(C, CL_TRUE, 0, c.size() * sizeof(float), c.data());
-    for (int i = 0; i < c.size(); i++)
-    {
-      std::cout << c[i] << ", ";
-    }
-    std::cout << std::endl;
-  }
-  catch (cl_int err) {
-    std::cout << "Exception\n";
-    std::cerr << "ERROR: " << err << std::endl;
-  }
-  //*/
-}
-
-
-void
-Sys::ClSeek()
-{
+  this->grid_ = Grid(cols, std::vector<std::vector<unsigned int> >(rows));
 }
 
 
@@ -148,8 +50,39 @@ void
 Sys::Next()
 {
   this->Reset();
-  this->Seek();
-  this->Move();
+  if (this->cl_good_)
+  {
+    this->Seek();
+    this->Move();
+    return;
+  }
+  this->PlainSeek();
+  this->PlainMove();
+}
+
+
+// Seek: Calculate new N, L, R for each particle.
+
+void
+Sys::Seek()
+{
+  this->PlainSeek();
+  this->cl_->Seek();
+}
+
+
+// Move: Update position and direction of particles.
+
+void
+Sys::Move()
+{
+  State &state = this->state_;
+  //this->PlainMove();
+  this->cl_->Move(state.num_, state.px_, state.py_,
+                  state.pf_, state.ps_, state.pc_,
+                  state.pn_, state.pl_, state.pr_,
+                  state.width_, state.height_,
+                  state.alpha_, state.beta_, state.speed_);
 }
 
 
@@ -158,13 +91,19 @@ Sys::Next()
 void
 Sys::Reset()
 {
-  auto &ps = this->state_.particles_;
-  auto &grid = this->grid_;
-  for (auto &p : ps)
+  State &state = this->state_;
+  std::vector<float> &px = state.px_;
+  std::vector<float> &py = state.py_;
+  std::vector<unsigned int> &pn = state.pn_;
+  std::vector<unsigned int> &pl = state.pl_;
+  std::vector<unsigned int> &pr = state.pr_;
+  unsigned int num = state.num_;
+  Grid &grid = this->grid_;
+  for (int i = 0; i < num; ++i)
   {
-    p.n = 0;
-    p.l = 0;
-    p.r = 0;
+    pn[i] = 0;
+    pl[i] = 0;
+    pr[i] = 0;
   }
   for (auto &col : grid)
   {
@@ -179,10 +118,10 @@ Sys::Reset()
   unsigned int row;
   float unit_width = this->state_.width_ / static_cast<float>(cols);
   float unit_height = this->state_.height_ / static_cast<float>(rows);
-  for (unsigned int i = 0; i < ps.size(); ++i)
+  for (unsigned int i = 0; i < num; ++i)
   {
-    col = floor(ps[i].x / unit_width);
-    row = floor(ps[i].y / unit_height);
+    col = floor(px[i] / unit_width);
+    row = floor(py[i] / unit_height);
     if (col >= cols) { col -= cols; }
     if (row >= rows) { row -= rows; }
     grid[col][row].push_back(i);
@@ -190,26 +129,23 @@ Sys::Reset()
 }
 
 
-// Seek: For each particle calculate new N, L, R.
+// PlainSeek: Non-CL version of Seek.
 
 void
-Sys::Seek()
+Sys::PlainSeek()
 {
-  auto &ps = this->state_.particles_;
-  auto &grid = this->grid_;
+  Grid &grid = this->grid_;
   unsigned int cols = grid.size();
   unsigned int rows = grid[0].size();
 
-  this->SeekFrom(ps, grid, cols, rows);
-  //this->ClSeek();
+  this->SeekFrom(grid, cols, rows);
 }
 
 
-// SeekFrom: Seek() helper, loop through each particle.
+// SeekFrom: PlainSeek() helper, loop through each particle.
 
 void
-Sys::SeekFrom(std::vector<Particle> &ps, Grid &grid,
-              unsigned int cols, unsigned int rows)
+Sys::SeekFrom(Grid &grid, unsigned int cols, unsigned int rows)
 {
   for (unsigned int col = 0; col < cols; ++col)
   {
@@ -218,18 +154,18 @@ Sys::SeekFrom(std::vector<Particle> &ps, Grid &grid,
       // for each particle index
       for (unsigned int p = 0; p < grid[col][row].size(); ++p)
       {
-        this->SeekTo(ps, grid, col, row, cols, rows, grid[col][row][p]);
+        this->SeekTo(grid, col, row, cols, rows, grid[col][row][p]);
       }
     }
   }
 }
 
 
-// SeekTo: Seek() helper, loop through every other particle in the grid
+// SeekTo: PlainSeek() helper, loop through every other particle in the grid
 //         neighborhood.
 
 void
-Sys::SeekTo(std::vector<Particle> &ps, Grid &grid,
+Sys::SeekTo(Grid &grid,
             unsigned int col,  unsigned int row,
             unsigned int cols, unsigned int rows,
             unsigned int srci)
@@ -259,19 +195,18 @@ Sys::SeekTo(std::vector<Particle> &ps, Grid &grid,
       std::vector<unsigned int> &unit = grid[c][r];
       for (unsigned int p : unit)
       {
-        this->SeekTally(ps, srci, p, c_under, c_over, r_under, r_over);
+        this->SeekTally(srci, p, c_under, c_over, r_under, r_over);
       }
     }
   }
 }
 
 
-// SeekTally: Seek() helper that updates N, L, R given the two particles given
-//            respectively by SeekFrom() and SeekTo().
+// SeekTally: PlainSeek() helper that updates N, L, R given the two particles
+//            given respectively by SeekFrom() and SeekTo().
 
 void
-Sys::SeekTally(std::vector<Particle> &ps,
-               unsigned int srci, unsigned int dsti,
+Sys::SeekTally(unsigned int srci, unsigned int dsti,
                bool c_under, bool c_over, bool r_under, bool r_over)
 {
   // avoid redundant calculations
@@ -280,15 +215,18 @@ Sys::SeekTally(std::vector<Particle> &ps,
     return;
   }
 
-  Particle &src = ps[srci];
-  Particle &dst = ps[dsti];
+  State &state = this->state_;
+  float srcx = state.px_[srci];
+  float srcy = state.py_[srci];
+  float dstx = state.px_[dsti];
+  float dsty = state.py_[dsti];
   int width = this->state_.width_;
   int height = this->state_.height_;
-  int dx = dst.x - src.x;
-  if      (c_under) { dx = -1 * Util::ModI(src.x - dst.x, width); }
+  int dx = dstx - srcx;
+  if      (c_under) { dx = -1 * Util::ModI(srcx - dstx, width); }
   else if (c_over)  { dx = Util::ModI(dx, width); }
-  int dy = dst.y - src.y;
-  if      (r_under) { dy = -1 * Util::ModI(src.y - dst.y, height); }
+  int dy = dsty - srcy;
+  if      (r_under) { dy = -1 * Util::ModI(srcy - dsty, height); }
   else if (r_over)  { dy = Util::ModI(dy, height); }
 
   // ignore comparisons outside the neighborhood radius (approx. scope)
@@ -297,35 +235,49 @@ Sys::SeekTally(std::vector<Particle> &ps,
     return;
   }
 
-  ++src.n;
-  ++dst.n;
-  if (0.0f > (dx * src.s) - (dy * src.c)) { ++src.r; }
-  else                                    { ++src.l; }
-  if (0.0f < (dx * dst.s) - (dy * dst.c)) { ++dst.r; }
-  else                                    { ++dst.l; }
+  ++state.pn_[srci];
+  ++state.pn_[dsti];
+  float srcs = state.ps_[srci];
+  float srcc = state.pc_[srci];
+  float dsts = state.ps_[dsti];
+  float dstc = state.pc_[dsti];
+  if (0.0f > (dx * srcs) - (dy * srcc)) { ++state.pr_[srci]; }
+  else                                    { ++state.pl_[srci]; }
+  if (0.0f < (dx * dsts) - (dy * dstc)) { ++state.pr_[dsti]; }
+  else                                    { ++state.pl_[dsti]; }
 }
 
 
-// Move: Update particles' location and direction.
+// PlainMove: Non-CL version of Move.
 
 void
-Sys::Move()
+Sys::PlainMove()
 {
-  float width = this->state_.width_;
-  float height = this->state_.height_;
-  float alpha = this->state_.alpha_;
-  float beta = this->state_.beta_;
-  float speed = this->state_.speed_;
+  State &state = this->state_;
+  float width = state.width_;
+  float height = state.height_;
+  float alpha = state.alpha_;
+  float beta = state.beta_;
+  float speed = state.speed_;
+  std::vector<float> &px = state.px_;
+  std::vector<float> &py = state.py_;
+  std::vector<float> &pf = state.pf_;
+  std::vector<float> &ps = state.ps_;
+  std::vector<float> &pc = state.pc_;
+  std::vector<unsigned int> &pn = state.pn_;
+  std::vector<unsigned int> &pl = state.pl_;
+  std::vector<unsigned int> &pr = state.pr_;
 
-  for (auto &p : this->state_.particles_)
+  for (int i = 0; i < state.num_; ++i)
   {
-    p.phi = Util::ModF(p.phi + alpha
-                       + (beta * p.n
-                          * Util::Signum(static_cast<int>(p.r - p.l))), TAU);
-    p.s = sinf(p.phi);
-    p.c = cosf(p.phi);
-    p.x = Util::ModI(p.x + static_cast<int>(speed * p.c), width);
-    p.y = Util::ModI(p.y + static_cast<int>(speed * p.s), height);
+    pf[i] = Util::ModF(pf[i] + alpha
+                       + (beta * pn[i]
+                          * Util::Signum(static_cast<int>(pr[i] - pl[i]))),
+                       TAU);
+    ps[i] = sinf(pf[i]);
+    pc[i] = cosf(pf[i]);
+    px[i] = Util::ModF(px[i] + speed * pc[i], width);
+    py[i] = Util::ModF(py[i] + speed * ps[i], height);
   }
 }
 

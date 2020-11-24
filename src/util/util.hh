@@ -19,7 +19,6 @@
 class Util
 {
  public:
-
   // debug.cc
   static void DebugCl(cl_int err, const std::string &name);
   static void PrepDebugGl();
@@ -36,16 +35,14 @@ class Util
   static bool SaveState(State &state, const std::string &path);
 
   // math.cc
+  template<typename T> static T Distribute(Distribution d, T a, T b);
+  template<> int   Distribute<int>(Distribution d, int a, int b);
+  template<> float Distribute<float>(Distribution d, float a, float b);
   static float DegToRad(float d);
   static float RadToDeg(float r);
   static int   ModI(int n, int m);
   static float ModF(float n, float m);
   static int   Signum(int n);
-
-  // random.cc
-  template<typename T> static T Distribute(T a, T b);
-  template<> int                Distribute<int>(int a, int b);
-  template<> float              Distribute<float>(float a, float b);
 
   // string.cc
   static std::string Relative(const std::string &path);

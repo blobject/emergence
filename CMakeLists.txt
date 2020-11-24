@@ -25,7 +25,9 @@ add_library(imgui OBJECT
 add_library(libemergence OBJECT
   # core
   src/sys/sys.cc
+  src/sys/cl.cc
   src/state/state.cc
+  # view
   src/view/view.cc
   src/view/headless.cc
   src/view/canvas.cc
@@ -35,7 +37,6 @@ add_library(libemergence OBJECT
   src/util/debug.cc
   src/util/io.cc
   src/util/math.cc
-  src/util/random.cc
   src/util/string.cc)
 target_link_libraries(libemergence
   imgui)

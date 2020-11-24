@@ -3,25 +3,6 @@
 #include "../util/util.hh"
 
 
-Particle::Particle(Distribution distribution,
-                   unsigned int width,
-                   unsigned int height)
-{
-  this->rad = 2.0f;
-  if (distribution == Distribution::UNIFORM)
-  {
-    this->x = Util::Distribute<float>(0.0f, static_cast<float>(width));
-    this->y = Util::Distribute<float>(0.0f, static_cast<float>(height));
-    this->phi = Util::Distribute<float>(0.0f, TAU);
-    this->n = 0;
-    this->l = 0;
-    this->r = 0;
-    this->s = sinf(this->phi);
-    this->c = cosf(this->phi);
-  }
-}
-
-
 History::History()
 {
   this->snapshots_ = std::vector<int>(100, 0);
@@ -44,11 +25,7 @@ State::State(const std::string &load)
   this->beta_ =  0.296705972839036L; // 17 degrees
   this->scope_ = 24.0f;
   this->speed_ = 4.0f;
-  for (int i = 0; i < this->num_; ++i)
-  {
-    this->particles_.push_back(Particle(this->distribution_,
-                                        this->width_, this->height_));
-  }
+  this->Spawn();
 
   // derived
   this->half_width_ = this->width_ / 2;
@@ -61,6 +38,29 @@ State::State(const std::string &load)
     {
       Util::Err("could not load file '" + load + "'");
     }
+  }
+}
+
+
+// Spawn: Initialise particles.
+void
+State::Spawn()
+{
+  Distribution dist = this->distribution_;
+  unsigned int w = this->width_;
+  unsigned int h = this->height_;
+  float rad = 2.0f;
+  for (int i = 0; i < this->num_; ++i)
+  {
+    this->px_.push_back(Util::Distribute<float>(dist, 0.0f, static_cast<float>(w)));
+    this->py_.push_back(Util::Distribute<float>(dist, 0.0f, static_cast<float>(h)));
+    this->pf_.push_back(Util::Distribute<float>(dist, 0.0f, TAU));
+    this->ps_.push_back(sinf(this->pf_[i]));
+    this->pc_.push_back(cosf(this->pf_[i]));
+    this->pn_.push_back(0);
+    this->pl_.push_back(0);
+    this->pr_.push_back(0);
+    this->prad_.push_back(rad);
   }
 }
 
@@ -118,12 +118,16 @@ State::Change(StateTransport &next)
 void
 State::Respawn()
 {
-  this->particles_.clear();
+  this->px_.clear();
+  this->py_.clear();
+  this->pf_.clear();
+  this->ps_.clear();
+  this->pc_.clear();
+  this->pn_.clear();
+  this->pl_.clear();
+  this->pr_.clear();
+  this->prad_.clear();
+  this->Spawn();
   //std::vector<Particle>().swap(this->particles_); // resize to fit
-  for (int i = 0; i < this->num_; ++i)
-  {
-    this->particles_.push_back(Particle(this->distribution_,
-                                        this->width_, this->height_));
-  }
 }
 

@@ -18,9 +18,6 @@ Args(int argc, char* argv[]);
 static void
 Argue(std::map<std::string,std::string> &opts);
 
-static bool
-InitClGood(Sys &sys);
-
 
 // main: Emergence program entry point.
 
@@ -40,12 +37,6 @@ main(int argc, char* argv[])
   // main objects
   State state = State(load);
   Sys sys = Sys(state);
-  if (!InitClGood(sys))
-  {
-    Util::Err("OpenCl init failed - quitting.");
-    return -1;
-  }
-
   std::unique_ptr<View> view = std::move(
     View::Init(&sys, visual, hidectrl));
 
@@ -160,14 +151,5 @@ Argue(std::map<std::string,std::string> &opts)
     if (! opt.empty()) out += ": " + opt;
     Util::Out(out);
   }
-}
-
-
-// InitClGood: Make sure OpenCl initialised successfully.
-
-static bool
-InitClGood(Sys &sys)
-{
-  return ! sys.cl_device_.getInfo<CL_DEVICE_NAME>().empty();
 }
 
