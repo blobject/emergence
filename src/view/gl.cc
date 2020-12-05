@@ -186,6 +186,7 @@ Shader::CreateShader()
     "out vec4 color;\n"
     "void main()\n"
     "{\n"
+    "  color = frag_rgba;\n"
     /**
     "  if (pow(frag_xyz.x, 2) + pow(frag_xyz.y, 2) <= frag_rad)\n"
     "  {\n"
@@ -196,7 +197,6 @@ Shader::CreateShader()
     "    color = frag_color;\n"
     "  }\n"
     //*/
-    "  color = frag_rgba;\n"
     "}\n";
 
   DOGL(GLuint program = glCreateProgram());

@@ -25,8 +25,8 @@ Canvas::Canvas(Proc* proc, bool hide_ctrl)
   }
   this->levels_ = 50;
   this->level_ = 1;
-  this->level_shift_counts_ = 5;
-  this->level_shift_count_ = 0;
+  this->shift_counts_ = 5;
+  this->shift_count_ = 0;
   this->ago_ = glfwGetTime();
   this->paused_ = false;
 }
@@ -35,12 +35,10 @@ Canvas::Canvas(Proc* proc, bool hide_ctrl)
 void
 Canvas::Exec()
 {
-  DOGL(glClearColor(0.0f, 0.0f, 0.0f, 0.0f));
+  DOGL(glClearColor(0.0f, 0.0f, 0.0f, 1.0f));
   DOGL(glEnable(GL_DEPTH_TEST));
   DOGL(glEnable(GL_BLEND));
-  //DOGL(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
-  DOGL(glBlendFunc(GL_ONE, GL_ONE));
-  DOGL(glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE));
+  DOGL(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
 
   Proc* proc = this->proc_;
   State &state = proc->state_;
@@ -96,7 +94,7 @@ Canvas::Exec()
   auto shader = new Shader();
   this->shader_ = shader;
   shader->Bind();
-  shader->SetUniform1f("prad", state.prad_.front());
+  //shader->SetUniform1f("prad", state.prad_.front());
   this->CameraSet();
 
   // timing
@@ -120,7 +118,7 @@ Canvas::Exec()
       this->Clear();
       this->Draw(4, this->level_ * state.num_, va, shader);
       //this->Draw(4, state.num_, va, shader); // DEBUG: draw 2d
-      proc->Next();
+      proc->Next(); // changes particles' X, Y, F, N, etc.
       this->Next();
     }
 
@@ -183,7 +181,9 @@ Canvas::Spawn()
   va->AddBuffer(1, *vbrgba, VertexBufferAttribs::Gen<GLfloat>(4, 4, 0));
   va->AddBuffer(2, *vbquad, VertexBufferAttribs::Gen<GLfloat>(2, 2, 0));
 
-  glVertexAttribDivisor(0, 1); // instancing
+  // instancing
+  glVertexAttribDivisor(0, 1);
+  glVertexAttribDivisor(1, 1);
 
   vbxyz->Unbind();
   vbrgba->Unbind();
@@ -231,19 +231,21 @@ Canvas::Next()
 {
   State &state = this->proc_->state_;
   unsigned int num = state.num_;
+  float scope = state.scope_;
   std::vector<float> &px = state.px_;
   std::vector<float> &py = state.py_;
+  std::vector<unsigned int> &pn = state.pn_;
   std::vector<GLfloat> &xyz = this->xyz_;
   std::vector<GLfloat> &rgba = this->rgba_;
   VertexBuffer* vbxyz = this->vertex_buffer_xyz_;
   VertexBuffer* vbrgba = this->vertex_buffer_rgba_;
   VertexArray* va = this->vertex_array_;
   GLfloat near = this->neardef_;
-  bool shift = this->level_shift_count_ == this->level_shift_counts_;
-  int xyzspan = 3 * num;
-  int rgbaspan = 4 * num;
-  int xyzi = 0;
-  int rgbai = 0;
+  bool shift = this->shift_count_ == this->shift_counts_;
+  unsigned int xyzspan = 3 * num;
+  unsigned int rgbaspan = 4 * num;
+  unsigned int xyzi = 0;
+  unsigned int rgbai = 0;
   unsigned int levels = this->levels_;
   unsigned int level = this->level_;
 
@@ -254,61 +256,21 @@ Canvas::Next()
   }
 
   // insert updated particle positions into the buffer
-  for (int p = 0; p < num; ++p)
+  for (unsigned int p = 0; p < num; ++p)
   {
     // shift particle levels (ie. represent passage of time via z & a)
-    // x
-    if (shift)
-      for (int l = level; l >= 1; --l)
-        xyz[xyzi + (l * xyzspan)] = xyz[xyzi + ((l - 1) * xyzspan)];
-    xyz[xyzi++] = px[p];
-
-    // y
-    if (shift)
-      for (int l = level; l >= 1; --l)
-        xyz[xyzi + (l * xyzspan)] = xyz[xyzi + ((l - 1) * xyzspan)];
-    xyz[xyzi++] = py[p];
-
-    // z
-    if (shift)
-      for (int l = level; l >= 1; --l)
-        xyz[xyzi + (l * xyzspan)] = xyz[xyzi + ((l - 1) * xyzspan)] + 1.0f;
-    xyz[xyzi++] = near;
-
-    // r
-    if (shift)
-      for (int l = level; l >= 1; --l)
-        rgba[rgbai + (l * rgbaspan)] = rgba[rgbai + ((l - 1) * rgbaspan)];
-    rgba[rgbai++] = 1.0f;
-
-    // g
-    if (shift)
-      for (int l = level; l >= 1; --l)
-        rgba[rgbai + (l * rgbaspan)] = rgba[rgbai + ((l - 1) * rgbaspan)];
-    rgba[rgbai++] = 1.0f;
-
-    // b
-    if (shift)
-      for (int l = level; l >= 1; --l)
-        rgba[rgbai + (l * rgbaspan)] = rgba[rgbai + ((l - 1) * rgbaspan)];
-    rgba[rgbai++] = 1.0f;
-
-    // a
-    if (shift)
-      for (int l = level; l >= 1; --l)
-        rgba[rgbai + (l * rgbaspan)] =
-          0.5f - static_cast<float>(level) / levels / 2;
-    rgba[rgbai++] = 1.0f;
+    /* x */ this->Shift(shift, level, px[p], 0.0f, xyz, xyzi, xyzspan);
+    /* y */ this->Shift(shift, level, py[p], 0.0f, xyz, xyzi, xyzspan);
+    /* z */ this->Shift(shift, level, near, 1.0f, xyz, xyzi, xyzspan);
+    /* r */ this->Shift(shift, level,
+                        static_cast<float>(pn[p]) / (scope / 1.5f),
+                        0.0f, rgba, rgbai, rgbaspan);
+    /* g */ this->Shift(shift, level,
+                        static_cast<float>(pn[p]) / scope,
+                        0.0f, rgba, rgbai, rgbaspan);
+    /* b */ this->Shift(shift, level, 0.7f, 0.0f, rgba, rgbai, rgbaspan);
+    /* a */ this->Shift(shift, level, 1.0f, -1.0f, rgba, rgbai, rgbaspan);
   }
-
-  /**
-  for (int i = 0; i < rgba.size(); ++i)
-  {
-    if (i % 4 == 0) std::cout << "\n" << i << ":";
-    std::cout << rgba[i] << ",";
-  }
-  std::cout << std::endl;
-  //*/
 
   // restrict size of levels
   if (shift && level < levels)
@@ -317,10 +279,10 @@ Canvas::Next()
   }
 
   // control when level shift happens
-  ++this->level_shift_count_;
-  if (this->level_shift_count_ > this->level_shift_counts_)
+  ++this->shift_count_;
+  if (this->shift_count_ > this->shift_counts_)
   {
-    this->level_shift_count_ = 0;
+    this->shift_count_ = 0;
   }
 
   GLfloat* xyzarray = &xyz[0];
@@ -329,6 +291,31 @@ Canvas::Next()
   vbrgba->Update(rgbaarray, rgba.size() * sizeof(float));
   va->AddBuffer(0, *vbxyz, VertexBufferAttribs::Gen<GLfloat>(3, 3, 0));
   va->AddBuffer(1, *vbrgba, VertexBufferAttribs::Gen<GLfloat>(4, 4, 0));
+}
+
+
+void
+Canvas::Shift(bool shift, unsigned int level, float n, float d,
+              std::vector<GLfloat> &v, unsigned int &i, unsigned int span)
+{
+  if (!shift)
+  {
+    return;
+  }
+  float shifted;
+  // deeper levels
+  for (unsigned int l = level; l >= 1; --l)
+  {
+    shifted = v[i + ((l - 1) * span)] + d;
+    // encode alpha shift as a negative d
+    if (d < 0)
+    {
+      shifted = 0.3;
+    }
+    v[i + (l * span)] = shifted;
+  }
+  // base level
+  v[i++] = n;
 }
 
 
