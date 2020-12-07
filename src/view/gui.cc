@@ -1,4 +1,4 @@
-#include <limits.h>
+#include <regex>
 
 #include "gui.hh"
 #include "../util/common.hh"
@@ -25,14 +25,18 @@ GuiState::GuiState(State &truth)
 bool
 GuiState::Untrue()
 {
-  return (this->stop_                  != this->truth_.stop_   ||
-          this->num_                   != this->truth_.num_    ||
-          this->width_                 != this->truth_.width_  ||
-          this->height_                != this->truth_.height_ ||
-          Util::DegToRad(this->alpha_) != this->truth_.alpha_  ||
-          Util::DegToRad(this->beta_)  != this->truth_.beta_   ||
-          this->scope_                 != this->truth_.scope_  ||
-          this->speed_                 != this->truth_.speed_  ||
+  return (this->stop_   != this->truth_.stop_   ||
+          this->num_    != this->truth_.num_    ||
+          this->width_  != this->truth_.width_  ||
+          this->height_ != this->truth_.height_ ||
+          Util::RoundF(Util::DegToRad(this->alpha_))
+          != Util::RoundF(this->truth_.alpha_)  ||
+          Util::RoundF(Util::DegToRad(this->beta_))
+          != Util::RoundF(this->truth_.beta_)   ||
+          Util::RoundF(this->scope_)
+          != Util::RoundF(this->truth_.scope_)  ||
+          Util::RoundF(this->speed_)
+          != Util::RoundF(this->truth_.speed_)  ||
           this->colorscheme_ != this->truth_.colorscheme_);
 }
 
@@ -62,7 +66,7 @@ GuiState::Random(Log &log)
   this->alpha_ = Util::Distribute<float>(-180.0f, 180.0f);
   this->beta_ = Util::Distribute<float>(-180.0f, 180.0f);
   this->scope_ = Util::Distribute<float>(1.0f, 96.0f);
-  this->speed_ = Util::Distribute<float>(1.0f, 64.0f);
+  this->speed_ = Util::Distribute<float>(1.0f, 32.0f);
   log.Add(Attn::O, "Random: a=" + std::to_string(this->alpha_)
           + ", b=" + std::to_string(this->beta_)
           + ", v=" + std::to_string(this->scope_)
@@ -150,9 +154,23 @@ GuiState::Preset(Log &log)
 }
 
 
+bool
+GuiState::Save(const std::string &path)
+{
+  return this->truth_.Save(path);
+}
+
+
+bool
+GuiState::Load(const std::string &path)
+{
+  return this->truth_.Load(path);
+}
+
+
 Gui::Gui(Log &log, GuiState state, Canvas &canvas, const std::string &version,
-         unsigned int width, unsigned int height)
-  : log_(log), state_(state), canvas_(canvas)
+         unsigned int width, unsigned int height, bool hide_ctrl)
+  : log_(log), state_(state), canvas_(canvas), control_(! hide_ctrl)
 {
   // glfw
   GLFWwindow* view;
@@ -198,8 +216,8 @@ Gui::Gui(Log &log, GuiState state, Canvas &canvas, const std::string &version,
   this->font_z = io.Fonts->AddFontFromFileTTF("../opt/roboto/RobotoMono-BoldItalic.ttf", font_size);
   this->gui_width_ = gui_width;
   this->gui_height_ = gui_height;
-  this->control_ = true;
   this->console_ = false;
+  this->dialog_ = ' ';
   this->ago_ = glfwGetTime();
   this->frames_ = 0;
   this->fps_ = 0.0f;
@@ -238,6 +256,8 @@ Gui::Draw()
 
   this->DrawControl(this->control_);
   this->DrawConsole(this->console_);
+  this->DrawSaveLoad(this->dialog_);
+  this->DrawQuit(this->dialog_);
   //ImGui::ShowDemoWindow();
 
   ImGui::Render();
@@ -252,7 +272,6 @@ Gui::DrawControl(bool draw)
   {
     return;
   }
-
   Log &log = this->log_;
   GuiState &state = this->state_;
   Canvas &canvas = this->canvas_;
@@ -263,15 +282,21 @@ Gui::DrawControl(bool draw)
   glfwGetFramebufferSize(this->view_, &view_width, &view_height);
   int right_alignment = width - 8;
   int button_width = 5 * this->font_width_;
-  const ImU32 zero = 0;
-  const ImU32 max_dim = 100000;
-  const ImU32 max_num = 1000000;
-  auto button_size = ImVec2(button_width, 30);
+  int random_width = 7 * this->font_width_;
+  auto button_size = ImVec2(button_width, 0);
+  auto random_size = ImVec2(random_width, 0);
   auto color_status = ImVec4(1.0f, 0.25f, 0.25f, 1.0f);
   auto color_title = ImVec4(1.0f, 0.75f, 0.25f, 1.0f);
   auto color_dim = ImVec4(0.75f, 0.75f, 0.75f, 1.0f);
   auto color_dimmer = ImVec4(0.5f, 0.5f, 0.5f, 1.0f);
+  const ImU32 zero = 0;
+  const ImU32 max_dim = 100000;
+  const ImU32 max_num = 1000000;
   std::string status;
+  std::string pause = "Pause";
+  bool hard_paused = canvas.hard_paused_;
+  static bool three = true;
+  if (hard_paused || canvas.paused_) { pause = "Resume"; }
 
   ImGui::SetNextWindowPos(ImVec2(view_width - width, 0), ImGuiCond_Always);
   ImGui::SetNextWindowSize(ImVec2(width, static_cast<float>(view_height)),
@@ -280,14 +305,34 @@ Gui::DrawControl(bool draw)
   if (ImGui::Begin("control", NULL,
                    ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize))
   {
-    if (ImGui::Button("Pause")) { this->Pause(); }
+    if (hard_paused)
+    {
+      ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.5f, 0.25f, 0.25f, 1.0f));
+    }
+    if (ImGui::Button(pause.c_str())) { this->Pause(); }
+    if (hard_paused)
+    {
+      ImGui::PopStyleColor();
+    }
     ImGui::SameLine();
-    ImGui::Button("Save");
+    if (ImGui::Button("Save"))
+    {
+      this->dialog_ = 's';
+      this->canvas_.HardPause(true);
+    }
     ImGui::SameLine();
-    ImGui::Button("Load");
+    if (ImGui::Button("Load"))
+    {
+      this->dialog_ = 'l';
+      this->canvas_.HardPause(true);
+    }
     ImGui::SameLine();
     ImGui::SetCursorPosX(right_alignment - button_width);
-    if (ImGui::Button("Quit", button_size)) { this->Quit(); }
+    if (ImGui::Button("Quit", button_size))
+    {
+      this->dialog_ = 'q';
+      this->canvas_.HardPause(true);
+    }
     if (untrue)
     {
       ImGui::PushFont(this->font_z);
@@ -332,7 +377,8 @@ Gui::DrawControl(bool draw)
     ImGui::AlignTextToFramePadding();
     ImGui::Text("height"); ImGui::SameLine();
     ImGui::InputScalar("h", ImGuiDataType_U32, &state.height_, &zero, &max_dim);
-    if (ImGui::Combo("", &state.preset_,
+    ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - random_width - 24);
+    if (ImGui::Combo("p", &state.preset_,
                      "lifelike structures 1\0"
                      "moving structures\0"
                      "clean cow pattern\0"
@@ -351,20 +397,21 @@ Gui::DrawControl(bool draw)
                      "stable rings\0\0")) {
       state.Preset(log);
     }
+    ImGui::PopItemWidth();
     ImGui::SameLine();
-    if (ImGui::Button("Random")) { state.Random(log); }
+    if (ImGui::Button("Random", random_size)) { state.Random(log); }
     ImGui::AlignTextToFramePadding();
     ImGui::Text("alpha "); ImGui::SameLine();
-    ImGui::InputFloat("a", &state.alpha_, -180.0f, 180.0f, "%.2f");
+    ImGui::InputFloat("a", &state.alpha_, -180.0f, 180.0f, "%.3f");
     ImGui::AlignTextToFramePadding();
     ImGui::Text("beta  "); ImGui::SameLine();
-    ImGui::InputFloat("b", &state.beta_, -180.0f, 180.0f, "%.2f");
+    ImGui::InputFloat("b", &state.beta_, -180.0f, 180.0f, "%.3f");
     ImGui::AlignTextToFramePadding();
     ImGui::Text("scope "); ImGui::SameLine();
-    ImGui::InputFloat("v", &state.scope_, 1.0f, 256.0f, "%.2f");
+    ImGui::InputFloat("v", &state.scope_, 1.0f, 256.0f, "%.3f");
     ImGui::AlignTextToFramePadding();
     ImGui::Text("speed "); ImGui::SameLine();
-    ImGui::InputFloat("s", &state.speed_, 1.0f, 64.0f, "%.2f");
+    ImGui::InputFloat("s", &state.speed_, 1.0f, 64.0f, "%.3f");
     ImGui::Text("stop:   %u", state.stop_);
     ImGui::Text("colors: %d", state.colorscheme_);
     ImGui::Dummy(ImVec2(0.0f, 1.0f));
@@ -380,17 +427,19 @@ Gui::DrawControl(bool draw)
     ImGui::TextColored(color_dimmer, "  y:");
     ImGui::SameLine(); ImGui::SetCursorPosX(ImGui::GetCursorPosX() - 8);
     ImGui::TextColored(color_dim, "%.0f", 1000 - this->y_);
+    if (ImGui::Checkbox("3d", &three)) { canvas.Three(three); }
+    ImGui::SameLine(); ImGui::Text(" "); ImGui::SameLine();
     ImGui::TextColored(color_dimmer, "opencl: ");
     ImGui::SameLine(); ImGui::SetCursorPosX(ImGui::GetCursorPosX() - 8);
     ImGui::TextColored(color_dim, "%s",
-                       canvas.proc_->cl_good_ ? "on" : "off");
+                       canvas.proc_.cl_good_ ? "on" : "off");
     ImGui::Dummy(ImVec2(0.0f, 1.0f));
     ImGui::PushFont(this->font_b);
     ImGui::TextColored(color_title, "Usage");
     ImGui::PopFont();
     ImGui::TextColored(color_dimmer, "quit:    ");
     ImGui::SameLine(); ImGui::SetCursorPosX(ImGui::GetCursorPosX() - 8);
-    ImGui::TextColored(color_dim, "Escape");
+    ImGui::TextColored(color_dim, "Ctrl+Q");
     ImGui::TextColored(color_dimmer, "pause:   ");
     ImGui::SameLine(); ImGui::SetCursorPosX(ImGui::GetCursorPosX() - 8);
     ImGui::TextColored(color_dim, "Space");
@@ -448,7 +497,6 @@ Gui::DrawConsole(bool draw)
   {
     return;
   }
-
   int view_width;
   int view_height;
   glfwGetFramebufferSize(this->view_, &view_width, &view_height);
@@ -482,7 +530,176 @@ Gui::DrawConsole(bool draw)
       }
       --count;
     }
-    //ImGui::SetWindowScrollY(0);
+  }
+  ImGui::End();
+}
+
+
+void
+Gui::DrawSaveLoad(char dialog)
+{
+  if (dialog != 's' && dialog != 'l')
+  {
+    return;
+  }
+  int view_width;
+  int view_height;
+  glfwGetFramebufferSize(this->view_, &view_width, &view_height);
+  int w = 400;
+  int h = 220;
+  std::string title = "Save state to where?";
+  std::string button = "SAVE";
+  bool (GuiState::*func)(const std::string&) = &GuiState::Save;
+  if (dialog == 'l')
+  {
+    title = "Load state from where?";
+    button = "LOAD";
+    func = &GuiState::Load;
+  }
+  static char path[128];
+  static char bad = ' ';
+  std::string allowed = "[/ A-Za-z0-9!@#%()\\[\\],.=+_-]+";
+
+  ImGui::SetNextWindowPos(ImVec2((view_width - w) / 2, (view_height - h) / 3));
+  ImGui::SetNextWindowSize(ImVec2(w, h));
+  if (ImGui::Begin(title.c_str(), NULL,
+                   ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse))
+  {
+    ImGui::Text("");
+    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 20);
+    ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 20);
+    ImGui::InputTextWithHint("", "/path/to/file", path, IM_ARRAYSIZE(path));
+    ImGui::PopItemWidth();
+    if (bad == 'e')
+    {
+      ImGui::TextColored(ImVec4(1.0f, 0.25f, 0.25f, 1.0f),
+                         "  Path left empty");
+    }
+    else if (bad == 'b')
+    {
+      ImGui::TextColored(ImVec4(1.0f, 0.25f, 0.25f, 1.0f),
+                         "%s", allowed.c_str());
+    }
+    else
+    {
+      ImGui::Text("");
+    }
+    ImGui::Text("");
+    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 20);
+    ImGui::PushFont(this->font_b);
+    if (ImGui::Button(button.c_str(),
+                      ImVec2(ImGui::GetContentRegionAvail().x * 0.5f - 10, 0)))
+    {
+      if (std::string(path).empty())
+      {
+        bad = 'e';
+      }
+      else if (! std::regex_match(path, std::regex(allowed)))
+      {
+        bad = 'b';
+      }
+      else
+      {
+        (this->state_.*func)(path);
+        bad = ' ';
+        this->dialog_ = ' ';
+        this->canvas_.HardPause(false);
+      }
+    }
+    ImGui::PopFont();
+    ImGui::SameLine();
+    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 10);
+    if (ImGui::Button("Cancel", ImVec2(ImGui::GetContentRegionAvail().x - 20, 0)))
+    {
+      bad = ' ';
+      this->dialog_ = ' ';
+      this->canvas_.HardPause(false);
+    }
+  }
+  ImGui::End();
+}
+
+
+void
+Gui::DrawQuit(char dialog)
+{
+  if (dialog != 'q')
+  {
+    return;
+  }
+  int view_width;
+  int view_height;
+  glfwGetFramebufferSize(this->view_, &view_width, &view_height);
+  int w = 400;
+  int h = 380;
+  static char path[128];
+  static char bad = ' ';
+  std::string allowed = "[/ A-Za-z0-9!@#%()\\[\\],.=+_-]+";
+
+  ImGui::SetNextWindowPos(ImVec2((view_width - w) / 2, (view_height - h) / 3));
+  ImGui::SetNextWindowSize(ImVec2(w, h));
+  if (ImGui::Begin("Save before quitting?", NULL,
+                   ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse))
+  {
+    ImGui::Text("");
+    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 20);
+    ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 20);
+    ImGui::InputTextWithHint("", "/path/to/file", path, IM_ARRAYSIZE(path));
+    ImGui::PopItemWidth();
+    if (bad == 'e')
+    {
+      ImGui::TextColored(ImVec4(1.0f, 0.25f, 0.25f, 1.0f),
+                         "  Path left empty");
+    }
+    else if (bad == 'b')
+    {
+      ImGui::TextColored(ImVec4(1.0f, 0.25f, 0.25f, 1.0f),
+                         "%s", allowed.c_str());
+    }
+    else
+    {
+      ImGui::Text("");
+    }
+    ImGui::Text("");
+    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 40);
+    ImGui::PushFont(this->font_b);
+    if (ImGui::Button("Save and QUIT",
+                      ImVec2(ImGui::GetContentRegionAvail().x - 40, 0)))
+    {
+      if (std::string(path).empty())
+      {
+        bad = 'e';
+      }
+      else if (! std::regex_match(path, std::regex(allowed)))
+      {
+        bad = 'b';
+      }
+      else
+      {
+        this->state_.Save(path);
+        this->Close();
+      }
+    }
+    ImGui::Text("");
+    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 40);
+    if (ImGui::Button("QUIT without saving",
+                      ImVec2(ImGui::GetContentRegionAvail().x - 40, 0)))
+    {
+      this->Close();
+    }
+    ImGui::PopFont();
+    ImGui::Text("");
+    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 40);
+    if (ImGui::Button("Cancel",
+                      ImVec2(ImGui::GetContentRegionAvail().x - 40, 0)))
+    {
+      bad = ' ';
+      this->dialog_ = ' ';
+      this->canvas_.HardPause(false);
+    }
+    ImGui::Text("");
+    ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f),
+                       " Ctrl+Q to QUIT without saving");
   }
   ImGui::End();
 }
@@ -499,15 +716,11 @@ Gui::Next() const
 void
 Gui::Pause()
 {
+  if (this->canvas_.hard_paused_)
+  {
+    return;
+  }
   this->canvas_.Pause();
-}
-
-
-void
-Gui::Quit()
-{
-  this->canvas_.HardPause();
-  this->Close();
 }
 
 
@@ -542,13 +755,50 @@ Gui::KeyCallback(GLFWwindow* view, int key, int scancode, int action,
 
   if (action == GLFW_PRESS)
   {
-    if (key == GLFW_KEY_ESCAPE) { gui->Quit(); return; }
+    if (mods & GLFW_MOD_CONTROL)
+    {
+      if (key == GLFW_KEY_Q)
+      {
+        if ('q' == gui->dialog_)
+        {
+          gui->Close();
+          return;
+        }
+        gui->dialog_ = 'q';
+        canvas.HardPause(true);
+        return;
+      }
+      if (key == GLFW_KEY_L)
+      {
+        gui->dialog_ = 'l';
+        canvas.HardPause(true);
+        return;
+      }
+      if (key == GLFW_KEY_S)
+      {
+        gui->dialog_ = 's';
+        canvas.HardPause(true);
+        return;
+      }
+    }
+    if (key == GLFW_KEY_ESCAPE)
+    {
+      gui->dialog_ = ' ';
+      canvas.HardPause(false);
+      return;
+    }
     if (key == GLFW_KEY_ENTER) { gui->state_.ChangeTruth(); return; }
     if (key == GLFW_KEY_SPACE) { gui->Pause(); return; }
     if (key == GLFW_KEY_TAB) { gui->control_ = ! gui->control_; return; }
     if (key == GLFW_KEY_GRAVE_ACCENT) { gui->console_ = ! gui->console_; return; }
     if (key == GLFW_KEY_SLASH) { canvas.CameraDefault(); return; }
   }
+
+  if (canvas.hard_paused_)
+  {
+    return;
+  }
+
   float d = canvas.dollyd_;
   float z = canvas.zoomd_;
   float p = canvas.pivotd_;

@@ -14,8 +14,8 @@ class View
   virtual ~View() {}
 
   // factory method
-  static std::unique_ptr<View> Init(Log &log, State &state, Proc* proc,
-                                    bool visual, bool hidectrl);
+  static std::unique_ptr<View> Init(Log &log, State &state, Proc &proc,
+                                    bool visual, bool hide_ctrl);
 
   virtual void Exec() = 0;
 };

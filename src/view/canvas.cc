@@ -5,13 +5,13 @@
 #include "../util/util.hh"
 
 
-Canvas::Canvas(Log &log, State &state, Proc* proc, bool hide_ctrl)
+Canvas::Canvas(Log &log, State &state, Proc &proc, bool hide_ctrl)
   : log_(log), state_(state), proc_(proc), shader_(NULL)
 {
   state.Attach(*this);
   auto gui_state = GuiState(state);
   this->gui_ = new Gui(log, gui_state, *this, "#version 330 core",
-                       state.width_, state.height_);
+                       state.width_, state.height_, hide_ctrl);
   if (nullptr == this->gui_->view_)
   {
     return; // TODO: handle error
@@ -24,7 +24,7 @@ Canvas::Canvas(Log &log, State &state, Proc* proc, bool hide_ctrl)
   }
   this->width_ = 1000.0f;
   this->height_ = 1000.0f;
-  this->threedee_ = true;
+  this->three_ = true;
   this->levels_ = 50;
   this->level_ = 1;
   this->shift_counts_ = 5;
@@ -56,8 +56,8 @@ Canvas::Exec()
   DOGL(glEnable(GL_BLEND));
   DOGL(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
 
-  Proc* proc = this->proc_;
-  State &state = proc->state_;
+  Proc &proc = this->proc_;
+  State &state = this->state_;
   Gui* gui = this->gui_;
   GLfloat   width = this->width_;
   GLfloat   height = this->height_;
@@ -128,7 +128,7 @@ Canvas::Exec()
     //*/
 
     num = state.num_;
-    if (this->threedee_)
+    if (this->three_)
     {
       num = this->level_ * state.num_;
     }
@@ -137,12 +137,12 @@ Canvas::Exec()
     {
       this->Clear();
       this->Draw(4, num, this->vertex_array_, this->shader_);
-    }
-    if (! this->paused_)
-    {
-      proc->Next(); // changes particles' X, Y, F, N, etc.
-      if (this->threedee_) { this->Next3d(); }
-      else                 { this->Next2d(); }
+      if (! this->paused_)
+      {
+        proc.Next(); // changes particles' X, Y, F, N, etc.
+        if (this->three_) { this->Next3d(); }
+        else              { this->Next2d(); }
+      }
     }
     gui->Draw();
     gui->Next();
@@ -172,7 +172,7 @@ Canvas::Exec()
 void
 Canvas::Spawn()
 {
-  State &state = this->proc_->state_;
+  State &state = this->state_;
   auto &xyz = this->xyz_;
   auto &rgba = this->rgba_;
   GLfloat near = this->neardef_;
@@ -253,7 +253,7 @@ Canvas::Clear()
 void
 Canvas::Next2d()
 {
-  State &state = this->proc_->state_;
+  State &state = this->state_;
   unsigned int num = state.num_;
   GLfloat scope = state.scope_;
   std::vector<float> &px = state.px_;
@@ -292,7 +292,7 @@ Canvas::Next2d()
 void
 Canvas::Next3d()
 {
-  State &state = this->proc_->state_;
+  State &state = this->state_;
   unsigned int num = state.num_;
   GLfloat scope = state.scope_;
   std::vector<float> &px = state.px_;
@@ -361,7 +361,7 @@ void
 Canvas::Shift(bool shift, unsigned int level, GLfloat next, GLfloat inc,
               std::vector<GLfloat> &v, unsigned int &i, unsigned int span)
 {
-  if (!shift)
+  if (! shift)
   {
     return;
   }
@@ -383,9 +383,16 @@ Canvas::Shift(bool shift, unsigned int level, GLfloat next, GLfloat inc,
 
 
 void
-Canvas::HardPause()
+Canvas::Three(bool yes)
 {
-  this->hard_paused_ = ! this->hard_paused_;
+  this->three_ = yes;
+}
+
+
+void
+Canvas::HardPause(bool yes)
+{
+  this->hard_paused_ = yes;
 }
 
 

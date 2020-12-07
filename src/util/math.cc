@@ -42,6 +42,14 @@ Util::RadToDeg(float r)
 }
 
 
+// Keep float at 3 decimal precision for State-GuiState comparisons
+float
+Util::RoundF(float f)
+{
+  return std::round(f * 1000) / 1000.0f;
+}
+
+
 int
 Util::Signum(int n)
 {

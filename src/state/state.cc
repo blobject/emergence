@@ -29,14 +29,14 @@ State::State(Log &log, const std::string &load)
   // derived
   this->scope_squared_ = this->scope_ * this->scope_;
 
-  this->Spawn(); // particles
-
-  if (! load.empty())
+  if (load.empty())
   {
-    if (! Util::LoadState(*this, load))
-    {
-      log.Add(Attn::E, "could not load file '" + load + "'");
-    }
+    // particles
+    this->Spawn();
+  }
+  else
+  {
+    this->Load(load);
   }
 }
 
@@ -69,6 +69,15 @@ State::Spawn()
 void
 State::Respawn()
 {
+  this->Clear();
+  this->Spawn();
+}
+
+
+// Clear: Clear out particles.
+void
+State::Clear()
+{
   this->px_.clear();
   this->py_.clear();
   this->pf_.clear();
@@ -80,7 +89,6 @@ State::Respawn()
   this->prad_.clear();
   this->pgcol_.clear();
   this->pgrow_.clear();
-  this->Spawn();
 }
 
 
@@ -132,6 +140,34 @@ State::Change(StateTransport &next)
 
   // provoke reaction in Proc and View
   this->Notify();
+  return true;
+}
+
+
+// Save: Record current State.
+bool
+State::Save(const std::string &path)
+{
+  if (! Util::SaveState(*this, path))
+  {
+    this->log_.Add(Attn::E, "Could not save to file '" + path + "'.");
+    return false;
+  }
+  this->log_.Add(Attn::O, "Saved state to '" + path + "'.");
+  return true;
+}
+
+
+// Load: Recall an initial State.
+bool
+State::Load(const std::string &path)
+{
+  if (! Util::LoadState(*this, path))
+  {
+    this->log_.Add(Attn::E, "Could not load from file '" + path + "'.");
+    return false;
+  }
+  this->log_.Add(Attn::O, "Loaded state from '" + path + "'.");
   return true;
 }
 

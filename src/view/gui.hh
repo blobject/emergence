@@ -38,6 +38,8 @@ class GuiState
   bool ChangeTruth();
   void Random(Log &log);
   void Preset(Log &log);
+  bool Save(const std::string &path);
+  bool Load(const std::string &path);
 };
 
 
@@ -59,6 +61,7 @@ class Gui
   unsigned int gui_height_;
   bool         control_;
   bool         console_;
+  char         dialog_;
   double       ago_;
   unsigned int frames_;
   float        fps_;
@@ -72,15 +75,16 @@ class Gui
   GLFWwindow* view_;
 
   Gui(Log &log, GuiState state, Canvas &canvas, const std::string &version,
-      unsigned int width, unsigned int height);
+      unsigned int width, unsigned int height, bool hide_ctrl);
   ~Gui();
 
   void Draw();
   void DrawControl(bool draw);
   void DrawConsole(bool draw);
+  void DrawSaveLoad(char dialog);
+  void DrawQuit(char dialog);
   void Next() const;
   void Pause();
-  void Quit();
   void SetPointer();
   void Close();
   bool Closing() const;

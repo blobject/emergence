@@ -34,32 +34,32 @@ class Canvas : public View, Observer
   GLfloat pivoty_;            // camera vertical pivot amount
   GLfloat zoomdef_;           // camera zoom default
   GLfloat neardef_;           // model's "near" default
-  bool    threedee_;
+  bool    three_;
   unsigned int levels_;       // total number of (z-)levels
   unsigned int level_;        // current number of levels
   unsigned int shift_counts_; // number of iterations until level shift
   unsigned int shift_count_;  // current iteration until level shift
   double ago_;
-  bool hard_paused_; // no input handling
-  bool paused_;
 
  public:
-  Proc*         proc_;
+  Proc         &proc_;
   Gui*          gui_;
   VertexBuffer* vertex_buffer_xyz_;
   VertexBuffer* vertex_buffer_rgba_;
   VertexBuffer* vertex_buffer_quad_;
   VertexArray*  vertex_array_;
   Shader*       shader_;
-  GLfloat dollyd_;            // camera position increment
-  GLfloat pivotd_;            // camera pivot angle increment
-  GLfloat zoomd_;             // camera zoom increment
+  GLfloat dollyd_;   // camera position increment
+  GLfloat pivotd_;   // camera pivot angle increment
+  GLfloat zoomd_;    // camera zoom increment
+  bool paused_;
+  bool hard_paused_; // no input handling
 
-  Canvas(Log &log, State &state, Proc* proc, bool hide_ctrl);
+  Canvas(Log &log, State &state, Proc &proc, bool hide_ctrl);
   ~Canvas() override;
 
-  void React(Subject&) override;
   void Exec() override;
+  void React(Subject&) override;
   void Spawn();
   void Respawn();
   void Clear();
@@ -69,7 +69,8 @@ class Canvas : public View, Observer
   void Next3d();
   void Shift(bool shift, unsigned int level, GLfloat next, GLfloat inc,
              std::vector<GLfloat> &v, unsigned int &i, unsigned int span);
-  void HardPause();
+  void Three(bool yes);
+  void HardPause(bool yes);
   void Pause();
   void CameraSet();
   void CameraDefault();

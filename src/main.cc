@@ -26,7 +26,7 @@ int
 main(int argc, char* argv[])
 {
   // logger object
-  Log log = Log();
+  Log log = Log(128);
 
   // arguments
   auto opts = Args(argc, argv);
@@ -34,19 +34,17 @@ main(int argc, char* argv[])
   if (! opts["return"].empty()) return std::stoi(opts["return"]);
 
   // configuration
-  std::string load = opts["inputstate"];
+  std::string init = opts["inputstate"];
   bool visual = opts["headless"].empty();
-  bool hidectrl = opts["hidectrl"].empty();
+  bool hide_ctrl = ! opts["hidectrl"].empty();
 
-  // objects
-  State state = State(log, load);
+  // system objects
+  State state = State(log, init);
   Proc proc = Proc(log, state);
-  std::unique_ptr<View> view = std::move(
-    View::Init(log, state, &proc, visual, hidectrl));
+  std::unique_ptr<View> view =
+    std::move(View::Init(log, state, proc, visual, hide_ctrl));
 
   // execution
-  Util::SaveState(state, "foosave");
-  Util::LoadState(state, "fooload");
   view->Exec();
 
   return 0;
@@ -82,7 +80,7 @@ Args(int argc, char* argv[])
                                             {"hidectrl", ""}};
   std::ifstream stream;
   int opt;
-  while (-1 != (opt = getopt(argc, argv, ":cf:huv")))
+  while (-1 != (opt = getopt(argc, argv, ":cf:ghv")))
   {
     switch (opt)
     {

@@ -18,9 +18,9 @@ class Observer
 class Subject
 {
  private:
-  std::vector<Observer*> observers_;
 
  public:
+  std::vector<Observer*> observers_;
   virtual ~Subject() = default;
   void Attach(Observer &observer);
   void Detach(Observer &observer);

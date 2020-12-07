@@ -23,6 +23,7 @@ Subject::Detach(Observer &observer)
 
 // Notify: Provoke all observers to react.
 
+#include <iostream>
 void
 Subject::Notify()
 {

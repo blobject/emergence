@@ -70,10 +70,10 @@ class State : public Subject
   unsigned int num_;          // (adjustable) # particles
   unsigned int width_;        // (adjustable) processable space width (pixels)
   unsigned int height_;       // (adjustable) processable space height (pixels)
-  float        scope_;        // (adjustable) neighborhood radius
-  float        speed_;        // (adjustable) movement multiplier
   float        alpha_;        // (adjustable) alpha in main formula (degrees)
   float        beta_;         // (adjustable) beta in main formula (degrees)
+  float        scope_;        // (adjustable) neighborhood radius
+  float        speed_;        // (adjustable) movement multiplier
 
   // derived data
   float scope_squared_;
@@ -82,6 +82,9 @@ class State : public Subject
 
   void Spawn();
   void Respawn();
+  void Clear();
   bool Change(StateTransport &next);
+  bool Save(const std::string &path);
+  bool Load(const std::string &path);
 };
 

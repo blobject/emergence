@@ -3,10 +3,9 @@
 #include "../util/util.hh"
 
 
-Log::Log()
-{
-  this->limit_ = 128;
-}
+Log::Log(unsigned int limit)
+  : limit_(limit)
+{}
 
 
 void
@@ -21,5 +20,8 @@ Log::Add(Attn attn, const std::string &message)
   else if (attn == Attn::Ecl) { m = "Error (cl): " + m; }
   else if (attn == Attn::Egl) { m = "Error (cl): " + m; }
   this->messages_.push_front(std::pair<Attn,std::string>(attn, m));
+
+  // provoke reaction in Headless
+  this->Notify();
 }
 
