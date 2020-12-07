@@ -5,6 +5,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include "../util/log.hh"
+
 
 // VertexBuffer: Wrapper around OpenGL vertex buffers.
 
@@ -100,13 +102,13 @@ class Shader
   std::unordered_map<std::string,int> uniform_location_cache_;
 
  public:
-  Shader();
+  Shader(Log &log);
   ~Shader();
 
   void          Bind() const;
   void          Unbind() const;
-  static GLuint CompileShader(GLuint type, const std::string &source);
-  static GLuint CreateShader();
+  static GLuint CreateShader(Log &log);
+  static GLuint CompileShader(GLuint type, const std::string &source, Log &log);
   int           GetUniformLocation(const std::string &name);
   void          SetUniform1f(const std::string &name, float v);
   void          SetUniform4f(const std::string &name,

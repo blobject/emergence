@@ -4,15 +4,14 @@
 
 
 template<typename T> T
-Util::Distribute(Distribution d, T a, T b)
+Util::Distribute(T a, T b)
 {
   //static_assert(false);
 }
 
 template<> int
-Util::Distribute<int>(Distribution d, int a, int b)
+Util::Distribute<int>(int a, int b)
 {
-  // TODO: d unused
   static std::random_device rd;
   static std::mt19937 rng(rd());
   std::uniform_int_distribution<int> distribution(a, b);
@@ -20,9 +19,8 @@ Util::Distribute<int>(Distribution d, int a, int b)
 }
 
 template<> float
-Util::Distribute<float>(Distribution d, float a, float b)
+Util::Distribute<float>(float a, float b)
 {
-  // TODO: d unused
   static std::random_device rd;
   static std::mt19937 rng(rd());
   std::uniform_real_distribution<float> distribution(a, b);

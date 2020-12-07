@@ -3,7 +3,8 @@
 #include "../util/util.hh"
 
 
-Cl::Cl()
+Cl::Cl(Log &log)
+  : log_(log)
 {
   std::vector<cl::Platform> platforms;
   std::vector<cl::Device> devices;
@@ -11,7 +12,7 @@ Cl::Cl()
   cl::Platform::get(&platforms);
   if (0 == platforms.size())
   {
-    Util::ErrCl("no platform found.");
+    log.Add(Attn::Ecl, "No platform found.");
     return;
   }
   this->platform_ = platforms.front();
@@ -33,7 +34,7 @@ Cl::Cl()
   std::string name = this->device_.getInfo<CL_DEVICE_NAME>();
   if (name.empty())
   {
-    Util::ErrCl("no device found.");
+    log.Add(Attn::Ecl, "No device found.");
     return;
   }
 
@@ -43,10 +44,10 @@ Cl::Cl()
   this->max_freq_ = this->device_.getInfo<CL_DEVICE_MAX_CLOCK_FREQUENCY>();
   this->max_gmem_ = this->device_.getInfo<CL_DEVICE_GLOBAL_MEM_SIZE>();
 
-  Util::Out("Using OpenCL\n  device: " + name
-            + "\n  max compute units:\t" + std::to_string(this->max_cu_)
-            + "\n  max clock frequency:\t" + std::to_string(this->max_freq_) + " MHz"
-            + "\n  max global memory:\t" + std::to_string(this->max_gmem_ / 1024 / 1024) + " MB");
+  log.Add(Attn::O, "Using OpenCL\n  device: " + name
+          + "\n  max compute units:\t" + std::to_string(this->max_cu_)
+          + "\n  max clock frequency:\t" + std::to_string(this->max_freq_) + " MHz"
+          + "\n  max global memory:\t" + std::to_string(this->max_gmem_ / 1024 / 1024) + " MB");
 
   this->PrepSeek();
   this->PrepMove();
@@ -98,15 +99,15 @@ Cl::PrepSeek()
     "  else if (cc == COLS - 1) { c_o = true; ccc = 0; }\n"
     "  if      (rr == 0)        { r_u = true; r = ROWS - 1; }\n"
     "  else if (rr == ROWS - 1) { r_o = true; rrr = 0; }\n"
-    "  int vic[54] = { c,   r,   c_u,   false, r_u,   false,\n"
-    "                  cc,  r,   false, false, r_u,   false,\n"
-    "                  ccc, r,   false, c_o,   r_u,   false,\n"
-    "                  c,   rr,  c_u,   false, false, false,\n"
-    "                  cc,  rr,  false, false, false, false,\n"
-    "                  ccc, rr,  false, c_o,   false, false,\n"
-    "                  c,   rrr, c_u,   false, false, r_o,\n"
-    "                  cc,  rrr, false, false, false, r_o,\n"
-    "                  ccc, rrr, false, c_o,   false, r_o };\n"
+    "  int vic[54] = {c,   r,   c_u,   false, r_u,   false,\n"
+    "                 cc,  r,   false, false, r_u,   false,\n"
+    "                 ccc, r,   false, c_o,   r_u,   false,\n"
+    "                 c,   rr,  c_u,   false, false, false,\n"
+    "                 cc,  rr,  false, false, false, false,\n"
+    "                 ccc, rr,  false, c_o,   false, false,\n"
+    "                 c,   rrr, c_u,   false, false, r_o,\n"
+    "                 cc,  rrr, false, false, false, r_o,\n"
+    "                 ccc, rrr, false, c_o,   false, r_o};\n"
     "  int dsti;\n"
     "  for (int v = 0; v < 54; v += 6) {\n"
     "    for (int p = 0; p < stride; ++p) {\n"
@@ -146,15 +147,15 @@ Cl::PrepSeek()
     "  }\n"
     "}\n";
 
-  int err;
+  int compile;
   try
   {
     cl::Program program(this->context_, code, CL_TRUE);
-    this->kernel_seek_ = cl::Kernel(program, "particles_seek", &err);
-    std::cout << "seek kernel: " << err << std::endl;
+    this->kernel_seek_ = cl::Kernel(program, "particles_seek", &compile);
+    //std::cout << "seek kernel: " << compile << std::endl;
   }
   catch (cl_int err) {
-    Util::ErrCl(std::to_string(err));
+    this->log_.Add(Attn::Ecl, std::to_string(err));
   }
 }
 
@@ -217,7 +218,7 @@ Cl::Seek(std::vector<int> &grid, unsigned int gstride, unsigned int n,
     this->queue_.finish();
   }
   catch (cl_int err) {
-    Util::ErrCl(std::to_string(err));
+    this->log_.Add(Attn::Ecl, std::to_string(err));
   }
 }
 
@@ -257,15 +258,15 @@ Cl::PrepMove()
     "  if (y < 0.0f) { y += H; }\n"
     "  PY[i] = y;\n"
     "}\n";
-  int err;
+  int compile;
   try
   {
     cl::Program program(this->context_, code, CL_TRUE);
-    this->kernel_move_ = cl::Kernel(program, "particles_move", &err);
-    std::cout << "move kernel: " << err << std::endl;
+    this->kernel_move_ = cl::Kernel(program, "particles_move", &compile);
+    //std::cout << "move kernel: " << compile << std::endl;
   }
   catch (cl_int err) {
-    Util::ErrCl(std::to_string(err));
+    this->log_.Add(Attn::Ecl, std::to_string(err));
   }
 }
 
@@ -321,7 +322,7 @@ Cl::Move(unsigned int n, std::vector<float> &px, std::vector<float> &py,
     this->queue_.finish();
   }
   catch (cl_int err) {
-    Util::ErrCl(std::to_string(err));
+    this->log_.Add(Attn::Ecl, std::to_string(err));
   }
 }
 

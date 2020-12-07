@@ -7,6 +7,7 @@
 #include <unistd.h>
 
 #include "util/common.hh"
+#include "util/log.hh"
 #include "util/util.hh"
 #include "proc/proc.hh"
 #include "view/view.hh"
@@ -16,7 +17,7 @@ static std::map<std::string,std::string>
 Args(int argc, char* argv[]);
 
 static void
-Argue(std::map<std::string,std::string> &opts);
+Argue(Log &log, std::map<std::string,std::string> &opts);
 
 
 // main: Emergence program entry point.
@@ -24,9 +25,12 @@ Argue(std::map<std::string,std::string> &opts);
 int
 main(int argc, char* argv[])
 {
+  // logger object
+  Log log = Log();
+
   // arguments
   auto opts = Args(argc, argv);
-  Argue(opts);
+  Argue(log, opts);
   if (! opts["return"].empty()) return std::stoi(opts["return"]);
 
   // configuration
@@ -34,15 +38,15 @@ main(int argc, char* argv[])
   bool visual = opts["headless"].empty();
   bool hidectrl = opts["hidectrl"].empty();
 
-  // main objects
-  State state = State(load);
-  Proc proc = Proc(state);
+  // objects
+  State state = State(log, load);
+  Proc proc = Proc(log, state);
   std::unique_ptr<View> view = std::move(
-    View::Init(&proc, visual, hidectrl));
+    View::Init(log, state, &proc, visual, hidectrl));
 
-  // main execution
-  //Util::SaveState(&state, "foosave");
-  //Util::LoadState(&state, "fooload");
+  // execution
+  Util::SaveState(state, "foosave");
+  Util::LoadState(state, "fooload");
   view->Exec();
 
   return 0;
@@ -54,14 +58,15 @@ main(int argc, char* argv[])
 static void
 Help()
 {
-  Util::Out("Usage: " + std::string(ME) + " [OPTIONS]\n\n"
-            + "Primordial particle system visualiser/processor.\n\n"
-            + "Options:\n"
-            + "  -f FILE  supply an initial state\n"
-            + "  -g       run in headless mode\n"
-            + "  -c       hide the visualiser controls\n"
-            + "  -v       show version\n"
-            + "  -h       show this help");
+  std::cout << "Usage: " << std::string(ME) << " [OPTIONS]\n\n"
+            << "Primordial particle system visualiser/processor.\n\n"
+            << "Options:\n"
+            << "  -f FILE  supply an initial state\n"
+            << "  -g       run in headless mode\n"
+            << "  -c       hide the visualiser controls\n"
+            << "  -v       show version\n"
+            << "  -h       show this help"
+            << std::endl;
 }
 
 
@@ -110,7 +115,7 @@ Args(int argc, char* argv[])
 // Argue: Print appropriate messages according to commandline arguments.
 
 static void
-Argue(std::map<std::string,std::string> &opts)
+Argue(Log &log, std::map<std::string,std::string> &opts)
 {
   auto opt = opts["quit"];
   if (! opt.empty())
@@ -122,34 +127,34 @@ Argue(std::map<std::string,std::string> &opts)
     }
     else if ("version" == opt)
     {
-      Util::Out(std::string(ME) + " version " + std::string(VERSION));
+      log.Add(Attn::O, std::string(ME) + " version " + std::string(VERSION));
       return;
     }
     else if ("bad_file" == opt)
     {
-      Util::Err("no file provided\n\n");
+      log.Add(Attn::E, "no file provided\n\n");
     }
     else if ("inputstate" == opt)
     {
-      Util::Err("unreadable file '" + opts["inputstate"] + "'\n");
+      log.Add(Attn::E, "unreadable file '" + opts["inputstate"] + "'\n");
     }
     else
     {
-      Util::Err("unknown argument '" + opts["quit"] + "'\n");
+      log.Add(Attn::E, "unknown argument '" + opts["quit"] + "'\n");
     }
     Help();
     return;
   }
   if (opts["headless"].empty())
   {
-    Util::Out("Running emergence canvas");
+    log.Add(Attn::O, "Running emergence canvas");
   }
   else
   {
     opt = opts["inputstate"];
     std::string out = "Running emergence headless";
     if (! opt.empty()) out += ": " + opt;
-    Util::Out(out);
+    log.Add(Attn::O, out);
   }
 }
 

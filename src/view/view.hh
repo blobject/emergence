@@ -3,6 +3,7 @@
 #include <memory>
 
 #include "../proc/proc.hh"
+#include "../util/log.hh"
 
 
 // View: Abstract class over the Canvas and Headless views.
@@ -13,7 +14,8 @@ class View
   virtual ~View() {}
 
   // factory method
-  static std::unique_ptr<View> Init(Proc* proc, bool visual, bool hidectrl);
+  static std::unique_ptr<View> Init(Log &log, State &state, Proc* proc,
+                                    bool visual, bool hidectrl);
 
   virtual void Exec() = 0;
 };

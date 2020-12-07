@@ -3,6 +3,7 @@
 #include <CL/cl2.hpp>
 
 #include "../state/state.hh"
+#include "../util/log.hh"
 
 
 // Cl: OpenCL.
@@ -10,6 +11,7 @@
 class Cl
 {
  private:
+  Log             &log_;
   cl::Platform     platform_;
   cl::Device       device_;
   cl::Context      context_;
@@ -22,7 +24,7 @@ class Cl
 
  public:
 
-  Cl();
+  Cl(Log &log);
   //~Cl();
 
   bool Good();

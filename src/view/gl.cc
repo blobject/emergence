@@ -139,10 +139,10 @@ VertexArray::Unbind() const
 
 // Shader
 
-Shader::Shader()
+Shader::Shader(Log &log)
   : id_(0)
 {
-  this->id_ = Shader::CreateShader();
+  this->id_ = Shader::CreateShader(log);
 }
 
 Shader::~Shader()
@@ -163,7 +163,7 @@ Shader::Unbind() const
 }
 
 GLuint
-Shader::CreateShader()
+Shader::CreateShader(Log &log)
 {
   std::string vertex =
     "#version 330 core\n"
@@ -205,17 +205,17 @@ Shader::CreateShader()
   GLuint f;
   if (! vertex.empty())
   {
-    v = Shader::CompileShader(GL_VERTEX_SHADER, vertex);
+    v = Shader::CompileShader(GL_VERTEX_SHADER, vertex, log);
     DOGL(glAttachShader(program, v));
   }
   if (! geometry.empty())
   {
-    g = Shader::CompileShader(GL_GEOMETRY_SHADER, geometry);
+    g = Shader::CompileShader(GL_GEOMETRY_SHADER, geometry, log);
     DOGL(glAttachShader(program, g));
   }
   if (! fragment.empty())
   {
-    f = Shader::CompileShader(GL_FRAGMENT_SHADER, fragment);
+    f = Shader::CompileShader(GL_FRAGMENT_SHADER, fragment, log);
     DOGL(glAttachShader(program, f));
   }
   DOGL(glLinkProgram(program));
@@ -227,7 +227,7 @@ Shader::CreateShader()
 }
 
 GLuint
-Shader::CompileShader(GLuint type, const std::string &source)
+Shader::CompileShader(GLuint type, const std::string &source, Log &log)
 {
   DOGL(GLuint id = glCreateShader(type));
   const char* src = source.c_str();
@@ -241,11 +241,11 @@ Shader::CompileShader(GLuint type, const std::string &source)
     DOGL(glGetShaderiv(id, GL_INFO_LOG_LENGTH, &length));
     char* message = static_cast<char*>(alloca(length * sizeof(char)));
     DOGL(glGetShaderInfoLog(id, length, &length, message));
-    Util::Err("failed to compile "
-              + std::string(type == GL_VERTEX_SHADER ? "vertex" :
-                            type == GL_GEOMETRY_SHADER ? "geometry" :
-                            "fragment")
-              + '\n' + message);
+    log.Add(Attn::Egl, "failed to compile "
+            + std::string(type == GL_VERTEX_SHADER ? "vertex" :
+                          type == GL_GEOMETRY_SHADER ? "geometry" :
+                          "fragment")
+            + '\n' + message);
     DOGL(glDeleteShader(id));
     return 0;
   }
@@ -261,12 +261,7 @@ Shader::GetUniformLocation(const std::string &name)
     return this->uniform_location_cache_[name];
   }
   DOGL(int location = glGetUniformLocation(this->id_, name.c_str()));
-  /**
-  if (-1 == location)
-  {
-    Util::Warn("uniform '" + name + "' not found");
-  }
-  //*/
+  //if (-1 == location) { Util::Err("uniform '" + name + "' not found"); }
   this->uniform_location_cache_[name] = location;
   return location;
 }

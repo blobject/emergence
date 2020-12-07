@@ -6,15 +6,19 @@
 #include "gui.hh"
 #include "view.hh"
 #include "../proc/proc.hh"
+#include "../util/log.hh"
+#include "../util/observation.hh"
 
 
 // Canvas: The graphical view.
 
 class Gui;
 
-class Canvas : public View
+class Canvas : public View, Observer
 {
  private:
+  Log   &log_;
+  State &state_;              // also the subject being observed
   std::vector<GLfloat> xyz_;  // position vector
   std::vector<GLfloat> rgba_; // color vector
   glm::mat4 orth_;            // orthogonalisation matrix
@@ -22,20 +26,21 @@ class Canvas : public View
   glm::mat4 view_;            // world-to-view matrix
   glm::mat4 proj_;            // perspective projection matrix
   glm::vec3 dolly_;           // camera position vector
-  GLfloat panax_;             // camera horizontal pan angle
-  GLfloat panay_;             // camera vertical pan angle
-  GLfloat panx_;              // camera horizontal pan amount
-  GLfloat pany_;              // camera vertical pan amount
-  GLfloat dollyd_;            // camera position increment
-  GLfloat pand_;              // camera pan angle increment
-  GLfloat zoomd_;             // camera zoom increment
+  GLfloat width_;             // canvas width
+  GLfloat height_;            // canvas width
+  GLfloat pivotax_;           // camera horizontal pivot angle
+  GLfloat pivotay_;           // camera vertical pivot angle
+  GLfloat pivotx_;            // camera horizontal pivot amount
+  GLfloat pivoty_;            // camera vertical pivot amount
   GLfloat zoomdef_;           // camera zoom default
   GLfloat neardef_;           // model's "near" default
-  unsigned int levels_;             // total number of (z-)levels
-  unsigned int level_;              // current number of levels
+  bool    threedee_;
+  unsigned int levels_;       // total number of (z-)levels
+  unsigned int level_;        // current number of levels
   unsigned int shift_counts_; // number of iterations until level shift
   unsigned int shift_count_;  // current iteration until level shift
   double ago_;
+  bool hard_paused_; // no input handling
   bool paused_;
 
  public:
@@ -46,38 +51,29 @@ class Canvas : public View
   VertexBuffer* vertex_buffer_quad_;
   VertexArray*  vertex_array_;
   Shader*       shader_;
+  GLfloat dollyd_;            // camera position increment
+  GLfloat pivotd_;            // camera pivot angle increment
+  GLfloat zoomd_;             // camera zoom increment
 
-  Canvas(Proc* proc, bool hide_ctrl);
+  Canvas(Log &log, State &state, Proc* proc, bool hide_ctrl);
+  ~Canvas() override;
 
+  void React(Subject&) override;
   void Exec() override;
   void Spawn();
   void Respawn();
   void Clear();
   void Draw(GLuint instances, GLuint instance_count, VertexArray* va,
             Shader* shader);
-  void Next();
-  void Shift(bool shift, unsigned int level, float n, float d,
+  void Next2d();
+  void Next3d();
+  void Shift(bool shift, unsigned int level, GLfloat next, GLfloat inc,
              std::vector<GLfloat> &v, unsigned int &i, unsigned int span);
+  void HardPause();
   void Pause();
   void CameraSet();
   void CameraDefault();
-  void DollyWest();
-  void DollySouth();
-  void DollyNorth();
-  void DollyEast();
-  void DollyNorthWest();
-  void DollyNorthEast();
-  void DollySouthWest();
-  void DollySouthEast();
-  void PanWest();
-  void PanSouth();
-  void PanNorth();
-  void PanEast();
-  void PanNorthWest();
-  void PanNorthEast();
-  void PanSouthWest();
-  void PanSouthEast();
-  void PushIn();
-  void PullOut();
+  void Camera(GLfloat dx, GLfloat dy, GLfloat dz, GLfloat dax, GLfloat day);
+  void CameraResize(GLfloat w, GLfloat h);
 };
 

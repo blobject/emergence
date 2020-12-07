@@ -1,13 +1,10 @@
 #pragma once
 
-#include <algorithm>
 #include <string>
 #include <vector>
 
-
-// Distribution: For initial particle distribution
-
-enum class Distribution { UNIFORM = 0, GAUSSIAN = 1 };
+#include "../util/log.hh"
+#include "../util/observation.hh"
 
 
 // History: Record of particle system instances.
@@ -26,7 +23,6 @@ class History
 struct StateTransport
 {
   // stable
-  Distribution distribution;
   unsigned int stop;
   // adjustable
   unsigned int num;
@@ -42,8 +38,11 @@ struct StateTransport
 
 // State: Main data source of the primordial particle system.
 
-class State //: public Subject
+class State : public Subject
 {
+ private:
+  Log &log_;
+
  public:
   /// particle data
   // location & direction
@@ -67,7 +66,6 @@ class State //: public Subject
   int     colorscheme_; // adjustable
 
   // transportable data
-  Distribution distribution_; // (stable) initial position distribution
   unsigned int stop_;         // (stable) # iterations until process stop
   unsigned int num_;          // (adjustable) # particles
   unsigned int width_;        // (adjustable) processable space width (pixels)
@@ -80,10 +78,10 @@ class State //: public Subject
   // derived data
   float scope_squared_;
 
-  State(const std::string &path);
+  State(Log &log, const std::string &path);
 
   void Spawn();
-  bool Change(StateTransport &next);
   void Respawn();
+  bool Change(StateTransport &next);
 };
 

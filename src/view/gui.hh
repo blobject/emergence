@@ -1,9 +1,13 @@
 #pragma once
 
 #include <GLFW/glfw3.h>
+#include <imgui/imgui.h>
+#include <imgui/imgui_impl_glfw.h>
+#include <imgui/imgui_impl_opengl3.h>
+#include <imgui/imgui_internal.h>
 
 #include "canvas.hh"
-#include "../proc/proc.hh"
+#include "../util/log.hh"
 #include "../util/util.hh"
 
 
@@ -16,7 +20,6 @@ class GuiState
 
  public:
   // stable
-  Distribution distribution_;
   unsigned int stop_;
   // adjustable
   unsigned int num_;
@@ -27,11 +30,14 @@ class GuiState
   float        scope_;
   float        speed_;
   int          colorscheme_;
+  int          preset_;
 
   GuiState(State &truth);
 
-  bool ChangeTruth();
   bool Untrue();
+  bool ChangeTruth();
+  void Random(Log &log);
+  void Preset(Log &log);
 };
 
 
@@ -43,35 +49,47 @@ class Gui
 {
  private:
   GuiState     state_;
+  Log         &log_;
+  ImFont*      font_r;
+  ImFont*      font_b;
+  ImFont*      font_i;
+  ImFont*      font_z;
+  int          font_width_;
   unsigned int gui_width_;
   unsigned int gui_height_;
   bool         control_;
-  unsigned int control_width_;
+  bool         console_;
   double       ago_;
   unsigned int frames_;
   float        fps_;
-
-  bool IsItemJustReleased();
+  double       x_;
+  double       y_;
+  bool         dolly_;
+  bool         pivot_;
 
  public:
-  Proc*       proc_;
-  Canvas*     canvas_;
+  Canvas&     canvas_;
   GLFWwindow* view_;
 
-  Gui(GuiState state, Proc* proc, const std::string &version,
+  Gui(Log &log, GuiState state, Canvas &canvas, const std::string &version,
       unsigned int width, unsigned int height);
   ~Gui();
 
-  inline GuiState get_state() const { return this->state_; }
-  static void KeyCallback(GLFWwindow* view, int key, int scancode, int action,
-                          int mods);
-  static void SizeCallback(GLFWwindow* view, int w, int h);
-  void SetPointer();
-  void SetCanvas(Canvas* canvas);
-  void Close();
-  bool Closing() const;
   void Draw();
   void DrawControl(bool draw);
+  void DrawConsole(bool draw);
   void Next() const;
+  void Pause();
+  void Quit();
+  void SetPointer();
+  void Close();
+  bool Closing() const;
+  static void KeyCallback(GLFWwindow* view, int key, int scancode, int action,
+                          int mods);
+  static void MouseButtonCallback(GLFWwindow* view, int button, int action,
+                                  int mods);
+  static void MouseMoveCallback(GLFWwindow* view, double x, double y);
+  static void MouseScrollCallback(GLFWwindow* view, double dx, double dy);
+  static void ResizeCallback(GLFWwindow* view, int w, int h);
 };
 
