@@ -6,7 +6,7 @@
 #include "../util/log.hh"
 
 
-// Cl: OpenCL.
+// Cl: For computing on the GPU using OpenCL.
 
 class Cl
 {
@@ -23,9 +23,7 @@ class Cl
   cl::Kernel       kernel_move_;
 
  public:
-
   Cl(Log &log);
-  //~Cl();
 
   bool Good();
   void PrepSeek();

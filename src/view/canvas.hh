@@ -5,12 +5,10 @@
 #include "gl.hh"
 #include "gui.hh"
 #include "view.hh"
-#include "../proc/proc.hh"
 #include "../util/log.hh"
-#include "../util/observation.hh"
 
 
-// Canvas: The graphical view.
+// Canvas: The graphical View.
 
 class Gui;
 
@@ -18,13 +16,12 @@ class Canvas : public View, Observer
 {
  private:
   Log   &log_;
-  State &state_;              // also the subject being observed
   std::vector<GLfloat> xyz_;  // position vector
   std::vector<GLfloat> rgba_; // color vector
   glm::mat4 orth_;            // orthogonalisation matrix
   glm::mat4 model_;           // model-to-world matrix
   glm::mat4 view_;            // world-to-view matrix
-  glm::mat4 proj_;            // perspective projection matrix
+  glm::mat4 proj_;            // perspective-projection matrix
   glm::vec3 dolly_;           // camera position vector
   GLfloat width_;             // canvas width
   GLfloat height_;            // canvas width
@@ -42,8 +39,8 @@ class Canvas : public View, Observer
   double ago_;
 
  public:
-  Proc         &proc_;
   Gui*          gui_;
+  Control      &ctrl_;
   VertexBuffer* vertex_buffer_xyz_;
   VertexBuffer* vertex_buffer_rgba_;
   VertexBuffer* vertex_buffer_quad_;
@@ -52,14 +49,15 @@ class Canvas : public View, Observer
   GLfloat dollyd_;   // camera position increment
   GLfloat pivotd_;   // camera pivot angle increment
   GLfloat zoomd_;    // camera zoom increment
-  bool paused_;
-  bool hard_paused_; // no input handling
+  bool hard_paused_; // no particle movement nor user's movement input
+  bool paused_;      // no particle movement but accept user movement input
 
-  Canvas(Log &log, State &state, Proc &proc, bool hide_ctrl);
+  Canvas(Log &log, Control &ctrl,
+         unsigned int width, unsigned int height, bool hide_ctrl);
   ~Canvas() override;
 
   void Exec() override;
-  void React(Subject&) override;
+  void React(Topic topic) override;
   void Spawn();
   void Respawn();
   void Clear();
@@ -72,6 +70,7 @@ class Canvas : public View, Observer
   void Three(bool yes);
   void HardPause(bool yes);
   void Pause();
+  void Quit();
   void CameraSet();
   void CameraDefault();
   void Camera(GLfloat dx, GLfloat dy, GLfloat dz, GLfloat dax, GLfloat day);

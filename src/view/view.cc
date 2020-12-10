@@ -3,17 +3,20 @@
 #include "headless.hh"
 
 
-// Factory of view
+// Factory of Views
 
 std::unique_ptr<View>
-View::Init(Log &log, State &state, Proc &proc, bool visual, bool hide_ctrl)
+View::Init(Log &log, Control &ctrl, bool headless, bool hide_side)
 {
-  if (visual)
+  State &state = ctrl.GetState();
+  if (headless)
   {
-    std::unique_ptr<View> view(new Canvas(log, state, proc, hide_ctrl));
+    std::unique_ptr<View> view(new Headless(log, ctrl));
     return view;
   }
-  std::unique_ptr<View> view(new Headless(log, proc));
+  std::unique_ptr<View> view(new Canvas(log, ctrl,
+                                        state.width_, state.height_,
+                                        hide_side));
   return view;
 }
 

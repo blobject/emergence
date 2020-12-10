@@ -4,12 +4,10 @@
 
 #include <fstream>
 #include <map>
-#include <unistd.h>
+#include <unistd.h> // getopt, optarg, optopt
 
 #include "util/common.hh"
 #include "util/log.hh"
-#include "util/util.hh"
-#include "proc/proc.hh"
 #include "view/view.hh"
 
 
@@ -35,17 +33,32 @@ main(int argc, char* argv[])
 
   // configuration
   std::string init = opts["inputstate"];
-  bool visual = opts["headless"].empty();
-  bool hide_ctrl = ! opts["hidectrl"].empty();
+  bool headless = ! opts["headless"].empty();
+  bool hide_side = ! opts["hideside"].empty();
 
+  /* dependency & observer graph
+   * ----------   ........
+   *
+   *   .................................
+   *   v                               :
+   * State <---- Proc <-- Cl           :       .-- Gl
+   *         |    ^              .-- Canvas <--|
+   *         |    |              |             '-- Gui
+   *         '-- Ctrl <-- View <---- Headless
+   */
   // system objects
-  State state = State(log, init);
-  Proc proc = Proc(log, state);
+  auto state = State(log);
+  auto cl = Cl(log);
+  auto proc = Proc(log, state, cl);
+  auto ctrl = Control(log, state, proc, init);
   std::unique_ptr<View> view =
-    std::move(View::Init(log, state, proc, visual, hide_ctrl));
+    std::move(View::Init(log, ctrl, headless, hide_side));
 
   // execution
-  view->Exec();
+  while (! ctrl.quit_)
+  {
+    ctrl.Next();
+  }
 
   return 0;
 }
@@ -143,16 +156,18 @@ Argue(Log &log, std::map<std::string,std::string> &opts)
     Help();
     return;
   }
+  std::string message = "Running emergence";
   if (opts["headless"].empty())
   {
-    log.Add(Attn::O, "Running emergence canvas");
+    message += " canvas";
   }
   else
   {
     opt = opts["inputstate"];
-    std::string out = "Running emergence headless";
-    if (! opt.empty()) out += ": " + opt;
-    log.Add(Attn::O, out);
+    message += " headless";
+    if (! opt.empty()) message += ": " + opt;
   }
+  log.Add(Attn::O, message);
+  std::cout << message << std::endl;
 }
 

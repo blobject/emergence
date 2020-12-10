@@ -4,35 +4,33 @@
 #include <imgui/imgui.h>
 #include <imgui/imgui_impl_glfw.h>
 #include <imgui/imgui_impl_opengl3.h>
-#include <imgui/imgui_internal.h>
 
 #include "canvas.hh"
+#include "../proc/control.hh"
 #include "../util/log.hh"
 #include "../util/util.hh"
 
 
-// GuiState: Intermediary state holding before modifying State
+// GuiState: Intermediary state storage before really modifying State
 
 class GuiState
 {
  private:
-  State &truth_;
+  Control &ctrl_;
 
  public:
-  // stable
-  unsigned int stop_;
-  // adjustable
-  unsigned int num_;
+  long long    stop_;
+  int          num_;
   unsigned int width_;
   unsigned int height_;
   float        alpha_;
   float        beta_;
   float        scope_;
   float        speed_;
-  int          colorscheme_;
+  int          colors_;
   int          preset_;
 
-  GuiState(State &truth);
+  GuiState(Control &ctrl);
 
   bool Untrue();
   bool ChangeTruth();
@@ -59,7 +57,7 @@ class Gui
   int          font_width_;
   unsigned int gui_width_;
   unsigned int gui_height_;
-  bool         control_;
+  bool         side_;
   bool         console_;
   char         dialog_;
   double       ago_;
@@ -74,12 +72,12 @@ class Gui
   Canvas&     canvas_;
   GLFWwindow* view_;
 
-  Gui(Log &log, GuiState state, Canvas &canvas, const std::string &version,
-      unsigned int width, unsigned int height, bool hide_ctrl);
+  Gui(Log &log, GuiState state, Canvas &canvas,
+      unsigned int width, unsigned int height, bool hide_side);
   ~Gui();
 
   void Draw();
-  void DrawControl(bool draw);
+  void DrawSide(bool draw);
   void DrawConsole(bool draw);
   void DrawSaveLoad(char dialog);
   void DrawQuit(char dialog);

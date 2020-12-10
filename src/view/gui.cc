@@ -2,13 +2,13 @@
 
 #include "gui.hh"
 #include "../util/common.hh"
-#include "../util/util.hh"
 
 
-GuiState::GuiState(State &truth)
-  : truth_(truth)
+GuiState::GuiState(Control &ctrl)
+  : ctrl_(ctrl)
 {
-  this->stop_ = truth.stop_;
+  State &truth = ctrl.GetState();
+  this->stop_ = ctrl.stop_;
   this->num_ = truth.num_;
   this->width_ = truth.width_;
   this->height_ = truth.height_;
@@ -16,50 +16,51 @@ GuiState::GuiState(State &truth)
   this->beta_ = Util::RadToDeg(truth.beta_);
   this->scope_ = truth.scope_;
   this->speed_ = truth.speed_;
-  this->colorscheme_ = truth.colorscheme_;
+  this->colors_ = truth.colors_;
   this->preset_ = 0;
 }
 
 
-// Untrue: GuiState is different from State.
+// Untrue: Ask Control whether GUI parameters are different from State's.
+
 bool
 GuiState::Untrue()
 {
-  return (this->stop_   != this->truth_.stop_   ||
-          this->num_    != this->truth_.num_    ||
-          this->width_  != this->truth_.width_  ||
-          this->height_ != this->truth_.height_ ||
-          Util::RoundF(Util::DegToRad(this->alpha_))
-          != Util::RoundF(this->truth_.alpha_)  ||
-          Util::RoundF(Util::DegToRad(this->beta_))
-          != Util::RoundF(this->truth_.beta_)   ||
-          Util::RoundF(this->scope_)
-          != Util::RoundF(this->truth_.scope_)  ||
-          Util::RoundF(this->speed_)
-          != Util::RoundF(this->truth_.speed_)  ||
-          this->colorscheme_ != this->truth_.colorscheme_);
+  // TODO: stop
+  Stative stative = {this->stop_,
+                     this->num_,
+                     this->width_,
+                     this->height_,
+                     Util::DegToRad(this->alpha_),
+                     Util::DegToRad(this->beta_),
+                     this->scope_,
+                     this->speed_,
+                     this->colors_};
+  return this->ctrl_.Different(stative);
 }
 
 
-// ChangeTruth: Change true system State.
+// ChangeTruth: Change system State parameters.
+
 bool
 GuiState::ChangeTruth()
 {
-  StateTransport next = {this->stop_,
-                         this->num_,
-                         this->width_,
-                         this->height_,
-                         Util::DegToRad(this->alpha_),
-                         Util::DegToRad(this->beta_),
-                         this->scope_,
-                         this->speed_,
-                         this->colorscheme_};
-  // truth change provokes observer (canvas) reaction
-  return this->truth_.Change(next);
+  Stative stative = {this->stop_,
+                     this->num_,
+                     this->width_,
+                     this->height_,
+                     Util::DegToRad(this->alpha_),
+                     Util::DegToRad(this->beta_),
+                     this->scope_,
+                     this->speed_,
+                     this->colors_};
+  // truth change provokes Canvas (observer) reaction
+  return this->ctrl_.Change(stative);
 }
 
 
 // Random: Randomise system State parameters.
+
 void
 GuiState::Random(Log &log)
 {
@@ -75,7 +76,8 @@ GuiState::Random(Log &log)
 }
 
 
-// Preset: Apply a preset system State.
+// Preset: Apply preset parameters (ALPHA & BETA) to system State.
+
 void
 GuiState::Preset(Log &log)
 {
@@ -154,23 +156,43 @@ GuiState::Preset(Log &log)
 }
 
 
+// Save: Thin wrapper around Control.Save().
+
 bool
 GuiState::Save(const std::string &path)
 {
-  return this->truth_.Save(path);
+  return this->ctrl_.Save(path);
 }
 
+
+// Load: Thin wrapper around Control.Load().
+//       Also update GuiState parameters immediately as a difference check would
+//       be redundant.
 
 bool
 GuiState::Load(const std::string &path)
 {
-  return this->truth_.Load(path);
+  Stative stative = this->ctrl_.Load(path);
+  if (-1 == stative.num)
+  {
+    return false;
+  }
+  this->stop_   = stative.stop;
+  this->num_    = stative.num;
+  this->width_  = stative.width;
+  this->height_ = stative.height;
+  this->alpha_  = Util::RadToDeg(stative.alpha);
+  this->beta_   = Util::RadToDeg(stative.beta);
+  this->scope_  = stative.scope;
+  this->speed_  = stative.speed;
+  this->colors_ = stative.colors;
+  return true;
 }
 
 
-Gui::Gui(Log &log, GuiState state, Canvas &canvas, const std::string &version,
-         unsigned int width, unsigned int height, bool hide_ctrl)
-  : log_(log), state_(state), canvas_(canvas), control_(! hide_ctrl)
+Gui::Gui(Log &log, GuiState state, Canvas &canvas,
+         unsigned int width, unsigned int height, bool hide_side)
+  : log_(log), state_(state), canvas_(canvas), side_(! hide_side)
 {
   // glfw
   GLFWwindow* view;
@@ -205,7 +227,7 @@ Gui::Gui(Log &log, GuiState state, Canvas &canvas, const std::string &version,
   ImGuiIO &io = ImGui::GetIO();
   static_cast<void>(io);
   ImGui_ImplGlfw_InitForOpenGL(view, true);
-  ImGui_ImplOpenGL3_Init(version.c_str());
+  ImGui_ImplOpenGL3_Init(GLSL_VERSION);
   ImGui::StyleColorsDark();
   float font_size = 24.0f;
 
@@ -236,6 +258,8 @@ Gui::~Gui()
   glfwTerminate();
 }
 
+// Draw: Render GLFW and ImGui, namely those graphical entities that are not
+//       specifically related to the particles.
 
 void
 Gui::Draw()
@@ -254,7 +278,7 @@ Gui::Draw()
   ImGui::NewFrame();
   this->font_width_ = ImGui::CalcTextSize(" ").x;
 
-  this->DrawControl(this->control_);
+  this->DrawSide(this->side_);
   this->DrawConsole(this->console_);
   this->DrawSaveLoad(this->dialog_);
   this->DrawQuit(this->dialog_);
@@ -265,8 +289,10 @@ Gui::Draw()
 }
 
 
+// DrawSide: Render the parameter controlling side bar.
+
 void
-Gui::DrawControl(bool draw)
+Gui::DrawSide(bool draw)
 {
   if (! draw)
   {
@@ -289,9 +315,11 @@ Gui::DrawControl(bool draw)
   auto color_title = ImVec4(1.0f, 0.75f, 0.25f, 1.0f);
   auto color_dim = ImVec4(0.75f, 0.75f, 0.75f, 1.0f);
   auto color_dimmer = ImVec4(0.5f, 0.5f, 0.5f, 1.0f);
+  const ImS64 negone = -1;
   const ImU32 zero = 0;
   const ImU32 max_dim = 100000;
   const ImU32 max_num = 1000000;
+  const ImS64 max_stop = 2000000000;
   std::string status;
   std::string pause = "Pause";
   bool hard_paused = canvas.hard_paused_;
@@ -412,8 +440,11 @@ Gui::DrawControl(bool draw)
     ImGui::AlignTextToFramePadding();
     ImGui::Text("speed "); ImGui::SameLine();
     ImGui::InputFloat("s", &state.speed_, 1.0f, 64.0f, "%.3f");
-    ImGui::Text("stop:   %u", state.stop_);
-    ImGui::Text("colors: %d", state.colorscheme_);
+    ImGui::AlignTextToFramePadding();
+    ImGui::Text("stop  "); ImGui::SameLine();
+    ImGui::InputScalar("!", ImGuiDataType_S64, &canvas.ctrl_.stop_, &negone,
+                       &max_stop);
+    ImGui::Text("colors: %d", state.colors_);
     ImGui::Dummy(ImVec2(0.0f, 1.0f));
     ImGui::PushFont(this->font_b);
     ImGui::TextColored(color_title, "Canvas");
@@ -432,7 +463,7 @@ Gui::DrawControl(bool draw)
     ImGui::TextColored(color_dimmer, "opencl: ");
     ImGui::SameLine(); ImGui::SetCursorPosX(ImGui::GetCursorPosX() - 8);
     ImGui::TextColored(color_dim, "%s",
-                       canvas.proc_.cl_good_ ? "on" : "off");
+                       canvas.ctrl_.ClGood() ? "on" : "off");
     ImGui::Dummy(ImVec2(0.0f, 1.0f));
     ImGui::PushFont(this->font_b);
     ImGui::TextColored(color_title, "Usage");
@@ -440,6 +471,10 @@ Gui::DrawControl(bool draw)
     ImGui::TextColored(color_dimmer, "quit:    ");
     ImGui::SameLine(); ImGui::SetCursorPosX(ImGui::GetCursorPosX() - 8);
     ImGui::TextColored(color_dim, "Ctrl+Q");
+    ImGui::SameLine(); ImGui::SetCursorPosX(ImGui::GetCursorPosX() - 8);
+    ImGui::TextColored(color_dimmer, "/Ctrl+");
+    ImGui::SameLine(); ImGui::SetCursorPosX(ImGui::GetCursorPosX() - 8);
+    ImGui::TextColored(color_dim, "C");
     ImGui::TextColored(color_dimmer, "pause:   ");
     ImGui::SameLine(); ImGui::SetCursorPosX(ImGui::GetCursorPosX() - 8);
     ImGui::TextColored(color_dim, "Space");
@@ -490,6 +525,8 @@ Gui::DrawControl(bool draw)
 }
 
 
+// DrawConsole: Render the message log.
+
 void
 Gui::DrawConsole(bool draw)
 {
@@ -535,6 +572,8 @@ Gui::DrawConsole(bool draw)
 }
 
 
+// DrawSaveLoad: Render the save/load dialog box.
+
 void
 Gui::DrawSaveLoad(char dialog)
 {
@@ -557,7 +596,9 @@ Gui::DrawSaveLoad(char dialog)
     func = &GuiState::Load;
   }
   static char path[128];
-  static char bad = ' ';
+  auto color_bad = ImVec4(1.0f, 0.25f, 0.25f, 1.0f);
+  static char bad_input = ' ';
+  static bool bad_save = false;
   std::string allowed = "[/ A-Za-z0-9!@#%()\\[\\],.=+_-]+";
 
   ImGui::SetNextWindowPos(ImVec2((view_width - w) / 2, (view_height - h) / 3));
@@ -570,15 +611,17 @@ Gui::DrawSaveLoad(char dialog)
     ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 20);
     ImGui::InputTextWithHint("", "/path/to/file", path, IM_ARRAYSIZE(path));
     ImGui::PopItemWidth();
-    if (bad == 'e')
+    if (bad_save)
     {
-      ImGui::TextColored(ImVec4(1.0f, 0.25f, 0.25f, 1.0f),
-                         "  Path left empty");
+      ImGui::TextColored(color_bad, "  Load/Save failed!");
     }
-    else if (bad == 'b')
+    else if (bad_input == 'e')
     {
-      ImGui::TextColored(ImVec4(1.0f, 0.25f, 0.25f, 1.0f),
-                         "%s", allowed.c_str());
+      ImGui::TextColored(color_bad, "  Path left empty");
+    }
+    else if (bad_input == 'b')
+    {
+      ImGui::TextColored(color_bad, "%s", allowed.c_str());
     }
     else
     {
@@ -592,18 +635,21 @@ Gui::DrawSaveLoad(char dialog)
     {
       if (std::string(path).empty())
       {
-        bad = 'e';
+        bad_input = 'e';
       }
       else if (! std::regex_match(path, std::regex(allowed)))
       {
-        bad = 'b';
+        bad_input = 'b';
       }
       else
       {
-        (this->state_.*func)(path);
-        bad = ' ';
-        this->dialog_ = ' ';
-        this->canvas_.HardPause(false);
+        bad_input = ' ';
+        bad_save = ! (this->state_.*func)(path);
+        if (! bad_save)
+        {
+          this->dialog_ = ' ';
+          this->canvas_.HardPause(false);
+        }
       }
     }
     ImGui::PopFont();
@@ -611,7 +657,8 @@ Gui::DrawSaveLoad(char dialog)
     ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 10);
     if (ImGui::Button("Cancel", ImVec2(ImGui::GetContentRegionAvail().x - 20, 0)))
     {
-      bad = ' ';
+      bad_input = ' ';
+      bad_save = false;
       this->dialog_ = ' ';
       this->canvas_.HardPause(false);
     }
@@ -619,6 +666,8 @@ Gui::DrawSaveLoad(char dialog)
   ImGui::End();
 }
 
+
+// DrawQuit: Render the quit confirmation dialog box.
 
 void
 Gui::DrawQuit(char dialog)
@@ -633,7 +682,9 @@ Gui::DrawQuit(char dialog)
   int w = 400;
   int h = 380;
   static char path[128];
-  static char bad = ' ';
+  auto color_bad = ImVec4(1.0f, 0.25f, 0.25f, 1.0f);
+  static char bad_input = ' ';
+  static bool bad_save = false;
   std::string allowed = "[/ A-Za-z0-9!@#%()\\[\\],.=+_-]+";
 
   ImGui::SetNextWindowPos(ImVec2((view_width - w) / 2, (view_height - h) / 3));
@@ -646,15 +697,17 @@ Gui::DrawQuit(char dialog)
     ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 20);
     ImGui::InputTextWithHint("", "/path/to/file", path, IM_ARRAYSIZE(path));
     ImGui::PopItemWidth();
-    if (bad == 'e')
+    if (bad_save)
     {
-      ImGui::TextColored(ImVec4(1.0f, 0.25f, 0.25f, 1.0f),
-                         "  Path left empty");
+      ImGui::TextColored(color_bad, "  Save failed!");
     }
-    else if (bad == 'b')
+    else if (bad_input == 'e')
     {
-      ImGui::TextColored(ImVec4(1.0f, 0.25f, 0.25f, 1.0f),
-                         "%s", allowed.c_str());
+      ImGui::TextColored(color_bad, "  Path left empty");
+    }
+    else if (bad_input == 'b')
+    {
+      ImGui::TextColored(color_bad, "%s", allowed.c_str());
     }
     else
     {
@@ -668,16 +721,19 @@ Gui::DrawQuit(char dialog)
     {
       if (std::string(path).empty())
       {
-        bad = 'e';
+        bad_input = 'e';
       }
       else if (! std::regex_match(path, std::regex(allowed)))
       {
-        bad = 'b';
+        bad_input = 'b';
       }
       else
       {
-        this->state_.Save(path);
-        this->Close();
+        bad_save = ! this->state_.Save(path);
+        if (! bad_save)
+        {
+          this->Close();
+        }
       }
     }
     ImGui::Text("");
@@ -693,7 +749,8 @@ Gui::DrawQuit(char dialog)
     if (ImGui::Button("Cancel",
                       ImVec2(ImGui::GetContentRegionAvail().x - 40, 0)))
     {
-      bad = ' ';
+      bad_input = ' ';
+      bad_save = false;
       this->dialog_ = ' ';
       this->canvas_.HardPause(false);
     }
@@ -705,6 +762,8 @@ Gui::DrawQuit(char dialog)
 }
 
 
+// Next: Swap OpenGL buffers and poll events.
+
 void
 Gui::Next() const
 {
@@ -712,6 +771,8 @@ Gui::Next() const
   glfwPollEvents();
 }
 
+
+// Pause: Toggle (soft) pause, unless already hard paused.
 
 void
 Gui::Pause()
@@ -724,6 +785,8 @@ Gui::Pause()
 }
 
 
+// SetPointer: Create a pointer to self for access in callbacks.
+
 void
 Gui::SetPointer()
 {
@@ -732,12 +795,17 @@ Gui::SetPointer()
 }
 
 
+// Close: Quit all graphics.
+
 void
 Gui::Close()
 {
   glfwSetWindowShouldClose(this->view_, true);
+  this->canvas_.Quit();
 }
 
+
+// Closing: Graphics about to quit?
 
 bool
 Gui::Closing() const
@@ -745,6 +813,8 @@ Gui::Closing() const
   return glfwWindowShouldClose(this->view_);
 }
 
+
+// KeyCallback: User key input bindings.
 
 void
 Gui::KeyCallback(GLFWwindow* view, int key, int scancode, int action,
@@ -757,7 +827,7 @@ Gui::KeyCallback(GLFWwindow* view, int key, int scancode, int action,
   {
     if (mods & GLFW_MOD_CONTROL)
     {
-      if (key == GLFW_KEY_Q)
+      if (key == GLFW_KEY_C || key == GLFW_KEY_Q)
       {
         if ('q' == gui->dialog_)
         {
@@ -789,7 +859,7 @@ Gui::KeyCallback(GLFWwindow* view, int key, int scancode, int action,
     }
     if (key == GLFW_KEY_ENTER) { gui->state_.ChangeTruth(); return; }
     if (key == GLFW_KEY_SPACE) { gui->Pause(); return; }
-    if (key == GLFW_KEY_TAB) { gui->control_ = ! gui->control_; return; }
+    if (key == GLFW_KEY_TAB) { gui->side_ = ! gui->side_; return; }
     if (key == GLFW_KEY_GRAVE_ACCENT) { gui->console_ = ! gui->console_; return; }
     if (key == GLFW_KEY_SLASH) { canvas.CameraDefault(); return; }
   }
@@ -826,6 +896,8 @@ Gui::KeyCallback(GLFWwindow* view, int key, int scancode, int action,
 }
 
 
+// MouseButtonCallback: User mouse input bindings.
+
 void
 Gui::MouseButtonCallback(GLFWwindow* view, int button, int action, int mods)
 {
@@ -846,6 +918,8 @@ Gui::MouseButtonCallback(GLFWwindow* view, int button, int action, int mods)
 }
 
 
+// MouseMoveCallback: User mouse movement bindings.
+
 void
 Gui::MouseMoveCallback(GLFWwindow* view, double x, double y)
 {
@@ -865,6 +939,8 @@ Gui::MouseMoveCallback(GLFWwindow* view, double x, double y)
 }
 
 
+// MouseScrollCallback: User mouse scrolling bindings.
+
 void
 Gui::MouseScrollCallback(GLFWwindow* view, double dx, double dy)
 {
@@ -874,6 +950,8 @@ Gui::MouseScrollCallback(GLFWwindow* view, double dx, double dy)
   gui->canvas_.Camera(0,0,dy,0,0);
 }
 
+
+// ResizeCallback: Window resize bindings.
 
 void
 Gui::ResizeCallback(GLFWwindow* view, int w, int h)

@@ -1,24 +1,22 @@
 #pragma once
 
 #include "view.hh"
-#include "../proc/proc.hh"
 #include "../util/log.hh"
-#include "../util/observation.hh"
 
 
-// Headless: The non-graphical (commandline-only) view.
+// Headless: The non-graphical (commandline) View.
 
 class Headless : public View, Observer
 {
  private:
-  Log  &log_;  // also the subject being observed
-  Proc &proc_;
+  Log     &log_;
+  Control &ctrl_;
 
  public:
-  Headless(Log &log, Proc &proc);
+  Headless(Log &log, Control &ctrl);
   ~Headless() override;
 
   void Exec() override;
-  void React(Subject&) override;
+  void React(Topic topic) override;
 };
 

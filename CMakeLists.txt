@@ -24,15 +24,16 @@ add_library(imgui OBJECT
 
 add_library(libemergence OBJECT
   # core
-  src/proc/proc.cc
   src/proc/cl.cc
+  src/proc/control.cc
+  src/proc/proc.cc
   src/state/state.cc
   # view
   src/view/view.cc
   src/view/headless.cc
   src/view/canvas.cc
-  src/view/gui.cc
   src/view/gl.cc
+  src/view/gui.cc
   # util
   src/util/io.cc
   src/util/log.cc

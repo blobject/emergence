@@ -2,7 +2,7 @@
 
 #include <memory>
 
-#include "../proc/proc.hh"
+#include "../proc/control.hh"
 #include "../util/log.hh"
 
 
@@ -14,8 +14,8 @@ class View
   virtual ~View() {}
 
   // factory method
-  static std::unique_ptr<View> Init(Log &log, State &state, Proc &proc,
-                                    bool visual, bool hide_ctrl);
+  static std::unique_ptr<View> Init(Log &log, Control &ctrl,
+                                    bool headless, bool hide_side);
 
   virtual void Exec() = 0;
 };

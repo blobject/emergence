@@ -1,6 +1,5 @@
 #include "cl.hh"
 #include "../util/common.hh"
-#include "../util/util.hh"
 
 
 Cl::Cl(Log &log)
@@ -8,11 +7,14 @@ Cl::Cl(Log &log)
 {
   std::vector<cl::Platform> platforms;
   std::vector<cl::Device> devices;
+  std::string message;
 
   cl::Platform::get(&platforms);
   if (0 == platforms.size())
   {
-    log.Add(Attn::Ecl, "No platform found.");
+    message = "No platform found.";
+    log.Add(Attn::Ecl, message);
+    std::cout << "Error(cl): " << message << std::endl;
     return;
   }
   this->platform_ = platforms.front();
@@ -34,7 +36,9 @@ Cl::Cl(Log &log)
   std::string name = this->device_.getInfo<CL_DEVICE_NAME>();
   if (name.empty())
   {
-    log.Add(Attn::Ecl, "No device found.");
+    message = "No device found.";
+    log.Add(Attn::Ecl, message);
+    std::cout << "Error(cl): " << message << std::endl;
     return;
   }
 
@@ -44,15 +48,19 @@ Cl::Cl(Log &log)
   this->max_freq_ = this->device_.getInfo<CL_DEVICE_MAX_CLOCK_FREQUENCY>();
   this->max_gmem_ = this->device_.getInfo<CL_DEVICE_GLOBAL_MEM_SIZE>();
 
-  log.Add(Attn::O, "Using OpenCL\n  device: " + name
-          + "\n  max compute units:\t" + std::to_string(this->max_cu_)
-          + "\n  max clock frequency:\t" + std::to_string(this->max_freq_) + " MHz"
-          + "\n  max global memory:\t" + std::to_string(this->max_gmem_ / 1024 / 1024) + " MB");
+  message = "Using OpenCL\n  device: " + name
+    + "\n  max compute units:\t" + std::to_string(this->max_cu_)
+    + "\n  max clock frequency:\t" + std::to_string(this->max_freq_) + " MHz"
+    + "\n  max global memory:\t" + std::to_string(this->max_gmem_ / 1024 / 1024) + " MB";
+  log.Add(Attn::O, message);
+  std::cout << message << std::endl;
 
   this->PrepSeek();
   this->PrepMove();
 }
 
+
+// Good: OpenCL is enabled.
 
 bool
 Cl::Good()
@@ -60,6 +68,8 @@ Cl::Good()
   return ! this->device_.getInfo<CL_DEVICE_NAME>().empty();
 }
 
+
+// PrepSeek: Pre-build the kernel for performing particle seeking.
 
 void
 Cl::PrepSeek()
@@ -156,9 +166,12 @@ Cl::PrepSeek()
   }
   catch (cl_int err) {
     this->log_.Add(Attn::Ecl, std::to_string(err));
+    std::cout << "Error(cl): " << std::to_string(err) << std::endl;
   }
 }
 
+
+// Seek: Execute particle seeking.
 
 void
 Cl::Seek(std::vector<int> &grid, unsigned int gstride, unsigned int n,
@@ -223,6 +236,8 @@ Cl::Seek(std::vector<int> &grid, unsigned int gstride, unsigned int n,
 }
 
 
+// PrepMove: Pre-build the kernel for performing particle moving.
+
 void
 Cl::PrepMove()
 {
@@ -267,9 +282,12 @@ Cl::PrepMove()
   }
   catch (cl_int err) {
     this->log_.Add(Attn::Ecl, std::to_string(err));
+    std::cout << "Error(cl): " << std::to_string(err) << std::endl;
   }
 }
 
+
+// Move: Execute particle moving.
 
 void
 Cl::Move(unsigned int n, std::vector<float> &px, std::vector<float> &py,

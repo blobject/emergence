@@ -1,12 +1,12 @@
 #include "log.hh"
-#include "../util/common.hh"
-#include "../util/util.hh"
 
 
 Log::Log(unsigned int limit)
   : limit_(limit)
 {}
 
+
+// Add: Push a new message into the log.
 
 void
 Log::Add(Attn attn, const std::string &message)
@@ -17,11 +17,10 @@ Log::Add(Attn attn, const std::string &message)
   }
   std::string m = message;
   if      (attn == Attn::E)   { m = "Error: " + m; }
-  else if (attn == Attn::Ecl) { m = "Error (cl): " + m; }
-  else if (attn == Attn::Egl) { m = "Error (cl): " + m; }
+  else if (attn == Attn::Ecl) { m = "Error(cl): " + m; }
+  else if (attn == Attn::Egl) { m = "Error(gl): " + m; }
   this->messages_.push_front(std::pair<Attn,std::string>(attn, m));
 
-  // provoke reaction in Headless
-  this->Notify();
+  this->Notify(Topic::NewMessage); // Headless reacts
 }
 

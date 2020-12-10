@@ -4,7 +4,7 @@
 #include "../util/util.hh"
 
 
-// VertexBuffer
+// VertexBuffer: Wrapper around OpenGL array buffers.
 
 VertexBuffer::VertexBuffer(const void* data, GLuint size)
   : data_(data), size_(size)
@@ -45,7 +45,7 @@ VertexBuffer::Unbind() const
 }
 
 
-// IndexBuffer
+// IndexBuffer: Wrapper around OpenGL element array buffers.
 
 IndexBuffer::IndexBuffer(const GLuint* data, GLuint count)
   : count_(count)
@@ -74,7 +74,7 @@ IndexBuffer::Unbind() const
 }
 
 
-// VertexBufferAttribs
+// VertexBufferAttribs: Helper function for matching vertex arrays to buffers.
 
 template<typename T> Attribs
 VertexBufferAttribs::Gen(GLuint count, GLuint size, uintptr_t offset)
@@ -99,7 +99,7 @@ VertexBufferAttribs::Gen<GLuint>(GLuint count, GLuint size, uintptr_t offset)
 }
 
 
-// VertexArray
+// VertexArray: Wrapper around OpenGL vertex arrays.
 
 VertexArray::VertexArray()
 {
@@ -137,7 +137,7 @@ VertexArray::Unbind() const
 }
 
 
-// Shader
+// Shader: Wrapper around OpenGL shaders and uniforms.
 
 Shader::Shader(Log &log)
   : id_(0)
@@ -162,6 +162,7 @@ Shader::Unbind() const
   DOGL(glUseProgram(0));
 }
 
+// CreateShader: Load embedded shader code.
 GLuint
 Shader::CreateShader(Log &log)
 {
@@ -287,7 +288,7 @@ Shader::SetUniformMat4f(const std::string &name, const glm::mat4 &mat)
 }
 
 
-// FrameBuffer
+// FrameBuffer: Wrapper around OpenGL frame buffers.
 
 FrameBuffer::FrameBuffer()
 {

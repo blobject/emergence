@@ -55,3 +55,6 @@ This is a rewrite and extension of an [[https://github.com/blobject/mff/tree/mas
 1. ~cd emergence/build~
 1. ~./emergence~ (append ~-h~ for usage help)
 
+** Misc.
+
+- ~4000 lines of (code + comments)

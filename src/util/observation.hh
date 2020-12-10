@@ -4,7 +4,12 @@
 #include <vector>
 
 
-// Observer design pattern
+// Topic: Type of observer notification.
+
+enum class Topic { StateChanged = 0, ProcNextDone, ProcDone, NewMessage };
+
+
+// Observer design pattern.
 
 class Subject;
 
@@ -12,7 +17,7 @@ class Observer
 {
  public:
   virtual ~Observer() = default;
-  virtual void React(Subject&) = 0;
+  virtual void React(Topic topic) = 0;
 };
 
 class Subject
@@ -24,6 +29,6 @@ class Subject
   virtual ~Subject() = default;
   void Attach(Observer &observer);
   void Detach(Observer &observer);
-  void Notify();
+  void Notify(Topic topic);
 };
 

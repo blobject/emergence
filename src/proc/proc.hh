@@ -1,18 +1,20 @@
 #pragma once
 
 #include "cl.hh"
-#include "../state/state.hh"
 #include "../util/log.hh"
-//#include "../util/observation.hh"
 
 
-// Proc: Primordial particle system algorithm implementation.
+class Cl;
+class State;
 
-class Proc
+
+// Proc: Implementation of the particle system's core algorithm.
+
+class Proc : public Subject
 {
  private:
   Log             &log_;
-  Cl*              cl_;
+  Cl              &cl_;
   std::vector<int> grid_;
   int              grid_cols_;
   int              grid_rows_;
@@ -31,14 +33,12 @@ class Proc
 
  public:
   State &state_;
+  bool   paused_;
   bool   cl_good_;
 
-  Proc(Log &log, State &state);
-  //~Proc() override;
+  Proc(Log &log, State &state, Cl &cl);
 
-  //void React(Subject&) override;
-
-  //inline State &get_state() const { return this->state_; }
   void Next();
+  void Done();
 };
 

@@ -3,21 +3,13 @@
 #include "../util/util.hh"
 
 
-History::History()
-{
-  this->snapshots_ = std::vector<int>(100, 0);
-}
-
-
-State::State(Log &log, const std::string &load)
+State::State(Log &log)
   : log_(log)
 {
   // sedentary
-  this->history_ = History();
-  this->colorscheme_ = 0;
+  this->colors_ = 0;
 
   // transportable
-  this->stop_ = 0;
   this->num_ = 4000;
   this->width_ = 1000;
   this->height_ = 1000;
@@ -29,19 +21,12 @@ State::State(Log &log, const std::string &load)
   // derived
   this->scope_squared_ = this->scope_ * this->scope_;
 
-  if (load.empty())
-  {
-    // particles
-    this->Spawn();
-  }
-  else
-  {
-    this->Load(load);
-  }
+  this->Spawn();
 }
 
 
 // Spawn: Initialise particles.
+
 void
 State::Spawn()
 {
@@ -66,6 +51,7 @@ State::Spawn()
 
 
 // Respawn: Reinitialise particles.
+
 void
 State::Respawn()
 {
@@ -75,6 +61,7 @@ State::Respawn()
 
 
 // Clear: Clear out particles.
+
 void
 State::Clear()
 {
@@ -92,82 +79,54 @@ State::Clear()
 }
 
 
-// Change: Mutate State data.
+// Change: Mutate world.
+
 bool
-State::Change(StateTransport &next)
+State::Change(Stative &gui)
 {
   bool respawn = false;
 
-  if (next.width        != this->width_        ||
-      next.height       != this->height_       ||
-      next.num          != this->num_)
+  if (gui.width  != this->width_  ||
+      gui.height != this->height_ ||
+      gui.num    != this->num_)
   {
     respawn = true;
   }
 
   if (! respawn &&
-      next.alpha       == this->alpha_       &&
-      next.beta        == this->beta_        &&
-      next.scope       == this->scope_       &&
-      next.speed       == this->speed_       &&
-      next.colorscheme == this->colorscheme_)
+      gui.alpha  == this->alpha_ &&
+      gui.beta   == this->beta_  &&
+      gui.scope  == this->scope_ &&
+      gui.speed  == this->speed_ &&
+      gui.colors == this->colors_)
   {
     return false;
   }
 
-  this->stop_ = next.stop;
-  this->num_ = next.num;
-  this->width_ = next.width;
-  this->height_ = next.height;
-  this->alpha_ = next.alpha;
-  this->beta_ = next.beta;
-  this->scope_ = next.scope;
-  this->speed_ = next.speed;
-  this->colorscheme_ = next.colorscheme;
+  this->num_    = gui.num;
+  this->width_  = gui.width;
+  this->height_ = gui.height;
+  this->alpha_  = gui.alpha;
+  this->beta_   = gui.beta;
+  this->scope_  = gui.scope;
+  this->speed_  = gui.speed;
+  this->colors_ = gui.colors;
 
-  // derived
-  this->scope_squared_ = next.scope * next.scope;
+  this->scope_squared_ = gui.scope * gui.scope;
 
+  std::string message = "Changing state";
   if (respawn)
   {
-    this->log_.Add(Attn::O, "Changing state and respawning.");
+    message += " and respawning.";
     this->Respawn();
   }
   else
   {
-    this->log_.Add(Attn::O, "Changing state without respawn.");
+    message += " without respawn.";
   }
+  this->log_.Add(Attn::O, message);
 
-  // provoke reaction in Proc and View
-  this->Notify();
-  return true;
-}
-
-
-// Save: Record current State.
-bool
-State::Save(const std::string &path)
-{
-  if (! Util::SaveState(*this, path))
-  {
-    this->log_.Add(Attn::E, "Could not save to file '" + path + "'.");
-    return false;
-  }
-  this->log_.Add(Attn::O, "Saved state to '" + path + "'.");
-  return true;
-}
-
-
-// Load: Recall an initial State.
-bool
-State::Load(const std::string &path)
-{
-  if (! Util::LoadState(*this, path))
-  {
-    this->log_.Add(Attn::E, "Could not load from file '" + path + "'.");
-    return false;
-  }
-  this->log_.Add(Attn::O, "Loaded state from '" + path + "'.");
+  this->Notify(Topic::StateChanged); // Canvas reacts
   return true;
 }
 

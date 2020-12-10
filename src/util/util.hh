@@ -2,13 +2,11 @@
 
 #include <CL/cl2.hpp>
 #include <iostream>
-#include <math.h>
+#include <math.h> // cosf, sinf, floor, fmod
 #include <string>
 
-#include "../state/state.hh"
 
-
-// DOGL: Macro for debugging OpenGL calls.
+// DOGL: A macro for debugging OpenGL calls.
 
 #define DOGL(x) Util::PrepDebugGl(); x; \
   if (! Util::DebugGl(#x, __FILE__, __LINE__)) __builtin_trap()
@@ -23,8 +21,6 @@ class Util
   static void PrepDebugGl();
   static bool DebugGl(const std::string &func, const std::string &file,
                       int line);
-  static bool LoadState(State &state, const std::string &path);
-  static bool SaveState(State &state, const std::string &path);
 
   // math.cc
   template<typename T> static T Distribute(T a, T b);

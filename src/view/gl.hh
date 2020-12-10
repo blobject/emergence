@@ -3,7 +3,6 @@
 #include <GL/gl.h>
 #include <glm/glm.hpp>
 #include <unordered_map>
-#include <vector>
 
 #include "../util/log.hh"
 

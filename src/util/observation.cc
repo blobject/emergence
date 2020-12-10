@@ -10,7 +10,7 @@ Subject::Attach(Observer &observer)
 }
 
 
-// Detach: Deregister an observer.
+// Detach: Unregister an observer.
 
 void
 Subject::Detach(Observer &observer)
@@ -23,13 +23,12 @@ Subject::Detach(Observer &observer)
 
 // Notify: Provoke all observers to react.
 
-#include <iostream>
 void
-Subject::Notify()
+Subject::Notify(Topic topic)
 {
   for (Observer* observer : this->observers_)
   {
-    observer->React(*this);
+    observer->React(topic);
   }
 }
 

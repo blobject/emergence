@@ -3,37 +3,13 @@
 #include <string>
 #include <vector>
 
+#include "../proc/control.hh"
 #include "../util/log.hh"
-#include "../util/observation.hh"
 
 
-// History: Record of particle system instances.
+// Mutually include-dependent classes.
 
-class History
-{
- public:
-  std::vector<int> snapshots_; // cumulative
-
-  History();
-};
-
-
-// StateTransport: Struct for transporting data from GuiState to State
-
-struct StateTransport
-{
-  // stable
-  unsigned int stop;
-  // adjustable
-  unsigned int num;
-  unsigned int width;
-  unsigned int height;
-  float        alpha;
-  float        beta;
-  float        scope;
-  float        speed;
-  int          colorscheme;
-};
+class Stative;
 
 
 // State: Main data source of the primordial particle system.
@@ -62,29 +38,25 @@ class State : public Subject
   std::vector<int> pgrow_;       // volatile
 
   // sedentary data
-  History history_;     // cumulative
-  int     colorscheme_; // adjustable
+  int colors_;                   // adjustable
 
   // transportable data
-  unsigned int stop_;         // (stable) # iterations until process stop
-  unsigned int num_;          // (adjustable) # particles
-  unsigned int width_;        // (adjustable) processable space width (pixels)
-  unsigned int height_;       // (adjustable) processable space height (pixels)
-  float        alpha_;        // (adjustable) alpha in main formula (degrees)
-  float        beta_;         // (adjustable) beta in main formula (degrees)
-  float        scope_;        // (adjustable) neighborhood radius
-  float        speed_;        // (adjustable) movement multiplier
+  int          num_;    // # particles (negative for error)
+  unsigned int width_;  // processable space width (pixels)
+  unsigned int height_; // processable space height (pixels)
+  float        alpha_;  // alpha in main formula (degrees)
+  float        beta_;   // beta in main formula (degrees)
+  float        scope_;  // neighborhood radius
+  float        speed_;  // movement multiplier
 
   // derived data
   float scope_squared_;
 
-  State(Log &log, const std::string &path);
+  State(Log &log);
 
   void Spawn();
   void Respawn();
   void Clear();
-  bool Change(StateTransport &next);
-  bool Save(const std::string &path);
-  bool Load(const std::string &path);
+  bool Change(Stative &gui);
 };
 

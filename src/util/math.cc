@@ -3,6 +3,8 @@
 #include "util.hh"
 
 
+// Distribute: Pick a number from a range in a uniform distribution.
+
 template<typename T> T
 Util::Distribute(T a, T b)
 {
@@ -28,12 +30,16 @@ Util::Distribute<float>(float a, float b)
 }
 
 
+// DegToRad: Convert from degrees to radians.
+
 float
 Util::DegToRad(float d)
 {
   return d * M_PI / 180.0f;
 }
 
+
+// RadToDeg: Convert from radians to degrees.
 
 float
 Util::RadToDeg(float r)
@@ -42,13 +48,16 @@ Util::RadToDeg(float r)
 }
 
 
-// Keep float at 3 decimal precision for State-GuiState comparisons
+// RoundF: Keep float at 3 decimal precision for State-GuiState comparisons.
+
 float
 Util::RoundF(float f)
 {
   return std::round(f * 1000) / 1000.0f;
 }
 
+
+// Signum: The signum function used by Proc.PlainMove().
 
 int
 Util::Signum(int n)
