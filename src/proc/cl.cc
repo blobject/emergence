@@ -12,8 +12,7 @@ Cl::Cl(Log& log)
     cl::Platform::get(&platforms);
     if (0 == platforms.size()) {
         message = "No platform found.";
-        log.add(Attn::Ecl, message);
-        std::cout << "Error(cl): " << message << std::endl;
+        log.add(Attn::Ecl, message, true);
         return;
     }
     this->platform_ = platforms.front();
@@ -32,8 +31,7 @@ Cl::Cl(Log& log)
     std::string name = this->device_.getInfo<CL_DEVICE_NAME>();
     if (name.empty()) {
         message = "No device found.";
-        log.add(Attn::Ecl, message);
-        std::cout << "Error(cl): " << message << "\n";
+        log.add(Attn::Ecl, message, true);
         return;
     }
 
@@ -48,8 +46,7 @@ Cl::Cl(Log& log)
         + "\n  max clock frequency:\t" + std::to_string(this->max_freq_)
         + " MHz\n  max global memory:\t"
         + std::to_string(this->max_gmem_ / 1024 / 1024) + " MB";
-    log.add(Attn::O, message);
-    std::cout << message << "\n";
+    log.add(Attn::O, message, true);
 
     this->prep_seek();
     this->prep_move();
@@ -151,8 +148,7 @@ Cl::prep_seek()
         this->kernel_seek_ = cl::Kernel(program, "particles_seek", &compile);
         //std::cout << "seek kernel: " << compile << std::endl;
     } catch (cl_int err) {
-        this->log_.add(Attn::Ecl, std::to_string(err));
-        std::cout << "Error(cl): " << std::to_string(err) << "\n";
+        this->log_.add(Attn::Ecl, std::to_string(err), true);
     }
 }
 
@@ -263,8 +259,7 @@ Cl::prep_move()
         this->kernel_move_ = cl::Kernel(program, "particles_move", &compile);
         //std::cout << "move kernel: " << compile << std::endl;
     } catch (cl_int err) {
-        this->log_.add(Attn::Ecl, std::to_string(err));
-        std::cout << "Error(cl): " << std::to_string(err) << "\n";
+        this->log_.add(Attn::Ecl, std::to_string(err), true);
     }
 }
 

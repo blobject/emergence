@@ -21,7 +21,7 @@ class Proc : public Subject
     done()
     {
         this->paused_ = true;
-        this->notify(Topic::ProcDone); // Views react
+        this->notify(Issue::ProcDone); // Views react
     }
 
     State& state_;

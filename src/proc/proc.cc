@@ -11,8 +11,7 @@ Proc::Proc(Log& log, State& state, Cl& cl)
     this->cl_good_ = cl.good();
     if (!this->cl_good_) {
         std::string message = "Proceeding without OpenCL parallelisation.";
-        log.add(Attn::O, message);
-        std::cout << message << std::endl;
+        log.add(Attn::O, message, true);
     }
 }
 
@@ -24,19 +23,19 @@ Proc::next()
 {
     if (this->paused_) {
         // do no processing but still let Views do their thing
-        this->notify(Topic::ProcNextDone); // Views react
+        this->notify(Issue::ProcNextDone); // Views react
         return;
     }
     this->plot();
     if (this->cl_good_) {
         this->seek();
         this->move();
-        this->notify(Topic::ProcNextDone); // Views react
+        this->notify(Issue::ProcNextDone); // Views react
         return;
     }
     this->plain_seek();
     this->plain_move();
-    this->notify(Topic::ProcNextDone); // Views react
+    this->notify(Issue::ProcNextDone); // Views react
 }
 
 

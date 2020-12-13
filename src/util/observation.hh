@@ -4,9 +4,9 @@
 #include <vector>
 
 
-// Topic: Type of observer notification.
+// Issue: Type of observer notification.
 
-enum class Topic { StateChanged = 0, ProcNextDone, ProcDone, NewMessage };
+enum class Issue { StateChanged = 0, ProcNextDone, ProcDone, NewMessage };
 
 
 // Observer design pattern.
@@ -17,7 +17,7 @@ class Observer
 {
   public:
     virtual ~Observer() = default;
-    virtual void react(Topic topic) = 0;
+    virtual void react(Issue issue) = 0;
 };
 
 class Subject
@@ -43,10 +43,10 @@ class Subject
     }
 
     // notify: Provoke all observers to react.
-    inline void notify(Topic topic) const
+    inline void notify(Issue issue) const
     {
         for (Observer* observer : this->observers_) {
-            observer->react(topic);
+            observer->react(issue);
         }
     }
 };

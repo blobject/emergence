@@ -14,15 +14,15 @@ class State;
 
 struct Stative
 {
-  long long    stop;
-  int          num;
-  unsigned int width;
-  unsigned int height;
-  float        alpha;
-  float        beta;
-  float        scope;
-  float        speed;
-  int          colors;
+    long long    stop;
+    int          num;
+    unsigned int width;
+    unsigned int height;
+    float        alpha;
+    float        beta;
+    float        scope;
+    float        speed;
+    int          colors;
 };
 
 
@@ -37,21 +37,22 @@ class Control
     void    attach_to_proc(Observer& observer);
     void    detach_from_proc(Observer& observer);
     void    next();
-    void    pause(bool yes);
+    void    pause(bool yesno);
     void    done() const;
     void    quit();
     bool    cl_good() const;
     //inline State& get_state() const { return this->state_; }
     State&  get_state() const;
     int     get_num() const;
-    bool    different(Stative& gui);
-    bool    change(Stative& gui) const;
+    bool    different(Stative& input);
+    bool    change(Stative& input) const;
     Stative load(const std::string& path);
     bool    save(const std::string& path);
     bool    load_file(const std::string& path);
     bool    save_file(const std::string& path);
 
-    long long stop_; // # iterations until system processing stops
+    long long start_; // initial # iterations
+    long long stop_;  // # iterations until system processing stops
     bool      quit_;
 
   private:

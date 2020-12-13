@@ -81,35 +81,35 @@ State::clear()
 // change: Mutate world.
 
 bool
-State::change(Stative& gui)
+State::change(Stative& input)
 {
     bool respawn = false;
 
-    if (gui.width  != this->width_  ||
-        gui.height != this->height_ ||
-        gui.num    != this->num_) {
+    if (input.width  != this->width_  ||
+        input.height != this->height_ ||
+        input.num    != this->num_) {
         respawn = true;
     }
 
     if (!respawn &&
-        gui.alpha  == this->alpha_ &&
-        gui.beta   == this->beta_  &&
-        gui.scope  == this->scope_ &&
-        gui.speed  == this->speed_ &&
-        gui.colors == this->colors_) {
+        input.alpha  == this->alpha_ &&
+        input.beta   == this->beta_  &&
+        input.scope  == this->scope_ &&
+        input.speed  == this->speed_ &&
+        input.colors == this->colors_) {
         return false;
     }
 
-    this->num_    = gui.num;
-    this->width_  = gui.width;
-    this->height_ = gui.height;
-    this->alpha_  = gui.alpha;
-    this->beta_   = gui.beta;
-    this->scope_  = gui.scope;
-    this->speed_  = gui.speed;
-    this->colors_ = gui.colors;
+    this->num_    = input.num;
+    this->width_  = input.width;
+    this->height_ = input.height;
+    this->alpha_  = input.alpha;
+    this->beta_   = input.beta;
+    this->scope_  = input.scope;
+    this->speed_  = input.speed;
+    this->colors_ = input.colors;
 
-    this->scope_squared_ = gui.scope * gui.scope;
+    this->scope_squared_ = input.scope * input.scope;
 
     std::string message = "Changing state";
     if (respawn) {
@@ -120,7 +120,7 @@ State::change(Stative& gui)
     }
     this->log_.add(Attn::O, message);
 
-    this->notify(Topic::StateChanged); // Canvas reacts
+    this->notify(Issue::StateChanged); // Canvas reacts
     return true;
 }
 

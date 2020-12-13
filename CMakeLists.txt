@@ -11,7 +11,7 @@ find_package(GLEW REQUIRED)
 find_package(glfw3 REQUIRED)
 find_path(GLM_INCLUDE_DIR glm/glm.hpp)
 include_directories(${GLM_INCLUDE_DIR})
-find_package(OpenCL REQUIRED)
+find_package(OpenCL)
 find_package(OpenGL REQUIRED)
 
 add_library(imgui OBJECT

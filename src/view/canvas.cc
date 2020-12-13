@@ -149,13 +149,13 @@ Canvas::exec()
 // react: Canvas observes State::change(), Proc::next(), Proc::done().
 
 void
-Canvas::react(Topic topic)
+Canvas::react(Issue issue)
 {
-    if (Topic::ProcNextDone == topic) {
+    if (Issue::ProcNextDone == issue) {
         this->exec();
-    } else if (Topic::StateChanged == topic) {
+    } else if (Issue::StateChanged == issue) {
         this->respawn();
-    } else if (Topic::ProcDone == topic) {
+    } else if (Issue::ProcDone == issue) {
         this->paused_ = true;
     }
 }

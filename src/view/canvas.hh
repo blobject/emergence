@@ -17,7 +17,7 @@ class Canvas : public View, Observer
            unsigned int width, unsigned int height, bool hide_ctrl);
     ~Canvas() override;
     void exec() override;
-    void react(Topic topic) override;
+    void react(Issue issue) override;
     void spawn();
     void next2d();
     void next3d();
@@ -33,17 +33,17 @@ class Canvas : public View, Observer
 
     // three: Set 3D mode.
     inline void
-    three(bool yes)
+    three(bool yesno)
     {
-        this->three_ = yes;
+        this->three_ = yesno;
     }
 
     // hard_pause: Set hard pause.
     inline void
-    hard_pause(bool yes)
+    hard_pause(bool yesno)
     {
-        this->hard_paused_ = yes;
-        this->ctrl_.pause(yes);
+        this->hard_paused_ = yesno;
+        this->ctrl_.pause(yesno);
     }
 
     // pause: Toggle (soft) pause.

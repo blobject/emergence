@@ -41,7 +41,7 @@ main(int argc, char* argv[])
      * ----------   ........
      *
      *   .................................
-     *   v                               :
+     *   v          v                    :
      * State <---- Proc <-- Cl           :       .-- Gl
      *         |    ^              .-- Canvas <--|
      *         |    |              |             '-- Gui
@@ -64,19 +64,29 @@ main(int argc, char* argv[])
 }
 
 
+// usage: Print usage oneliner.
+
+static void
+usage()
+{
+    std::cout << "Usage: " << std::string(ME) << " -(f FILE|g|c|v|h?)"
+              << std::endl;
+}
+
+
 // help: Print usage help.
 
 static void
 help()
 {
-    std::cout << "Usage: " << std::string(ME) << " [OPTIONS]\n\n"
-              << "Primordial particle system visualiser/processor.\n\n"
+    usage();
+    std::cout << "\nPrimordial particle system visualiser/processor.\n\n"
               << "Options:\n"
               << "  -f FILE  supply an initial state\n"
               << "  -g       run in headless mode\n"
-              << "  -c       hide the visualiser controls\n"
+              << "  -c       hide the visualiser control side bar\n"
               << "  -v       show version\n"
-              << "  -h       show this help"
+              << "  -h|-?    show this help"
               << std::endl;
 }
 
@@ -91,27 +101,16 @@ args(int argc, char* argv[])
                                               {"headless", ""},
                                               {"inputstate", ""},
                                               {"hidectrl", ""}};
-    std::ifstream stream;
     int opt;
-    while (-1 != (opt = getopt(argc, argv, ":cf:ghv"))) {
+    while (-1 != (opt = getopt(argc, argv, "cf:ghv"))) {
         switch (opt) {
         case 'g': opts["headless"] = "y"; break;
         case 'c': opts["hidectrl"] = "y"; break;
         case 'v': opts["quit"] = "version";  opts["return"] =  "0"; break;
         case 'h': opts["quit"] = "help";     opts["return"] =  "0"; break;
-        case ':': opts["quit"] = "bad_file"; opts["return"] = "-1"; break;
-        case 'f':
-            opts["inputstate"] = optarg;
-            stream = std::ifstream(optarg);
-            if (stream) {
-                stream.close();
-            } else {
-                opts["quit"] = "inputstate";
-                opts["return"] = "-1";
-            }
-            break;
-        case '?':
-        default: opts["quit"] = optopt; opts["return"] = "-1"; break;
+        case ':': opts["quit"] = "nofile"; opts["return"] = "-1"; break;
+        case 'f': opts["inputstate"] = optarg; break;
+        case '?': default: opts["quit"] = optopt; opts["return"] = "-1"; break;
         }
     }
     return opts;
@@ -123,23 +122,35 @@ args(int argc, char* argv[])
 static void
 argue(Log& log, std::map<std::string,std::string>& opts)
 {
-    auto opt = opts["quit"];
-    if (! opt.empty()) {
+    std::string opt = opts["quit"];
+    if (!opts["inputstate"].empty())
+    {
+        std::ifstream stream;
+        stream = std::ifstream(opts["inputstate"]);
+        if (stream) {
+            stream.close();
+        } else {
+            log.add(Attn::E, "unreadable file: " + opts["inputstate"], true);
+            opts["return"] = "-1";
+        }
+        usage();
+        return;
+    }
+    if (!opt.empty()) {
         if ("help" == opt) {
             help();
             return;
         } else if ("version" == opt) {
             log.add(Attn::O, std::string(ME) + " version "
-                    + std::string(VERSION));
+                    + std::string(VERSION), true);
             return;
-        } else if ("bad_file" == opt) {
-            log.add(Attn::E, "no file provided\n\n");
+        } else if ("nofile" == opt) {
+            log.add(Attn::E, "no file provided\n", true);
         } else if ("inputstate" == opt) {
-            log.add(Attn::E, "unreadable file '" + opts["inputstate"] + "'\n");
         } else {
-            log.add(Attn::E, "unknown argument '" + opts["quit"] + "'\n");
+            log.add(Attn::E, "unknown argument: " + opts["quit"], true);
         }
-        help();
+        usage();
         return;
     }
     std::string message = "Running emergence";
@@ -151,7 +162,6 @@ argue(Log& log, std::map<std::string,std::string>& opts)
         message += " headless";
         if (!opt.empty()) message += ": " + opt;
     }
-    log.add(Attn::O, message);
-    std::cout << message << "\n";
+    log.add(Attn::O, message, true);
 }
 

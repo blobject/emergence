@@ -21,6 +21,9 @@ This is a rewrite and extension of an [[https://github.com/blobject/mff/tree/mas
 - glm
 - imgui (source & headers provided in =opt/=)
 - opengl ~>= 3.3~
+
+**** Optional
+
 - opencl c/c++ headers ~>= 2~
 - opencl loader (aka. ocl-icd) ~>= 2~
 - opencl runtime ~>= 2.1~

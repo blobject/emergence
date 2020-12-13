@@ -20,7 +20,7 @@ class State : public Subject
     void spawn();
     void respawn();
     void clear();
-    bool change(Stative& gui);
+    bool change(Stative& input);
 
     //// particle
     // location & direction

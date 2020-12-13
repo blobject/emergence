@@ -18,6 +18,7 @@ class Log : public Subject
   public:
     Log(unsigned int limit);
     void add(Attn attn, const std::string& message);
+    void add(Attn attn, const std::string& message, bool headless);
 
     std::deque<std::pair<Attn,std::string>> messages_;
 

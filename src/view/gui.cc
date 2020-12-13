@@ -24,10 +24,28 @@ GuiState::GuiState(Control& ctrl)
 // untrue: Ask Control whether GUI parameters are different from State's.
 
 bool
-GuiState::untrue()
+GuiState::untrue() const
 {
     // TODO: stop
-    Stative stative = {this->stop_,
+    Stative gui_state = {this->stop_,
+                         this->num_,
+                         this->width_,
+                         this->height_,
+                         Util::deg_to_rad(this->alpha_),
+                         Util::deg_to_rad(this->beta_),
+                         this->scope_,
+                         this->speed_,
+                         this->colors_};
+    return this->ctrl_.different(gui_state);
+}
+
+
+// deceive: Change system State parameters.
+
+bool
+GuiState::deceive() const
+{
+  Stative gui_state = {this->stop_,
                        this->num_,
                        this->width_,
                        this->height_,
@@ -36,26 +54,8 @@ GuiState::untrue()
                        this->scope_,
                        this->speed_,
                        this->colors_};
-    return this->ctrl_.different(stative);
-}
-
-
-// deceive: Change system State parameters.
-
-bool
-GuiState::deceive()
-{
-  Stative stative = {this->stop_,
-                     this->num_,
-                     this->width_,
-                     this->height_,
-                     Util::deg_to_rad(this->alpha_),
-                     Util::deg_to_rad(this->beta_),
-                     this->scope_,
-                     this->speed_,
-                     this->colors_};
   // truth change provokes Canvas (observer) reaction
-  return this->ctrl_.change(stative);
+  return this->ctrl_.change(gui_state);
 }
 
 
@@ -158,7 +158,7 @@ GuiState::preset(Log& log)
 
 // save: Thin wrapper around Control.Save().
 
-bool
+inline bool
 GuiState::save(const std::string& path)
 {
     return this->ctrl_.save(path);
@@ -172,19 +172,19 @@ GuiState::save(const std::string& path)
 bool
 GuiState::load(const std::string& path)
 {
-    Stative stative = this->ctrl_.load(path);
-    if (-1 == stative.num) {
+    Stative loaded = this->ctrl_.load(path);
+    if (-1 == loaded.num) {
         return false;
     }
-    this->stop_   = stative.stop;
-    this->num_    = stative.num;
-    this->width_  = stative.width;
-    this->height_ = stative.height;
-    this->alpha_  = Util::rad_to_deg(stative.alpha);
-    this->beta_   = Util::rad_to_deg(stative.beta);
-    this->scope_  = stative.scope;
-    this->speed_  = stative.speed;
-    this->colors_ = stative.colors;
+    this->stop_   = loaded.stop;
+    this->num_    = loaded.num;
+    this->width_  = loaded.width;
+    this->height_ = loaded.height;
+    this->alpha_  = Util::rad_to_deg(loaded.alpha);
+    this->beta_   = Util::rad_to_deg(loaded.beta);
+    this->scope_  = loaded.scope;
+    this->speed_  = loaded.speed;
+    this->colors_ = loaded.colors;
     return true;
 }
 
@@ -819,7 +819,7 @@ Gui::key_callback(GLFWwindow* view, int key, int scancode, int action,
         if (key == GLFW_KEY_SPACE) { gui->pause(); return; }
         if (key == GLFW_KEY_TAB) { gui->side_ = !gui->side_; return; }
         if (key == GLFW_KEY_GRAVE_ACCENT) {
-            gui->console_ = ! gui->console_; return; }
+            gui->console_ = !gui->console_; return; }
         if (key == GLFW_KEY_SLASH) { canvas.camera_default(); return; }
     }
 

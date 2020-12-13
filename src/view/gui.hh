@@ -16,8 +16,8 @@ class GuiState
 {
   public:
     GuiState(Control& ctrl);
-    bool untrue();
-    bool deceive();
+    bool untrue() const;
+    bool deceive() const;
     void random(Log& log);
     void preset(Log& log);
     bool save(const std::string& path);

@@ -11,7 +11,7 @@
 // DOGL: A macro for debugging OpenGL calls.
 
 #define DOGL(x) Util::prep_debug_gl(); x; \
-    if (! Util::debug_gl(#x, __FILE__, __LINE__)) __builtin_trap()
+    if (!Util::debug_gl(#x, __FILE__, __LINE__)) __builtin_trap()
 
 
 // Util: Static utility functions.

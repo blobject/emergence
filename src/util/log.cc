@@ -20,6 +20,21 @@ Log::add(Attn attn, const std::string& message)
     else if (attn == Attn::Egl) { m = "Error(gl): " + m; }
   this->messages_.push_front(std::pair<Attn,std::string>(attn, m));
 
-  this->notify(Topic::NewMessage); // Headless reacts
+  this->notify(Issue::NewMessage); // Headless reacts
+}
+
+
+// add: Like add() but print to Headless stdout.
+//      Only used for main(), Proc, and Cl, before Headless gets initialised.
+
+void
+Log::add(Attn attn, const std::string& message, bool headless)
+{
+    this->add(attn, message);
+    std::string m = message;
+    if      (attn == Attn::E)   { m = "Error: "     + m; }
+    else if (attn == Attn::Ecl) { m = "Error(cl): " + m; }
+    else if (attn == Attn::Egl) { m = "Error(gl): " + m; }
+    std::cout << m << std::endl;
 }
 

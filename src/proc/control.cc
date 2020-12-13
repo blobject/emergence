@@ -14,6 +14,7 @@ Control::Control(Log& log, State& state, Proc& proc,
     if (!init_path.empty()) {
         this->load(init_path);
     }
+    this->start_ = this->stop_;
 }
 
 
@@ -69,9 +70,9 @@ Control::next()
 // pause: Do not let the system perform its action.
 
 void
-Control::pause(bool yes)
+Control::pause(bool yesno)
 {
-    this->proc_.paused_ = yes;
+    this->proc_.paused_ = yesno;
 }
 
 
@@ -120,30 +121,30 @@ Control::get_num() const
 }
 
 
-// different: Is GuiState different from State (source of truth)?
+// different: Is input state different from source-of-truth state?
 
 bool
-Control::different(Stative& gui)
+Control::different(Stative& input)
 {
   State& truth = this->state_;
-  return (gui.stop   != this->stop_   ||
-          gui.num    != truth.num_    ||
-          gui.width  != truth.width_  ||
-          gui.height != truth.height_ ||
-          Util::round_float(gui.alpha) != Util::round_float(truth.alpha_) ||
-          Util::round_float(gui.beta)  != Util::round_float(truth.beta_)  ||
-          Util::round_float(gui.scope) != Util::round_float(truth.scope_) ||
-          Util::round_float(gui.speed) != Util::round_float(truth.speed_) ||
-          gui.colors != truth.colors_);
+  return (input.stop   != this->stop_   ||
+          input.num    != truth.num_    ||
+          input.width  != truth.width_  ||
+          input.height != truth.height_ ||
+          Util::round_float(input.alpha) != Util::round_float(truth.alpha_) ||
+          Util::round_float(input.beta)  != Util::round_float(truth.beta_)  ||
+          Util::round_float(input.scope) != Util::round_float(truth.scope_) ||
+          Util::round_float(input.speed) != Util::round_float(truth.speed_) ||
+          input.colors != truth.colors_);
 }
 
 
 // change: Change State parameters.
 
 bool
-Control::change(Stative& gui) const
+Control::change(Stative& input) const
 {
-    return this->state_.change(gui);
+    return this->state_.change(input);
 }
 
 
@@ -152,12 +153,12 @@ Control::change(Stative& gui) const
 bool
 Control::save(const std::string& path)
 {
-    if (!this->save_file(path)) {
-        this->log_.add(Attn::E, "Could not save to file '" + path + "'.");
-        return false;
+    if (this->save_file(path)) {
+        this->log_.add(Attn::O, "Saved state to '" + path + "'.");
+        return true;
     }
-    this->log_.add(Attn::O, "Saved state to '" + path + "'.");
-    return true;
+    this->log_.add(Attn::E, "Could not save to file '" + path + "'.");
+    return false;
 }
 
 
@@ -168,22 +169,22 @@ Control::load(const std::string& path)
 {
     State& state = this->state_;
     int num = state.num_;
-    if (!this->load_file(path))
-    {
+    if (this->load_file(path)) {
+        this->log_.add(Attn::O, "Loaded state from '" + path + "'.");
+    } else {
         this->log_.add(Attn::E, "Could not load from file '" + path + "'.");
         num = -1;
     }
-    this->log_.add(Attn::O, "Loaded state from '" + path + "'.");
-    Stative stative = {this->stop_,
-                       num,
-                       state.width_,
-                       state.height_,
-                       state.alpha_,
-                       state.beta_,
-                       state.scope_,
-                       state.speed_,
-                       state.colors_};
-    return stative;
+    Stative loaded = {this->stop_,
+                      num,
+                      state.width_,
+                      state.height_,
+                      state.alpha_,
+                      state.beta_,
+                      state.scope_,
+                      state.speed_,
+                      state.colors_};
+    return loaded;
 }
 
 
@@ -194,7 +195,7 @@ Control::load(const std::string& path)
  * - Second line and onwards contain particle data
  * - Namely:
  *
- * STOP WIDTH HEIGHT ALPHA BETA SCOPE SPEED
+ * START WIDTH HEIGHT ALPHA BETA SCOPE SPEED
  * 0 X_0 Y_0 PHI_0 RAD_0
  * 1 X_1 Y_1 PHI_1 RAD_1
  * ...
@@ -224,6 +225,7 @@ Control::load_file(const std::string& path)
         linestream = std::istringstream(line);
         // on read failure, the parameters are left unchanged
         if (linestream >> stop)   this->stop_   = stop;
+        this->start_ = this->stop_;
         if (linestream >> width)  truth.width_  = width;
         if (linestream >> height) truth.height_ = height;
         if (linestream >> alpha)  truth.alpha_  = Util::deg_to_rad(alpha);
