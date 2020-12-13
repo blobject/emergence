@@ -35,11 +35,8 @@ add_library(libemergence OBJECT
   src/view/gl.cc
   src/view/gui.cc
   # util
-  src/util/io.cc
-  src/util/log.cc
-  src/util/math.cc
-  src/util/observation.cc
-  src/util/string.cc)
+  src/util/util.cc
+  src/util/log.cc)
 target_link_libraries(libemergence
   imgui)
 

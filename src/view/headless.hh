@@ -8,15 +8,15 @@
 
 class Headless : public View, Observer
 {
- private:
-  Log     &log_;
-  Control &ctrl_;
+  public:
+    Headless(Log& log, Control& ctrl);
+    ~Headless() override;
 
- public:
-  Headless(Log &log, Control &ctrl);
-  ~Headless() override;
+    void exec() override;
+    void react(Topic topic) override;
 
-  void Exec() override;
-  void React(Topic topic) override;
+  private:
+    Log&     log_;
+    Control& ctrl_;
 };
 

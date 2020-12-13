@@ -1,50 +1,38 @@
 #include "../src/util/util.hh"
 
-// io
-
-TEST_CASE("Util/LoadState")
-{
-  REQUIRE(true);
-}
-
-TEST_CASE("Util/SaveState")
-{
-  REQUIRE(true);
-}
-
 // math
 
-TEST_CASE("Util/DegToRad")
+TEST_CASE("Util::deg_to_rad")
 {
-  REQUIRE(Approx(1.047198f) == Util::DegToRad(60));
-  REQUIRE(Approx(1.570796f) == Util::DegToRad(90));
-  REQUIRE(Approx(3.141593f) == Util::DegToRad(180));
-  REQUIRE(Approx(6.283185f) == Util::DegToRad(360));
+  REQUIRE(Approx(1.047198f) == Util::deg_to_rad(60));
+  REQUIRE(Approx(1.570796f) == Util::deg_to_rad(90));
+  REQUIRE(Approx(3.141593f) == Util::deg_to_rad(180));
+  REQUIRE(Approx(6.283185f) == Util::deg_to_rad(360));
 }
 
-TEST_CASE("Util/RadToDeg")
+TEST_CASE("Util::rad_to_deg")
 {
-  REQUIRE(Approx(60) == Util::RadToDeg(1.047198f));
-  REQUIRE(Approx(90) == Util::RadToDeg(1.570796f));
-  REQUIRE(Approx(180) == Util::RadToDeg(3.14159f));
-  REQUIRE(Approx(360) == Util::RadToDeg(6.283185f));
+  REQUIRE(Approx(60) == Util::rad_to_deg(1.047198f));
+  REQUIRE(Approx(90) == Util::rad_to_deg(1.570796f));
+  REQUIRE(Approx(180) == Util::rad_to_deg(3.14159f));
+  REQUIRE(Approx(360) == Util::rad_to_deg(6.283185f));
 }
 
-TEST_CASE("Util/Signum")
+TEST_CASE("Util::signum")
 {
-  REQUIRE(-1 == Util::Signum(-5));
-  REQUIRE(0 == Util::Signum(0));
-  REQUIRE(1 == Util::Signum(2));
+  REQUIRE(-1 == Util::signum(-5));
+  REQUIRE(0 == Util::signum(0));
+  REQUIRE(1 == Util::signum(2));
 }
 
 // string
 
-TEST_CASE("Util/Trim")
+TEST_CASE("Util::trim")
 {
-  REQUIRE("foo" == Util::Trim(" foo"));
-  REQUIRE("foo" == Util::Trim("foo "));
-  REQUIRE("foo" == Util::Trim(" foo "));
-  REQUIRE("foo" == Util::Trim("foo\t"));
-  REQUIRE("foo" == Util::Trim("foo\n"));
+  REQUIRE("foo" == Util::trim(" foo"));
+  REQUIRE("foo" == Util::trim("foo "));
+  REQUIRE("foo" == Util::trim(" foo "));
+  REQUIRE("foo" == Util::trim("foo\t"));
+  REQUIRE("foo" == Util::trim("foo\n"));
 }
 

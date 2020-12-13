@@ -12,33 +12,39 @@ class State;
 
 class Proc : public Subject
 {
- private:
-  Log             &log_;
-  Cl              &cl_;
-  std::vector<int> grid_;
-  int              grid_cols_;
-  int              grid_rows_;
-  unsigned int     grid_stride_; // (max) size of a flattened grid unit
+  public:
+    Proc(Log& log, State& state, Cl& cl);
+    void next();
 
-  void Plot();
-  void Seek();
-  void Move();
-  void PlainSeek();
-  void PlainSeekVicinity(std::vector<int> &grid, unsigned int stride,
-                         int col, int row, int cols, int rows,
-                         unsigned int srci);
-  void PlainSeekTally(unsigned int srci, unsigned int dsti,
-                      bool cunder, bool cover, bool runder, bool rover);
-  void PlainMove();
+    // done: Pause the system and notify Views
+    inline void
+    done()
+    {
+        this->paused_ = true;
+        this->notify(Topic::ProcDone); // Views react
+    }
 
- public:
-  State &state_;
-  bool   paused_;
-  bool   cl_good_;
+    State& state_;
+    bool   paused_;
+    bool   cl_good_;
 
-  Proc(Log &log, State &state, Cl &cl);
+  private:
+    Log&             log_;
+    Cl&              cl_;
+    std::vector<int> grid_;
+    int              grid_cols_;
+    int              grid_rows_;
+    unsigned int     grid_stride_; // (max) size of a flattened grid unit
 
-  void Next();
-  void Done();
+    void plot();
+    void seek();
+    void move();
+    void plain_seek();
+    void plain_seek_vicinity(std::vector<int>& grid, unsigned int stride,
+                             int col, int row, int cols, int rows,
+                             unsigned int srci);
+    void plain_seek_tally(unsigned int srci, unsigned int dsti,
+                          bool cunder, bool cover, bool runder, bool rover);
+    void plain_move();
 };
 

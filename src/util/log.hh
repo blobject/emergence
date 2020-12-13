@@ -1,10 +1,9 @@
 #pragma once
 
+#include "../util/observation.hh"
+#include <deque>
 #include <iostream>
 #include <string>
-#include <deque>
-
-#include "../util/observation.hh"
 
 
 // Attn: Type of log message
@@ -16,14 +15,13 @@ enum class Attn { O = 0, E, Ecl, Egl };
 
 class Log : public Subject
 {
- private:
-  unsigned int limit_;
+  public:
+    Log(unsigned int limit);
+    void add(Attn attn, const std::string& message);
 
- public:
-  std::deque<std::pair<Attn,std::string>> messages_;
+    std::deque<std::pair<Attn,std::string>> messages_;
 
-  Log(unsigned int limit);
-
-  void Add(Attn attn, const std::string &message);
+  private:
+    unsigned int limit_;
 };
 

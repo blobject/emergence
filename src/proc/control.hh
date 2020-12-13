@@ -30,34 +30,33 @@ struct Stative
 
 class Control
 {
- private:
-  Log   &log_;
-  Proc  &proc_;
-  State &state_;
+  public:
+    Control(Log& log, State& state, Proc& proc, const std::string& init);
+    void    attach_to_state(Observer& observer);
+    void    detach_from_state(Observer& observer);
+    void    attach_to_proc(Observer& observer);
+    void    detach_from_proc(Observer& observer);
+    void    next();
+    void    pause(bool yes);
+    void    done() const;
+    void    quit();
+    bool    cl_good() const;
+    //inline State& get_state() const { return this->state_; }
+    State&  get_state() const;
+    int     get_num() const;
+    bool    different(Stative& gui);
+    bool    change(Stative& gui) const;
+    Stative load(const std::string& path);
+    bool    save(const std::string& path);
+    bool    load_file(const std::string& path);
+    bool    save_file(const std::string& path);
 
- public:
-  long long stop_; // # iterations until system processing stops
-  bool      quit_;
+    long long stop_; // # iterations until system processing stops
+    bool      quit_;
 
-  Control(Log &log, State &state, Proc &proc, const std::string &init);
-
-  void    AttachToState(Observer &observer);
-  void    DetachFromState(Observer &observer);
-  void    AttachToProc(Observer &observer);
-  void    DetachFromProc(Observer &observer);
-  void    Next();
-  void    Pause(bool yes);
-  void    Done();
-  void    Quit();
-  bool    ClGood();
-  //inline State &get_state() const { return this->state_; }
-  State   &GetState();
-  int     GetNum();
-  bool    Different(Stative &gui);
-  bool    Change(Stative &gui);
-  Stative Load(const std::string &path);
-  bool    Save(const std::string &path);
-  bool    LoadFromFile(const std::string &path);
-  bool    SaveToFile(const std::string &path);
+  private:
+    Log&   log_;
+    Proc&  proc_;
+    State& state_;
 };
 

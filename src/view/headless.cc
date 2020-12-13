@@ -1,40 +1,36 @@
 #include "headless.hh"
 
 
-Headless::Headless(Log &log, Control &ctrl)
-  : log_(log), ctrl_(ctrl)
+Headless::Headless(Log& log, Control& ctrl)
+    : log_(log), ctrl_(ctrl)
 {
-  log.Attach(*this);
-  ctrl.AttachToProc(*this);
+    log.attach(*this);
+    ctrl.attach_to_proc(*this);
 }
 
 
 Headless::~Headless()
 {
-  this->log_.Detach(*this);
-  this->ctrl_.DetachFromProc(*this);
+    this->log_.detach(*this);
+    this->ctrl_.detach_from_proc(*this);
 }
 
 
-// Exec: TODO
-
 void
-Headless::Exec()
+Headless::exec()
 {
+    // TODO
 }
 
 
-// React: Headless observes, Log.Add(), Proc.Next(), Proc.Done().
+// react: Headless observes, Log::add(), Proc::next(), Proc::done().
 
 void
-Headless::React(Topic topic)
+Headless::react(Topic topic)
 {
-  if (Topic::ProcNextDone == topic)
-  {
-    this->Exec();
-  }
-  else if (Topic::NewMessage == topic)
-  {
+  if (Topic::ProcNextDone == topic) {
+    this->exec();
+  } else if (Topic::NewMessage == topic) {
     std::cout << this->log_.messages_.front().second << std::endl;
   }
 }
