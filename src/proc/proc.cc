@@ -16,8 +16,6 @@ Proc::Proc(Log& log, State& state, Cl& cl)
 }
 
 
-// next: Let the system perform one action step.
-
 void
 Proc::next()
 {
@@ -39,9 +37,6 @@ Proc::next()
 }
 
 
-// plot: Prepare seek() and move() (for either OpenCL or plain versions).
-//       Specifically, clear out seek data and (re)generate the grid.
-
 void
 Proc::plot()
 {
@@ -59,7 +54,7 @@ Proc::plot()
     }
 
     // hydrate grid units with corresponding particle indices
-    // initialise the neighborhood grid in non-flat format
+    // initialise the vicinity grid in non-flat format
     float width = state.width_;
     float height = state.height_;
     unsigned int scope = state.scope_;
@@ -116,9 +111,6 @@ Proc::plot()
 }
 
 
-// seek: Entry point for OpenCL version of seek.
-//       Calculate new N, L, R (seek data) for each particle.
-
 void
 Proc::seek()
 {
@@ -132,9 +124,6 @@ Proc::seek()
 }
 
 
-// move: Entry point for OpenCL version of move.
-//       Update to new X, Y, PHI (move data) for each particle.
-
 void
 Proc::move()
 {
@@ -146,9 +135,6 @@ Proc::move()
                    state.alpha_, state.beta_, state.speed_);
 }
 
-
-// plain_seek: Non-OpenCL version of seek.
-//             Iterate through each particle.
 
 void
 Proc::plain_seek()
@@ -168,11 +154,6 @@ Proc::plain_seek()
     }
 }
 
-
-// plain_seek_vicinity: For the non-OpenCL version of seek.
-//                      Iterate through every other particle in the vicinity,
-//                      ie. the 3x3 neighborhood subset of grid centered around
-//                      src.
 
 void
 Proc::plain_seek_vicinity(std::vector<int>& grid, unsigned int stride,
@@ -207,7 +188,7 @@ Proc::plain_seek_vicinity(std::vector<int>& grid, unsigned int stride,
                    /* ne */ cc,  rr,  false,  cover, false,  rover};
     int dsti;
 
-    // for every vicinity (neighborhood) unit
+    // for every unit in the vicinity (neighborhood)
     for (unsigned int v = 0; v < 54; v += 6) {
         // for each particle index within the unit
         for (unsigned int p = 0; p < stride; ++p) {
@@ -227,10 +208,6 @@ Proc::plain_seek_vicinity(std::vector<int>& grid, unsigned int stride,
     }
 }
 
-
-// plain_seek_tally: For the non-OpenCL version of seek.
-//                   Update N, L, R of the two particles provided respectively
-//                   by the two foregoing callers.
 
 void
 Proc::plain_seek_tally(unsigned int srci, unsigned int dsti,
@@ -266,9 +243,6 @@ Proc::plain_seek_tally(unsigned int srci, unsigned int dsti,
     else                                  { ++state.pl_[dsti]; }
 }
 
-
-// plain_move: Non-OpenCL version of move.
-//             Update X, Y, PHI of every particle.
 
 void
 Proc::plain_move()

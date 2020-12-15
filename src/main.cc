@@ -1,3 +1,5 @@
+//===-- main.cc - program entry point ---------------------------*- C++ -*-===//
+
 #define CL_HPP_TARGET_OPENCL_VERSION 210
 #define MESA_GL_VERSION_OVERRIDE 3.3
 #define MESA_GLSL_VERSION_OVERRIDE 330
@@ -17,8 +19,10 @@ static void
 argue(Log& log, std::map<std::string,std::string>& opts);
 
 
-// main: Emergence program entry point.
-
+/// main(): Emergence program entry point containing the processing loop.
+/// \param argc  number of arguments to Emergence
+/// \param argv  array of arguments to Emergence
+/// \returns  Emergence return code
 int
 main(int argc, char* argv[])
 {
@@ -37,8 +41,8 @@ main(int argc, char* argv[])
     bool headless = !opts["headless"].empty();
     bool hide_side = !opts["hideside"].empty();
 
-    /* dependency & observer graph
-     * ----------   ........
+    /* dependency & observation graph
+     * ----------   ...........
      *
      *   .................................
      *   v          v                    :
@@ -64,8 +68,7 @@ main(int argc, char* argv[])
 }
 
 
-// usage: Print usage oneliner.
-
+/// usage(): Print usage oneliner.
 static void
 usage()
 {
@@ -74,8 +77,7 @@ usage()
 }
 
 
-// help: Print usage help.
-
+/// help(): Print usage help.
 static void
 help()
 {
@@ -91,8 +93,10 @@ help()
 }
 
 
-// args: Parse commandline arguments.
-
+/// args(): Parse the arguments to Emergence.
+/// \param argc  number of arguments to Emergence
+/// \param argv  array of arguments to Emergence
+/// \returns  map of program options
 static std::map<std::string,std::string>
 args(int argc, char* argv[])
 {
@@ -117,8 +121,9 @@ args(int argc, char* argv[])
 }
 
 
-// argue: Print appropriate messages according to commandline arguments.
-
+/// argue(): Print appropriate messages according to the arguments to Emergence.
+/// \param log  Log object
+/// \param opts  map of program options
 static void
 argue(Log& log, std::map<std::string,std::string>& opts)
 {
@@ -132,8 +137,8 @@ argue(Log& log, std::map<std::string,std::string>& opts)
         } else {
             log.add(Attn::E, "unreadable file: " + opts["inputstate"], true);
             opts["return"] = "-1";
+            usage();
         }
-        usage();
         return;
     }
     if (!opt.empty()) {

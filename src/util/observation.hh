@@ -1,3 +1,11 @@
+//===-- observation.hh - observer pattern -----------------------*- C++ -*-===//
+///
+/// \file
+/// Definition of the Issue enum and the Subject and Observer classes,
+/// implementing the observer pattern.
+///
+//===----------------------------------------------------------------------===//
+
 #pragma once
 
 #include <algorithm>
@@ -8,8 +16,6 @@
 
 enum class Issue { StateChanged = 0, ProcNextDone, ProcDone, NewMessage };
 
-
-// Observer design pattern.
 
 class Subject;
 
@@ -26,14 +32,12 @@ class Subject
     std::vector<Observer*> observers_;
     virtual ~Subject() = default;
 
-    // attach: Register an observer.
     inline void
     attach(Observer& observer)
     {
         this->observers_.push_back(&observer);
     }
 
-    // detach: Unregister an observer.
     inline void
     detach(Observer& observer)
     {
@@ -42,7 +46,6 @@ class Subject
                                            &observer));
     }
 
-    // notify: Provoke all observers to react.
     inline void notify(Issue issue) const
     {
         for (Observer* observer : this->observers_) {

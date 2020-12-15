@@ -3,8 +3,6 @@
 #include <regex>
 
 
-// debug_gl: Print the first OpenGL error.
-
 bool
 Util::debug_gl(const std::string& func, const std::string& path, int line)
 {
@@ -27,7 +25,6 @@ Util::debug_gl(const std::string& func, const std::string& path, int line)
     return true;
 }
 
-// relative: Get the file path relative to the project directory.
 
 std::string
 Util::relative(const std::string& path)
@@ -35,8 +32,6 @@ Util::relative(const std::string& path)
     return std::regex_replace(path, std::regex("^.*[\\/]src[\\/]"), "");
 }
 
-
-// trim: Remove whitespace at the ends of a string.
 
 std::string
 Util::trim(std::string s)

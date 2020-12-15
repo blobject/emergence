@@ -18,8 +18,6 @@ Control::Control(Log& log, State& state, Proc& proc,
 }
 
 
-// Observer pattern helpers for at/de-taching Views to State/Proc.
-
 void
 Control::attach_to_state(Observer& observer)
 {
@@ -48,8 +46,6 @@ Control::detach_from_proc(Observer& observer)
 }
 
 
-// next: Call Proc::next() while handling paused state and remaining ticks.
-
 void
 Control::next()
 {
@@ -67,16 +63,12 @@ Control::next()
 }
 
 
-// pause: Do not let the system perform its action.
-
 void
 Control::pause(bool yesno)
 {
     this->proc_.paused_ = yesno;
 }
 
-
-// done: Thin wrapper around Proc::done().
 
 void
 Control::done() const
@@ -85,16 +77,12 @@ Control::done() const
 }
 
 
-// quit: Stops the main() loop.
-
 void
 Control::quit()
 {
     this->quit_ = true;
 }
 
-
-// cl_good(): Thin wrapper around Cl::good().
 
 bool
 Control::cl_good() const
@@ -103,8 +91,6 @@ Control::cl_good() const
 }
 
 
-// get_state(): Return a mutable reference to State.
-
 State&
 Control::get_state() const
 {
@@ -112,16 +98,12 @@ Control::get_state() const
 }
 
 
-// get_num(): Return the number of particles.
-
 int
 Control::get_num() const
 {
     return this->state_.num_;
 }
 
-
-// different: Is input state different from source-of-truth state?
 
 bool
 Control::different(Stative& input)
@@ -139,30 +121,12 @@ Control::different(Stative& input)
 }
 
 
-// change: Change State parameters.
-
 bool
 Control::change(Stative& input) const
 {
     return this->state_.change(input);
 }
 
-
-// save: Record the current State.
-
-bool
-Control::save(const std::string& path)
-{
-    if (this->save_file(path)) {
-        this->log_.add(Attn::O, "Saved state to '" + path + "'.");
-        return true;
-    }
-    this->log_.add(Attn::E, "Could not save to file '" + path + "'.");
-    return false;
-}
-
-
-// load: Patch in an initialising State.
 
 Stative
 Control::load(const std::string& path)
@@ -188,20 +152,17 @@ Control::load(const std::string& path)
 }
 
 
-/* State file format
- *
- * - Delimited by horizontal space (' ') and vertical space ('\n')
- * - First line contains non-particle-specific data
- * - Second line and onwards contain particle data
- * - Namely:
- *
- * START WIDTH HEIGHT ALPHA BETA SCOPE SPEED
- * 0 X_0 Y_0 PHI_0 RAD_0
- * 1 X_1 Y_1 PHI_1 RAD_1
- * ...
- */
+bool
+Control::save(const std::string& path)
+{
+    if (this->save_file(path)) {
+        this->log_.add(Attn::O, "Saved state to '" + path + "'.");
+        return true;
+    }
+    this->log_.add(Attn::E, "Could not save to file '" + path + "'.");
+    return false;
+}
 
-// load_file: Parse a file containing an initialising State.
 
 bool
 Control::load_file(const std::string& path)
@@ -280,8 +241,6 @@ Control::load_file(const std::string& path)
     return true;
 }
 
-
-// save_file: Write the current State to a file.
 
 bool
 Control::save_file(const std::string& path)

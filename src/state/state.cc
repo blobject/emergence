@@ -23,8 +23,6 @@ State::State(Log& log)
 }
 
 
-// spawn: Initialise particles.
-
 void
 State::spawn()
 {
@@ -49,8 +47,6 @@ State::spawn()
 }
 
 
-// respawn: Reinitialise particles.
-
 inline void
 State::respawn()
 {
@@ -58,8 +54,6 @@ State::respawn()
     this->spawn();
 }
 
-
-// clear: Clear out particles.
 
 void
 State::clear()
@@ -77,8 +71,6 @@ State::clear()
     this->pgrow_.clear();
 }
 
-
-// change: Mutate world.
 
 bool
 State::change(Stative& input)

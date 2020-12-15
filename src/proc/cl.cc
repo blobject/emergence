@@ -54,12 +54,9 @@ Cl::Cl(Log& log)
 
 
 
-// prep_seek: Pre-build the kernel for performing particle seeking.
-
 void
 Cl::prep_seek()
 {
-    // see also: Proc::plain_seek(),plain_seek_vicinity(),plain_seek_tally()
     std::string code =
         "__kernel void particles_seek(\n"
         "  float W,\n"
@@ -153,8 +150,6 @@ Cl::prep_seek()
 }
 
 
-// seek: Execute particle seeking.
-
 void
 Cl::seek(std::vector<int>& grid, unsigned int grid_stride, unsigned int n,
          std::vector<float>& px, std::vector<float>& py,
@@ -216,12 +211,9 @@ Cl::seek(std::vector<int>& grid, unsigned int grid_stride, unsigned int n,
 }
 
 
-// prep_move: Pre-build the kernel for performing particle moving.
-
 void
 Cl::prep_move()
 {
-    // see also: Proc::plain_move()
     std::string code =
         "__kernel void particles_move(\n"
         "  float W,\n"
@@ -263,8 +255,6 @@ Cl::prep_move()
     }
 }
 
-
-// move: Execute particle moving.
 
 void
 Cl::move(unsigned int n, std::vector<float>& px, std::vector<float>& py,

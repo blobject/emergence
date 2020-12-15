@@ -31,8 +31,6 @@ Headless::~Headless()
 }
 
 
-// exec: Take account of iterations.
-
 void
 Headless::exec()
 {
@@ -45,8 +43,6 @@ Headless::exec()
     }
 }
 
-
-// react: Headless observes, Log::add(), Proc::next(), Proc::done().
 
 void
 Headless::react(Issue issue)
@@ -62,16 +58,12 @@ Headless::react(Issue issue)
 }
 
 
-// tell_pause: Print message about pausing
-
 inline void
 Headless::tell_pause() const
 {
     std::cout << "\nPress Ctrl-C to pause.\n" << std::endl;
 }
 
-
-// report: Print out processed information
 
 void
 Headless::report(When when) const
@@ -96,13 +88,10 @@ Headless::report(When when) const
 }
 
 
-// sigint_callback: Handle Ctrl-C
-
 void
 Headless::sigint_callback(int signal)
 {
-    if (SIGINT != signal)
-    {
+    if (SIGINT != signal) {
         return;
     }
 

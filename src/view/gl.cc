@@ -21,12 +21,6 @@ IndexBuffer::IndexBuffer(const GLuint* data, GLuint count)
 }
 
 
-IndexBuffer::~IndexBuffer()
-{
-    DOGL(glDeleteBuffers(1, &this->id_));
-}
-
-
 void
 VertexArray::add_buffer(GLuint id,
                         const VertexBuffer& vb,
@@ -41,7 +35,6 @@ VertexArray::add_buffer(GLuint id,
 }
 
 
-// create_shader: Load embedded shader code.
 GLuint
 Shader::create_shader(Log& log)
 {

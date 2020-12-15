@@ -6,8 +6,6 @@ Log::Log(unsigned int limit)
 {}
 
 
-// add: Push a new message into the log.
-
 void
 Log::add(Attn attn, const std::string& message)
 {
@@ -23,9 +21,6 @@ Log::add(Attn attn, const std::string& message)
   this->notify(Issue::NewMessage); // Headless reacts
 }
 
-
-// add: Like add() but print to Headless stdout.
-//      Only used for main(), Proc, and Cl, before Headless gets initialised.
 
 void
 Log::add(Attn attn, const std::string& message, bool headless)

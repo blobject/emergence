@@ -3,13 +3,13 @@
 
 
 Canvas::Canvas(Log& log, Control& ctrl,
-               unsigned int width, unsigned int height, bool hide_ctrl)
+               unsigned int width, unsigned int height, bool hide_side)
     : log_(log), ctrl_(ctrl), shader_(NULL)
 {
     ctrl.attach_to_state(*this);
     ctrl.attach_to_proc(*this);
     auto gui_state = GuiState(ctrl);
-    this->gui_ = new Gui(log, gui_state, *this, width, height, hide_ctrl);
+    this->gui_ = new Gui(log, gui_state, *this, width, height, hide_side);
     if (nullptr == this->gui_->view_) {
         return; // TODO: handle error
     }
@@ -76,8 +76,6 @@ Canvas::~Canvas()
     delete this->shader_;
 }
 
-
-// exec: Render one iteration of all the graphics.
 
 void
 Canvas::exec()
@@ -146,8 +144,6 @@ Canvas::exec()
 }
 
 
-// react: Canvas observes State::change(), Proc::next(), Proc::done().
-
 void
 Canvas::react(Issue issue)
 {
@@ -160,9 +156,6 @@ Canvas::react(Issue issue)
     }
 }
 
-
-// spawn: Initialise OpenGL vertex constructs given particle positions, and draw
-//        them.
 
 void
 Canvas::spawn()
@@ -214,8 +207,6 @@ Canvas::spawn()
 }
 
 
-// respawn: Reinitialise OpenGL vertex constructs and redraw particles.
-
 void
 Canvas::respawn()
 {
@@ -229,30 +220,16 @@ Canvas::respawn()
 }
 
 
-// draw: Execute the actual OpenGL draw call.
-
 void
-Canvas::draw(GLuint instances, GLuint instance_count, VertexArray* va,
+Canvas::draw(GLuint instances, GLuint instance_count, VertexArray* vertex_array,
              Shader* shader) const
 {
     shader->bind();
-    va->bind();
+    vertex_array->bind();
     DOGL(glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, instances,
                                instance_count));
 }
 
-
-// clear: Clear the OpenGL buffers (for between every iteration).
-
-void
-Canvas::clear() const
-{
-    DOGL(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
-}
-
-
-// next2d: Update OpenGL vertex constructs for the 2D render.
-//         The 2D render still happens in a 3D environment.
 
 void
 Canvas::next2d()
@@ -291,8 +268,6 @@ Canvas::next2d()
     va->add_buffer(1, *vbrgba, VertexBufferAttribs::gen<GLfloat>(4, 4, 0));
 }
 
-
-// next3d: Update OpenGL vertex constructs for the 3D render.
 
 void
 Canvas::next3d()
@@ -358,10 +333,8 @@ Canvas::next3d()
 }
 
 
-// shift: Convenience function for Next3d that does one shift of the levels.
-
 void
-Canvas::shift(bool shift, unsigned int level, GLfloat next, GLfloat inc,
+Canvas::shift(bool shift, unsigned int level, GLfloat next, GLfloat d,
               std::vector<GLfloat>& v, unsigned int& i, unsigned int span)
 {
     if (!shift) {
@@ -370,9 +343,9 @@ Canvas::shift(bool shift, unsigned int level, GLfloat next, GLfloat inc,
     float shifted;
     // deeper levels
     for (unsigned int l = level; l >= 1; --l) {
-        shifted = v[i + ((l - 1) * span)] + inc;
+        shifted = v[i + ((l - 1) * span)] + d;
         // encode alpha shift as a negative d
-        if (inc < 0) {
+        if (d < 0) {
             shifted = 0.25;
         }
         v[i + (l * span)] = shifted;
@@ -381,8 +354,6 @@ Canvas::shift(bool shift, unsigned int level, GLfloat next, GLfloat inc,
     v[i++] = next;
 }
 
-
-// camera_default: Apply the default MVP matrices.
 
 void
 Canvas::camera_default()
@@ -403,8 +374,6 @@ Canvas::camera_default()
     this->camera_set();
 }
 
-
-// camera: Change the MVP matrices.
 
 void
 Canvas::camera(GLfloat dx, GLfloat dy, GLfloat dz, GLfloat dax, GLfloat day)
@@ -434,8 +403,6 @@ Canvas::camera(GLfloat dx, GLfloat dy, GLfloat dz, GLfloat dax, GLfloat day)
     this->camera_set();
 }
 
-
-// camera_resize: Change the projection matrix to account for new dimensions.
 
 void
 Canvas::camera_resize(GLfloat w, GLfloat h)

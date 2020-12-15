@@ -2,6 +2,8 @@
 
 [[/pub/demo.gif]]
 
+/The stuttering is part of the animation file; the program itself is a lot smoother/
+
 ** About
 
 *Emergence* is a visualiser and processor of a primordial particle system.
