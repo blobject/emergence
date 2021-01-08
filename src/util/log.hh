@@ -2,7 +2,7 @@
 ///
 /// \file
 /// Definition of the Attn enum and declaration of the Log class, which provides
-/// a logging mechanism for the program.
+/// a logging mechanism for the entire program.
 ///
 //===----------------------------------------------------------------------===//
 

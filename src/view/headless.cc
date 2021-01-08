@@ -4,8 +4,7 @@
 #include <signal.h>
 
 
-// Global data for sigint handling
-
+// global data for sigint handling
 static Headless* hoc;
 
 

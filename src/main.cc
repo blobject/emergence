@@ -1,9 +1,5 @@
 //===-- main.cc - program entry point ---------------------------*- C++ -*-===//
 
-#define CL_HPP_TARGET_OPENCL_VERSION 210
-#define MESA_GL_VERSION_OVERRIDE 3.3
-#define MESA_GLSL_VERSION_OVERRIDE 330
-
 #include "util/common.hh"
 #include "util/log.hh"
 #include "view/view.hh"
@@ -20,9 +16,6 @@ argue(Log& log, std::map<std::string,std::string>& opts);
 
 
 /// main(): Emergence program entry point containing the processing loop.
-/// \param argc  number of arguments to Emergence
-/// \param argv  array of arguments to Emergence
-/// \returns  Emergence return code
 int
 main(int argc, char* argv[])
 {
@@ -46,18 +39,17 @@ main(int argc, char* argv[])
      *
      *   .................................
      *   v          v                    :
-     * State <---- Proc <-- Cl           :       .-- Gl
-     *         |    ^              .-- Canvas <--|
-     *         |    |              |             '-- Gui
+     * State <---- Proc <-- Cl           :  .-------> Gl
+     *         |    ^              .-- Canvas <--.
+     *         |    |              |             '--> Gui
      *         '-- Ctrl <-- View <---- Headless
      */
     // system objects
     auto state = State(log);
-    auto cl = Cl(log);
+    auto cl = Cl(log); // stub object if OpenCL is unavailable
     auto proc = Proc(log, state, cl);
     auto ctrl = Control(log, state, proc, init);
-    std::unique_ptr<View> view =
-        std::move(View::init(log, ctrl, headless, hide_side));
+    std::unique_ptr<View> view = View::init(log, ctrl, headless, hide_side);
 
     // execution
     while (!ctrl.quit_) {

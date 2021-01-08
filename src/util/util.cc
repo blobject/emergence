@@ -1,6 +1,5 @@
 #include "common.hh"
 #include "util.hh"
-#include <regex>
 
 
 bool
@@ -18,18 +17,12 @@ Util::debug_gl(const std::string& func, const std::string& path, int line)
         default:                   error = "unknown";           break;
         }
         std::cerr << "Error(gl): " << error << " at "
-                  << Util::relative(path) << ':'
-                  << std::to_string(line) << "\n  " << func << "\n";
+                  << std::regex_replace(path,
+                                        std::regex("^.*[\\/]src[\\/]"), "")
+                  << ':' << std::to_string(line) << "\n  " << func << "\n";
         return false;
     }
     return true;
-}
-
-
-std::string
-Util::relative(const std::string& path)
-{
-    return std::regex_replace(path, std::regex("^.*[\\/]src[\\/]"), "");
 }
 
 

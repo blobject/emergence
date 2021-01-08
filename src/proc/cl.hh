@@ -1,23 +1,33 @@
 //===-- cl.hh - Cl class declaration ----------------------------*- C++ -*-===//
 ///
 /// \file
-/// Declaration of the Cl class, which provides processing variants that compute
-/// on the GPU in parallel via OpenCL.
+/// Declaration of the (optional) Cl class, which provides the Proc class with
+/// processing variants that leverage OpenCL to perform parallel computation on
+/// the GPU.
+/// If OpenCL is not available, this becomes a stub class which Proc will
+/// effectively ignore.
 ///
 //===----------------------------------------------------------------------===//
 
 #pragma once
 
-#include "../state/state.hh"
 #include "../util/log.hh"
+
+#ifdef HAS_CL
+
 #include <CL/cl2.hpp>
+
+#endif /* HAS_CL */
 
 
 class Cl
 {
   public:
-    /// constructor: Initialise the OpenCL device and environment build the
-    ///              computation kernels.
+
+#ifdef HAS_CL
+
+    /// constructor: Initialise the OpenCL device and build the computation
+    ///              kernels.
     /// \param log  Log object
     Cl(Log& log);
 
@@ -80,11 +90,29 @@ class Cl
 
     /// good(): Whether OpenCL is enabled.
     /// \returns  true if OpenCL is enabled
-    inline bool
+    bool
     good() const
     {
         return !this->device_.getInfo<CL_DEVICE_NAME>().empty();
     }
+
+#else
+
+    /// constructor: Stub (OpenCL unavailable).
+    /// \param log  (unused) Log object
+    inline Cl(Log& /* log */) {}
+
+    /// good(): Stub (OpenCL unavailable).
+    /// \returns  false
+    inline bool
+    good() const
+    {
+        return false;
+    }
+
+#endif /* HAS_CL else */
+
+#ifdef HAS_CL
 
   private:
     Log&             log_;
@@ -97,5 +125,8 @@ class Cl
     unsigned int     max_cu_;   // max GPU compute units
     unsigned int     max_freq_; // max GPU frequency
     unsigned int     max_gmem_; // max global memory
+
+#endif /* HAS_CL */
+
 };
 

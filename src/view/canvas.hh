@@ -3,8 +3,8 @@
 /// \file
 /// Declaration of the Canvas class, which is responsible for a graphical
 /// depiction of the particles via OpenGL.
-/// It is a subclass of View and observes the Proc and Control classes. It uses
-/// the Gui class to allow user interaction.
+/// Canvas is a subclass of View and observes the Proc and Control classes.
+/// Canvas uses the Gui class to provide user interaction.
 ///
 //===----------------------------------------------------------------------===//
 

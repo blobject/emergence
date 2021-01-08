@@ -3,7 +3,8 @@
 /// \file
 /// Definition of the When enum and declaration of the Headless class, which is
 /// responsible for non-graphical (commandline) access to the particle system.
-/// It is a subclass of View and observes the Proc and Control classes.
+/// Headless is a subclass of the View class and observes the Proc and Control
+/// classes.
 ///
 //===----------------------------------------------------------------------===//
 

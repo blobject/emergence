@@ -2,8 +2,8 @@
 ///
 /// \file
 /// Declarations and definitions of helper classes that wrap around OpenGL
-/// constructs which in turn retain graphical data of the particle system.
-/// It is used by the Canvas class.
+/// constructs, which in turn retain graphical data of the particle system.
+/// Gl is used by the Canvas class.
 ///
 //===----------------------------------------------------------------------===//
 
@@ -16,7 +16,6 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <unordered_map>
-
 
 
 // VertexBuffer: Wrapper around OpenGL vertex buffers.
@@ -141,7 +140,7 @@ class VertexBufferAttribs
     /// \param offset  offset of the first vertex attribute
     /// \returns  an Attrib
     template<typename T> inline static Attribs
-    gen(GLuint count, GLuint size, uintptr_t offset) {}
+    gen(GLuint /* count */, GLuint /* size */, uintptr_t /* offset */) {}
 
     // float version of gen().
     template<> inline Attribs

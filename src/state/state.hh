@@ -1,7 +1,7 @@
 //===-- state.hh - State class declaration ----------------------*- C++ -*-===//
 ///
 /// \file
-/// Declaration of the State class, which is the main data store for the
+/// Declaration of the State class, which acts as the main data store for the
 /// particle system.
 ///
 //===----------------------------------------------------------------------===//
@@ -14,12 +14,13 @@
 #include <vector>
 
 
-class Stative; // from control.hh
+struct Stative; // from control.hh
 
 class State : public Subject
 {
   public:
-    /// constructor: Initialise the system and particle parameters.
+    /// constructor: Initialise the system and particles with default
+    ///              parameters.
     /// \param log  Log object
     State(Log& log);
 

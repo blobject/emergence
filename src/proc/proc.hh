@@ -1,21 +1,23 @@
 //===-- proc.hh - Proc class declaration ------------------------*- C++ -*-===//
 ///
 /// \file
-/// Declaration the Proc class, which implements the core particle system
-/// processing algorithms, including particle vicinity seeking and movement
-/// behavior. It directly accesses State and is controlled by Control.
+/// Declaration of the Proc class, which implements the core particle system
+/// processing algorithms, including particle vicinity seeking and particle
+/// movement behavior. For OpenCL variants of the algorithms, the Cl class is
+/// invoked.
+/// Proc directly accesses State and is controlled by Control.
 ///
 //===----------------------------------------------------------------------===//
 
 #pragma once
 
 #include "cl.hh"
+#include "../state/state.hh"
 #include "../util/log.hh"
 
 
 class Cl;
 class State;
-
 
 class Proc : public Subject
 {
@@ -46,6 +48,8 @@ class Proc : public Subject
     ///         Namely, clear out seek data and (re)generate the grid.
     void plot();
 
+#ifdef HAS_CL
+
     /// seek(): Entry point for OpenCL version of seek.
     ///         Calculate new N, L, R (seek data) for each particle.
     void seek();
@@ -53,6 +57,8 @@ class Proc : public Subject
     /// move(): Entry point for OpenCL version of move.
     ///         Update to new X, Y, PHI (move data) for each particle.
     void move();
+
+#endif /* HAS_CL */
 
     /// plain_seek(): Non-OpenCL version of seek.
     ///               Iterate through each particle.
@@ -70,8 +76,7 @@ class Proc : public Subject
     /// \param rows  number of grid rows
     /// \param srci  index of the source particle
     void plain_seek_vicinity(std::vector<int>& grid, unsigned int stride,
-                             int col, int row, int cols, int rows,
-                             unsigned int srci);
+                             int col, int row, int cols, int rows, int srci);
 
     /// plain_seek_tally(): For the non-OpenCL version of seek.
     ///                   Update N, L, R of the two particles provided
@@ -89,8 +94,7 @@ class Proc : public Subject
     ///             Update X, Y, PHI of every particle.
     void plain_move();
 
-    Log&             log_;
-    Cl&              cl_;
+    Cl&              cl_; // NOTE: if a pointer instead, clCreateBuffer fails
     std::vector<int> grid_;        // flat vector of the vicinity overlay grid
     int              grid_cols_;   // number of grid columns
     int              grid_rows_;   // number of grid rows

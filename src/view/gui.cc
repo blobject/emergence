@@ -21,8 +21,6 @@ GuiState::GuiState(Control& ctrl)
 }
 
 
-// untrue: Ask Control whether GUI parameters are different from State's.
-
 bool
 GuiState::untrue() const
 {
@@ -39,8 +37,6 @@ GuiState::untrue() const
     return this->ctrl_.different(gui_state);
 }
 
-
-// deceive: Change system State parameters.
 
 bool
 GuiState::deceive() const
@@ -59,8 +55,6 @@ GuiState::deceive() const
 }
 
 
-// random: Randomise system State parameters.
-
 void
 GuiState::random(Log& log)
 {
@@ -75,8 +69,6 @@ GuiState::random(Log& log)
     this->deceive();
 }
 
-
-// preset: Apply preset parameters (ALPHA & BETA) to system State.
 
 void
 GuiState::preset(Log& log)
@@ -156,18 +148,12 @@ GuiState::preset(Log& log)
 }
 
 
-// save: Thin wrapper around Control.Save().
-
 inline bool
 GuiState::save(const std::string& path)
 {
     return this->ctrl_.save(path);
 }
 
-
-// load: Thin wrapper around Control::load().
-//       Also update GuiState parameters immediately as a difference check would
-//       be redundant.
 
 bool
 GuiState::load(const std::string& path)
@@ -191,7 +177,7 @@ GuiState::load(const std::string& path)
 
 Gui::Gui(Log& log, GuiState state, Canvas& canvas,
          unsigned int width, unsigned int height, bool hide_side)
-    : log_(log), state_(state), canvas_(canvas), side_(!hide_side)
+    : canvas_(canvas), state_(state), log_(log), side_(!hide_side)
 {
     // glfw
     GLFWwindow* view;
@@ -199,8 +185,8 @@ Gui::Gui(Log& log, GuiState state, Canvas& canvas,
         log.add(Attn::Egl, "glfwInit");
         return;
     }
-    unsigned int gui_width = 1000;
-    unsigned int gui_height = 1000;
+    unsigned int gui_width = width;
+    unsigned int gui_height = height;
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
@@ -226,17 +212,18 @@ Gui::Gui(Log& log, GuiState state, Canvas& canvas,
     ImGui_ImplGlfw_InitForOpenGL(view, true);
     ImGui_ImplOpenGL3_Init(GLSL_VERSION);
     ImGui::StyleColorsDark();
-    float font_size = 24.0f;
+    float font_size = 20.0f;
 
     this->view_ = view;
+    std::string cwd = Util::emergence_dir();
     this->font_r = io.Fonts->AddFontFromFileTTF(
-        "../opt/roboto/RobotoMono-Regular.ttf", font_size);
+        (cwd + "/../opt/roboto/RobotoMono-Regular.ttf").c_str(), font_size);
     this->font_b = io.Fonts->AddFontFromFileTTF(
-        "../opt/roboto/RobotoMono-Bold.ttf", font_size);
+        (cwd + "/../opt/roboto/RobotoMono-Bold.ttf").c_str(), font_size);
     this->font_i = io.Fonts->AddFontFromFileTTF(
-        "../opt/roboto/RobotoMono-Italic.ttf", font_size);
+        (cwd + "/../opt/roboto/RobotoMono-Italic.ttf").c_str(), font_size);
     this->font_z = io.Fonts->AddFontFromFileTTF(
-        "../opt/roboto/RobotoMono-BoldItalic.ttf", font_size);
+        (cwd + "/../opt/roboto/RobotoMono-BoldItalic.ttf").c_str(), font_size);
     this->gui_width_ = gui_width;
     this->gui_height_ = gui_height;
     this->console_ = false;
@@ -259,8 +246,6 @@ Gui::~Gui()
     glfwTerminate();
 }
 
-// draw: Render GLFW and ImGui, namely those graphical entities that are not
-//       specifically related to the particles.
 
 void
 Gui::draw()
@@ -288,8 +273,6 @@ Gui::draw()
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
 
-
-// draw_side: Render the parameter controlling side bar.
 
 void
 Gui::draw_side(bool draw)
@@ -528,8 +511,6 @@ Gui::draw_side(bool draw)
 }
 
 
-// draw_console: Render the message log.
-
 void
 Gui::draw_console(bool draw)
 {
@@ -569,8 +550,6 @@ Gui::draw_console(bool draw)
     ImGui::End();
 }
 
-
-// draw_save_load: Render the save/load dialog box.
 
 void
 Gui::draw_save_load(char dialog)
@@ -650,8 +629,6 @@ Gui::draw_save_load(char dialog)
 }
 
 
-// draw_quit: Render the quit confirmation dialog box.
-
 void
 Gui::draw_quit(char dialog)
 {
@@ -728,8 +705,6 @@ Gui::draw_quit(char dialog)
 }
 
 
-// next: Swap OpenGL buffers and poll events.
-
 void
 Gui::next() const
 {
@@ -737,8 +712,6 @@ Gui::next() const
     glfwPollEvents();
 }
 
-
-// pause: Toggle (soft) pause, unless already hard paused.
 
 void
 Gui::pause()
@@ -750,8 +723,6 @@ Gui::pause()
 }
 
 
-// set_pointer: Create a pointer to self for access in callbacks.
-
 void
 Gui::set_pointer()
 {
@@ -759,8 +730,6 @@ Gui::set_pointer()
     glfwSetWindowUserPointer(this->view_, this);
 }
 
-
-// close: Quit all graphics.
 
 void
 Gui::close()
@@ -770,8 +739,6 @@ Gui::close()
 }
 
 
-// closing: Graphics about to quit?
-
 bool
 Gui::closing() const
 {
@@ -779,10 +746,8 @@ Gui::closing() const
 }
 
 
-// key_callback: User key input bindings.
-
 void
-Gui::key_callback(GLFWwindow* view, int key, int scancode, int action,
+Gui::key_callback(GLFWwindow* view, int key, int /* scancode */, int action,
                   int mods)
 {
     Gui* gui = static_cast<Gui*>(glfwGetWindowUserPointer(view));
@@ -854,10 +819,9 @@ Gui::key_callback(GLFWwindow* view, int key, int scancode, int action,
 }
 
 
-// mouse_button_callback: User mouse input bindings.
-
 void
-Gui::mouse_button_callback(GLFWwindow* view, int button, int action, int mods)
+Gui::mouse_button_callback(GLFWwindow* view, int button, int action,
+                           int /* mods */)
 {
     Gui* gui = static_cast<Gui*>(glfwGetWindowUserPointer(view));
 
@@ -873,8 +837,6 @@ Gui::mouse_button_callback(GLFWwindow* view, int button, int action, int mods)
     }
 }
 
-
-// mouse_move_callback: User mouse movement bindings.
 
 void
 Gui::mouse_move_callback(GLFWwindow* view, double x, double y)
@@ -894,19 +856,14 @@ Gui::mouse_move_callback(GLFWwindow* view, double x, double y)
 }
 
 
-// mouse_scroll_callback: User mouse scrolling bindings.
-
 void
-Gui::mouse_scroll_callback(GLFWwindow* view, double dx, double dy)
+Gui::mouse_scroll_callback(GLFWwindow* view, double /* dx */, double dy)
 {
     Gui* gui = static_cast<Gui*>(glfwGetWindowUserPointer(view));
-    // horizontal scroll unused
     dy *= 0.1f;
     gui->canvas_.camera(0,0,dy,0,0);
 }
 
-
-// resize_callback: Window resize bindings.
 
 void
 Gui::resize_callback(GLFWwindow* view, int w, int h)

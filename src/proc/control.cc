@@ -87,7 +87,15 @@ Control::quit()
 bool
 Control::cl_good() const
 {
+
+#ifdef HAS_CL
+
     return this->proc_.cl_good_;
+
+#endif /* HAS_CL */
+
+    return false;
+
 }
 
 
@@ -257,7 +265,7 @@ Control::save_file(const std::string& path)
            << Util::rad_to_deg(truth.beta_) << ' '
            << truth.scope_ << ' '
            << truth.speed_ << '\n';
-    for (unsigned int i = 0; i < truth.num_; ++i) {
+    for (int i = 0; i < truth.num_; ++i) {
         stream << i << ' '
                << truth.px_[i] << ' '
                << truth.py_[i] << ' '

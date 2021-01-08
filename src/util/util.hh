@@ -1,18 +1,18 @@
 //===-- util.hh - utility functions -----------------------------*- C++ -*-===//
 ///
 /// \file
-/// Declarions of static utility functions.
+/// Declarations of static utility functions.
 ///
 //===----------------------------------------------------------------------===//
 
 #pragma once
 
-#include <CL/cl2.hpp>
 #include <GL/glew.h>
 #include <iostream>
 #include <math.h> // cosf, sinf, floor, fmod
 #include <random>
-#include <string>
+#include <regex>
+#include <unistd.h> // readlink
 
 
 // DOGL: A macro for debugging OpenGL calls.
@@ -24,6 +24,39 @@
 class Util
 {
   public:
+    //// env
+
+    /// emergence_dir(): Get the directory at which Emergence was spawned.
+    /// \returns  string of directory at which Emergence was spawned
+    inline static std::string
+    emergence_dir()
+    {
+        std::vector<char> buf(1024, 0);
+        std::vector<char>::size_type size = buf.size();
+        bool path_yes = false;
+        bool go = true;
+        while (go) {
+            int res = readlink("/proc/self/exe", &buf[0], size);
+            if (0 > res) {
+                go = false;
+            } else if (size > static_cast<std::vector<char>::size_type>(res)) {
+                path_yes = true;
+                go = false;
+                size = res;
+            } else {
+                size *= 2;
+                buf.resize(size);
+                std::fill(std::begin(buf), std::end(buf), 0);
+            }
+        }
+        if (!path_yes) {
+            std::string empty;
+            return empty;
+        }
+        return std::regex_replace(std::string(&buf[0], size),
+                                  std::regex("/[^/]*$"), "");
+    }
+
     //// io
 
     /// prep_debug_gl(): Clear out all OpenGL errors.
@@ -38,7 +71,6 @@ class Util
     /// \param path  path to the file where the error occurred
     /// \param line  line in the file where the error occurred
     /// \returns  true if no error occurred
-
     static bool debug_gl(const std::string& func, const std::string& path,
                          int line);
 
@@ -49,7 +81,7 @@ class Util
     /// \param b  end of range
     /// \returns  uniformly distributed random number
     template<typename T> static inline T
-    distribute(T a, T b) {}
+    distribute(T /* a */, T /* b */) {}
 
     /// int version of distribute().
     template<> inline int
@@ -110,11 +142,6 @@ class Util
 
 
     //// string
-
-    /// relative(): Get the file path relative to the project directory.
-    /// \param path  path to the file
-    /// \returns  path to the file relative to the project directory
-    static std::string relative(const std::string& path);
 
     /// trim(): Remove whitespace at the ends of a string.
     /// \param s  string

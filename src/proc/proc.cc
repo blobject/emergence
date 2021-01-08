@@ -5,10 +5,10 @@
 
 
 Proc::Proc(Log& log, State& state, Cl& cl)
-  : log_(log), state_(state), cl_(cl)
+    : state_(state), cl_(cl)
 {
     this->paused_ = false;
-    this->cl_good_ = cl.good();
+    this->cl_good_ = this->cl_.good();
     if (!this->cl_good_) {
         std::string message = "Proceeding without OpenCL parallelisation.";
         log.add(Attn::O, message, true);
@@ -25,12 +25,18 @@ Proc::next()
         return;
     }
     this->plot();
+
+#ifdef HAS_CL
+
     if (this->cl_good_) {
         this->seek();
         this->move();
         this->notify(Issue::ProcNextDone); // Views react
         return;
     }
+
+#endif /* HAS_CL */
+
     this->plain_seek();
     this->plain_move();
     this->notify(Issue::ProcNextDone); // Views react
@@ -47,7 +53,7 @@ Proc::plot()
     std::vector<unsigned int>& pn = state.pn_;
     std::vector<unsigned int>& pl = state.pl_;
     std::vector<unsigned int>& pr = state.pr_;
-    for (unsigned int i = 0; i < num; ++i) {
+    for (int i = 0; i < num; ++i) {
         pn[i] = 0;
         pl[i] = 0;
         pr[i] = 0;
@@ -70,9 +76,9 @@ Proc::plot()
     std::vector<int>& pgrow = state.pgrow_;
     int col;
     int row;
-    for (unsigned int i = 0; i < num; ++i) {
-        // the last column/row may be spatially slightly bigger than the rest if
-        // the grid does not divide neatly into whole numbers
+    for (int i = 0; i < num; ++i) {
+        // the last column/row may be spatially slightly bigger than the rest,
+        // if the grid does not divide neatly into whole numbers
         col = floor(px[i] / unit_width);  if (col >= cols) { col = cols - 1; }
         row = floor(py[i] / unit_height); if (row >= rows) { row = rows - 1; }
         pgcol[i] = col;
@@ -111,6 +117,8 @@ Proc::plot()
 }
 
 
+#ifdef HAS_CL
+
 void
 Proc::seek()
 {
@@ -135,6 +143,8 @@ Proc::move()
                    state.alpha_, state.beta_, state.speed_);
 }
 
+#endif /* HAS_CL */
+
 
 void
 Proc::plain_seek()
@@ -148,7 +158,7 @@ Proc::plain_seek()
     std::vector<int>& pgrow = state.pgrow_;
 
     // for each particle index
-    for (unsigned int srci = 0; srci < state.num_; ++srci) {
+    for (int srci = 0; srci < state.num_; ++srci) {
         this->plain_seek_vicinity(grid, stride,
                                   pgcol[srci], pgrow[srci], cols, rows, srci);
     }
@@ -157,8 +167,7 @@ Proc::plain_seek()
 
 void
 Proc::plain_seek_vicinity(std::vector<int>& grid, unsigned int stride,
-                          int col, int row, int cols, int rows,
-                          unsigned int srci)
+                          int col, int row, int cols, int rows, int srci)
 {
     // recognise the vicinity (with edge wrapping)
     int c = col - 1;

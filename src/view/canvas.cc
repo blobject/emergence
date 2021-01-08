@@ -4,7 +4,7 @@
 
 Canvas::Canvas(Log& log, Control& ctrl,
                unsigned int width, unsigned int height, bool hide_side)
-    : log_(log), ctrl_(ctrl), shader_(NULL)
+    : ctrl_(ctrl), log_(log)
 {
     ctrl.attach_to_state(*this);
     ctrl.attach_to_proc(*this);
@@ -24,7 +24,6 @@ Canvas::Canvas(Log& log, Control& ctrl,
     DOGL(glEnable(GL_BLEND));
     DOGL(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
 
-    State& state = this->ctrl_.get_state();
     this->three_ = true;
     this->levels_ = 50;
     this->level_ = 1;
@@ -250,7 +249,7 @@ Canvas::next2d()
     // insert updated particle positions into the buffer
     unsigned int xyzi = 0;
     unsigned int rgbai = 0;
-    for (unsigned int p = 0; p < num; ++p) {
+    for (int p = 0; p < num; ++p) {
         xyz[xyzi++] = px[p];
         xyz[xyzi++] = py[p];
         xyz[xyzi++] = near;
@@ -298,7 +297,7 @@ Canvas::next3d()
     // insert updated particle positions into the buffer
     unsigned int xyzi = 0;
     unsigned int rgbai = 0;
-    for (unsigned int p = 0; p < num; ++p) {
+    for (int p = 0; p < num; ++p) {
         // shift particle levels (ie. represent passage of time via z & a)
         /* x */ this->shift(shift, level, px[p], 0.0f, xyz, xyzi, xyzspan);
         /* y */ this->shift(shift, level, py[p], 0.0f, xyz, xyzi, xyzspan);

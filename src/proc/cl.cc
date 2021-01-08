@@ -1,4 +1,7 @@
 #include "cl.hh"
+
+#ifdef HAS_CL
+
 #include "../util/common.hh"
 
 
@@ -308,4 +311,6 @@ Cl::move(unsigned int n, std::vector<float>& px, std::vector<float>& py,
         this->log_.add(Attn::Ecl, std::to_string(err));
     }
 }
+
+#endif /* HAS_CL */
 

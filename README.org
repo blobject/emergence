@@ -10,17 +10,17 @@
 
 This project is based on the article, /How a life-like system emerges from a simple particle motion law/, by  Schmickl, Stefanec, and Crailsheim: https://www.nature.com/articles/srep37969, and extends it with our own [[https://zool33.uni-graz.at/artlife/pps_3d][version of three-dimensionality]].
 
-This is a rewrite and extension of an [[https://github.com/blobject/mff/tree/master/emergence][earlier JavaScript + HTML5 version]] which ran via web browser and Node.js. The present project uses OpenGL + GLEW (graphics), glm (math), GLFW (windowing), ImGui (user interface), OpenCL (parallelisation), and C++ (implementation language). It runs as a native desktop application on Linux.
+This is a rewrite and extension of an [[https://github.com/blobject/mff/tree/master/emergence][earlier JavaScript + HTML5 version]] which ran via web browser and Node.js. The present project uses OpenGL + GLEW (graphics), glm (math), GLFW (windowing), ImGui (user interface), OpenCL (parallelisation), and C++ (implementation language). It runs as a native desktop application on Linux (X11).
 
 ** Build & Run
 
 *** Dependencies
 
-- clang++ ~>= 9~
-- cmake (& make)
-- glew
+- clang++ ~>= 11~
+- cmake ~>= 3.19~
+- glew ~>= 2.2~
 - glfw ~>= 3~
-- glm
+- glm ~>= 0.9.9~
 - imgui (source & headers provided in =opt/=)
 - opengl ~>= 3.3~
 
@@ -29,28 +29,30 @@ This is a rewrite and extension of an [[https://github.com/blobject/mff/tree/mas
 - opencl c/c++ headers ~>= 2~
 - opencl loader (aka. ocl-icd) ~>= 2~
 - opencl runtime ~>= 2.1~
-  - Per your graphics card manufacturer, eg. [[https://software.intel.com/content/www/us/en/develop/articles/opencl-drivers.html][intel]], [[https://developer.nvidia.com/opencl][nvidia]], amd ([[https://www.amd.com/en/search?keyword=amdgpu-pro][link]], [[https://stackoverflow.com/questions/53070673/download-opencl-amd-app-sdk-3-0-for-windows-and-linux][link]], [[https://wiki.archlinux.org/index.php/AMDGPU_PRO][link]]).
+  - Per your graphics card manufacturer, eg. [[https://software.intel.com/content/www/us/en/develop/articles/opencl-drivers.html][Intel]], [[https://developer.nvidia.com/opencl][Nvidia]], AMD ([[https://www.amd.com/en/search?keyword=amdgpu-pro][link]], [[https://stackoverflow.com/questions/53070673/download-opencl-amd-app-sdk-3-0-for-windows-and-linux][link]], [[https://wiki.archlinux.org/index.php/AMDGPU_PRO][link]]).
   - This project has only been tested using Intel Graphics Compute Runtime (aka. NEO) for OpenCL for Intel gen9 graphics on Linux.
 
-*** Linux with Intel gen9 graphics
+*** Linux (X11) with Intel gen9 graphics
 
 - First, install NEO ::
-- take a look at https://github.com/intel/compute-runtime
-- if possible, install the necessary packages via your distribution's package manager
-- otherwise:
-  1. download the =deb= assets from the [[https://github.com/intel/compute-runtime/releases][releases page]]
-  1. extract the libraries from the =deb= files, and place them under, say, =/usr/local=
-  1. make sure =ld.so.conf= recognises the directory holding the new libraries, for instance =/usr/local/lib=
-  1. do =sudo ldconfig=, substituting renamed copies of library files with symlinks if ldconfig complains
-  1. make sure the path to the new OpenCL driver (eg. =/usr/local/lib/intel-opencl/libigdrcl.so=) is recognised under =/etc/OpenCL/vendors=
-  1. check that your device is recognised and ready, using a program like ~clinfo~
+- Take a look at https://github.com/intel/compute-runtime.
+- If possible, install the necessary packages via your distribution's package manager.
+- Otherwise:
+  1. Download the =deb= assets from their [[https://github.com/intel/compute-runtime/releases][releases page]].
+  1. Extract the libraries from the =deb= files, and place them under, say, =/usr/local=.
+  1. Make sure =ld.so.conf= recognises the directory holding the new libraries, for instance =/usr/local/lib=.
+  1. =sudo ldconfig=, substituting renamed copies of library files with symlinks if =ldconfig= complains.
+  1. Make sure the path to the new OpenCL driver (eg. =/usr/local/lib/intel-opencl/libigdrcl.so=) is recognised under =/etc/OpenCL/vendors=.
+  1. Check that your device is recognised and ready, using a program like =clinfo=.
 
 - Build ::
-1. retrieve this repository from =https://github.com/blobject/emergence=
+1. Retrieve this repository from https://github.com/blobject/emergence.
 1. ~cd emergence~
 1. ~rm -R build; mkdir build; cd build~
 1. ~cmake ..~
 1. ~make~
+
+*Note:* If any OpenCL component was (un)installed after an invocation of =cmake=, make sure to remove =build/= and do a clean =cmake= again.
 
 - Test ::
 1. ~cd emergence/build~
@@ -58,8 +60,9 @@ This is a rewrite and extension of an [[https://github.com/blobject/mff/tree/mas
 
 - Run ::
 1. ~cd emergence/build~
-1. ~./emergence~ (append ~-h~ for usage help)
+1. ~./emergence~ (append =-h= for usage help)
+  - On Intel graphics, turn vsync off to get better performance: ~vblank_mode=0 ./emergence~
 
 ** Misc.
 
-- ~4000 lines of (code + comments)
+- ~4400 lines of (code + comments)

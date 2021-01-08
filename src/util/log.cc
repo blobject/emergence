@@ -23,7 +23,7 @@ Log::add(Attn attn, const std::string& message)
 
 
 void
-Log::add(Attn attn, const std::string& message, bool headless)
+Log::add(Attn attn, const std::string& message, bool /* headless */)
 {
     this->add(attn, message);
     std::string m = message;
