@@ -1,10 +1,10 @@
-//===-- observation.hh - observer pattern -----------------------*- C++ -*-===//
+//===-- observation.hh - observer pattern ----------------------*- C++ -*-===//
 ///
 /// \file
 /// Definition of the Issue enum and the Subject and Observer classes,
 /// implementing the observer pattern.
 ///
-//===----------------------------------------------------------------------===//
+//===---------------------------------------------------------------------===//
 
 #pragma once
 

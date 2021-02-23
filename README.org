@@ -10,7 +10,7 @@
 
 This project is based on the article, /How a life-like system emerges from a simple particle motion law/, by  Schmickl, Stefanec, and Crailsheim: https://www.nature.com/articles/srep37969, and extends it with our own [[https://zool33.uni-graz.at/artlife/pps_3d][version of three-dimensionality]].
 
-This is a rewrite and extension of an [[https://github.com/blobject/mff/tree/master/emergence][earlier JavaScript + HTML5 version]] which ran via web browser and Node.js. The present project uses OpenGL + GLEW (graphics), glm (math), GLFW (windowing), ImGui (user interface), OpenCL (parallelisation), and C++ (implementation language). It runs as a native desktop application on Linux (X11).
+This is a rewrite and extension of an [[https://github.com/blobject/mff/tree/master/emergence][earlier JavaScript + HTML5 version]] which ran via web browser and Node.js. The present project uses OpenGL + GLEW (graphics), glm (math), GLFW (windowing), ImGui (user interface), OpenCL (parallelisation), and C++ (implementation language). It runs as a native desktop application on Linux (Xorg).
 
 ** Build & Run
 
@@ -32,10 +32,10 @@ This is a rewrite and extension of an [[https://github.com/blobject/mff/tree/mas
   - Per your graphics card manufacturer, eg. [[https://software.intel.com/content/www/us/en/develop/articles/opencl-drivers.html][Intel]], [[https://developer.nvidia.com/opencl][Nvidia]], AMD ([[https://www.amd.com/en/search?keyword=amdgpu-pro][link]], [[https://stackoverflow.com/questions/53070673/download-opencl-amd-app-sdk-3-0-for-windows-and-linux][link]], [[https://wiki.archlinux.org/index.php/AMDGPU_PRO][link]]).
   - This project has only been tested using Intel Graphics Compute Runtime (aka. NEO) for OpenCL for Intel gen9 graphics on Linux.
 
-*** Linux (X11) with Intel gen9 graphics
+*** Linux (Xorg) with Intel gen9 graphics
 
 - First, install NEO ::
-- Take a look at https://github.com/intel/compute-runtime.
+- Refer to https://github.com/intel/compute-runtime.
 - If possible, install the necessary packages via your distribution's package manager.
 - Otherwise:
   1. Download the =deb= assets from their [[https://github.com/intel/compute-runtime/releases][releases page]].

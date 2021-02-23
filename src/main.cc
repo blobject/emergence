@@ -1,4 +1,4 @@
-//===-- main.cc - program entry point ---------------------------*- C++ -*-===//
+//===-- main.cc - program entry point --------------------------*- C++ -*-===//
 
 #include "util/common.hh"
 #include "util/log.hh"
@@ -113,7 +113,7 @@ args(int argc, char* argv[])
 }
 
 
-/// argue(): Print appropriate messages according to the arguments to Emergence.
+/// argue(): Print messages according to the arguments to Emergence.
 /// \param log  Log object
 /// \param opts  map of program options
 static void

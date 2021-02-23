@@ -1,11 +1,11 @@
-//===-- view.hh - View class declaration ------------------------*- C++ -*-===//
+//===-- view.hh - View class declaration -----------------------*- C++ -*-===//
 ///
 /// \file
 /// Declaration of the View class, which provides a view over the particle
 /// system.
 /// It is an abstract class over the Canvas and Headless classes.
 ///
-//===----------------------------------------------------------------------===//
+//===---------------------------------------------------------------------===//
 
 #pragma once
 

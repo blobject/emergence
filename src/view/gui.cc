@@ -426,8 +426,8 @@ Gui::draw_side(bool draw)
         ImGui::InputFloat("s", &state.speed_, 1.0f, 64.0f, "%.3f");
         ImGui::AlignTextToFramePadding();
         ImGui::Text("stop  "); ImGui::SameLine();
-        ImGui::InputScalar("!", ImGuiDataType_S64, &canvas.ctrl_.stop_, &negone,
-                           &max_stop);
+        ImGui::InputScalar("!", ImGuiDataType_S64, &canvas.ctrl_.stop_,
+                           &negone, &max_stop);
         ImGui::Text("colors: %d", state.colors_);
         ImGui::Dummy(ImVec2(0.0f, 1.0f));
         ImGui::PushFont(this->font_b);
@@ -584,7 +584,8 @@ Gui::draw_save_load(char dialog)
         ImGui::Text("");
         ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 20);
         ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 20);
-        ImGui::InputTextWithHint("", "/path/to/file", path, IM_ARRAYSIZE(path));
+        ImGui::InputTextWithHint("", "/path/to/file", path,
+                                 IM_ARRAYSIZE(path));
         ImGui::PopItemWidth();
         if (bad_save) {
             ImGui::TextColored(color_bad, "  Load/Save failed!");
@@ -654,7 +655,8 @@ Gui::draw_quit(char dialog)
         ImGui::Text("");
         ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 20);
         ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 20);
-        ImGui::InputTextWithHint("", "/path/to/file", path, IM_ARRAYSIZE(path));
+        ImGui::InputTextWithHint("", "/path/to/file", path,
+                                 IM_ARRAYSIZE(path));
         ImGui::PopItemWidth();
         if (bad_save) {
             ImGui::TextColored(color_bad, "  Save failed!");

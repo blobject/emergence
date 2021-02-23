@@ -261,7 +261,8 @@ Cl::prep_move()
 
 void
 Cl::move(unsigned int n, std::vector<float>& px, std::vector<float>& py,
-         std::vector<float>& pf, std::vector<float>& pc, std::vector<float>& ps,
+         std::vector<float>& pf,
+         std::vector<float>& pc, std::vector<float>& ps,
          std::vector<unsigned int>& pn,
          std::vector<unsigned int>& pl, std::vector<unsigned int>& pr,
          unsigned int w, unsigned int h, float a, float b, float s)

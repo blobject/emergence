@@ -1,4 +1,4 @@
-//===-- canvas.hh - Canvas class declaration --------------------*- C++ -*-===//
+//===-- canvas.hh - Canvas class declaration -------------------*- C++ -*-===//
 ///
 /// \file
 /// Declaration of the Canvas class, which is responsible for a graphical
@@ -6,7 +6,7 @@
 /// Canvas is a subclass of View and observes the Proc and Control classes.
 /// Canvas uses the Gui class to provide user interaction.
 ///
-//===----------------------------------------------------------------------===//
+//===---------------------------------------------------------------------===//
 
 #pragma once
 

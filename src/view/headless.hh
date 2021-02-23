@@ -1,4 +1,4 @@
-//===-- headless.hh - Headless class declaration ----------------*- C++ -*-===//
+//===-- headless.hh - Headless class declaration ---------------*- C++ -*-===//
 ///
 /// \file
 /// Definition of the When enum and declaration of the Headless class, which is
@@ -6,7 +6,7 @@
 /// Headless is a subclass of the View class and observes the Proc and Control
 /// classes.
 ///
-//===----------------------------------------------------------------------===//
+//===---------------------------------------------------------------------===//
 
 #pragma once
 

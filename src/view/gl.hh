@@ -1,11 +1,11 @@
-//===-- gl.hh - OpenGL wrapping ---------------------------------*- C++ -*-===//
+//===-- gl.hh - OpenGL wrapping --------------------------------*- C++ -*-===//
 ///
 /// \file
 /// Declarations and definitions of helper classes that wrap around OpenGL
 /// constructs, which in turn retain graphical data of the particle system.
 /// Gl is used by the Canvas class.
 ///
-//===----------------------------------------------------------------------===//
+//===---------------------------------------------------------------------===//
 
 #pragma once
 
@@ -293,8 +293,8 @@ class Shader
     inline void
     set_uniform_mat4f(const std::string& name, const glm::mat4& mat)
     {
-        DOGL(glUniformMatrix4fv(Shader::get_uniform_location(name), 1, GL_FALSE,
-                                &mat[0][0]));
+        DOGL(glUniformMatrix4fv(Shader::get_uniform_location(name), 1,
+                                GL_FALSE, &mat[0][0]));
     }
 
   private:

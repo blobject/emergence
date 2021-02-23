@@ -1,12 +1,12 @@
-//===-- control.hh - Control class declaration ------------------*- C++ -*-===//
+//===-- control.hh - Control class declaration -----------------*- C++ -*-===//
 ///
 /// \file
-/// Definition of the Stative struct and declaration of the Control class, which
-/// together provide the means for View to mutate/access State, either directly
-/// or through Proc.
+/// Definition of the Stative struct and declaration of the Control class,
+/// which together provide the means for View to mutate/access State, either
+/// directly or through Proc.
 /// The Stative struct is a data transport between GuiState and State.
 ///
-//===----------------------------------------------------------------------===//
+//===---------------------------------------------------------------------===//
 
 #pragma once
 

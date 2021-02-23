@@ -1,10 +1,10 @@
-//===-- state.hh - State class declaration ----------------------*- C++ -*-===//
+//===-- state.hh - State class declaration --------------------*- C++ -*-===//
 ///
 /// \file
 /// Declaration of the State class, which acts as the main data store for the
 /// particle system.
 ///
-//===----------------------------------------------------------------------===//
+//===--------------------------------------------------------------------===//
 
 #pragma once
 

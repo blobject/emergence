@@ -1,4 +1,4 @@
-//===-- cl.hh - Cl class declaration ----------------------------*- C++ -*-===//
+//===-- cl.hh - Cl class declaration ---------------------------*- C++ -*-===//
 ///
 /// \file
 /// Declaration of the (optional) Cl class, which provides the Proc class with
@@ -7,7 +7,7 @@
 /// If OpenCL is not available, this becomes a stub class which Proc will
 /// effectively ignore.
 ///
-//===----------------------------------------------------------------------===//
+//===---------------------------------------------------------------------===//
 
 #pragma once
 
@@ -60,7 +60,8 @@ class Cl
               std::vector<unsigned int>& pn,
               std::vector<unsigned int>& pl, std::vector<unsigned int>& pr,
               std::vector<int>& pgcol, std::vector<int>& pgrow,
-              int cols, int rows, unsigned int w, unsigned int h, float scope2);
+              int cols, int rows,
+              unsigned int w, unsigned int h, float scope2);
 
     /// prep_move(): Pre-build the kernel for performing particle moving.
     ///              See Proc::plain_move() for the non-OpenCL variant.

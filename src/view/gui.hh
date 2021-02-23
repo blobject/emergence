@@ -1,4 +1,4 @@
-//===-- gui.hh - Gui class definition ---------------------------*- C++ -*-===//
+//===-- gui.hh - Gui class definition --------------------------*- C++ -*-===//
 ///
 /// \file
 /// Definition of the GuiState struct and declaration the Control class, which
@@ -12,7 +12,7 @@
 /// Gui communicates with the Control class in order to access/modify State and
 /// handle Proc.
 ///
-//===----------------------------------------------------------------------===//
+//===---------------------------------------------------------------------===//
 
 #pragma once
 
@@ -29,11 +29,13 @@
 class GuiState
 {
   public:
-    /// constructor: Initialise GuiState with Control-provided State parameters.
+    /// constructor: Initialise GuiState with Control-provided State
+    ///              parameters.
     /// \param ctrl  Control object
     GuiState(Control& ctrl);
 
-    /// untrue(): Ask Control whether Gui's parameters are different from State's.
+    /// untrue(): Ask Control whether Gui's parameters are different from
+    ///           State's.
     /// \returns  true if Gui's state is different from true State
     bool untrue() const;
 
@@ -180,7 +182,7 @@ class Gui
     bool         side_;    // whether the side control area should be shown
     bool         console_; // whether the message log area should be shown
     char         dialog_;  // which modal dialog should be shown
-    double       ago_;     // last moment when counting of frames began (~1 sec)
+    double       ago_;     // last moment when counting of frames began (~1s)
     unsigned int frames_;  // accumulated number of draws
     float        fps_;     // calculated frames per second
     double       x_;       // mouse cursor's x position
