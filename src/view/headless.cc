@@ -1,6 +1,5 @@
 #include "headless.hh"
 #include "../util/util.hh"
-#include <cstdlib>
 #include <signal.h>
 
 

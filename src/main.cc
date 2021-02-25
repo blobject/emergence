@@ -98,15 +98,15 @@ args(int argc, char* argv[])
                                               {"inputstate", ""},
                                               {"hidectrl", ""}};
     int opt;
-    while (-1 != (opt = getopt(argc, argv, "cf:ghv"))) {
+    while (-1 != (opt = getopt(argc, argv, "?cf:ghv"))) {
         switch (opt) {
         case 'g': opts["headless"] = "y"; break;
         case 'c': opts["hidectrl"] = "y"; break;
-        case 'v': opts["quit"] = "version";  opts["return"] =  "0"; break;
-        case 'h': opts["quit"] = "help";     opts["return"] =  "0"; break;
+        case 'v': opts["quit"] = "version"; opts["return"] = "0"; break;
+        case 'h': case '?': opts["quit"] = "help"; opts["return"] = "0"; break;
         case ':': opts["quit"] = "nofile"; opts["return"] = "-1"; break;
         case 'f': opts["inputstate"] = optarg; break;
-        case '?': default: opts["quit"] = optopt; opts["return"] = "-1"; break;
+        default: opts["quit"] = optopt; opts["return"] = "-1"; break;
         }
     }
     return opts;

@@ -185,8 +185,9 @@ Gui::Gui(Log& log, GuiState state, Canvas& canvas,
         log.add(Attn::Egl, "glfwInit");
         return;
     }
-    unsigned int gui_width = width;
-    unsigned int gui_height = height;
+    float dpi = (float)DPI / 100.0f;
+    unsigned int gui_width = width / dpi;
+    unsigned int gui_height = height / dpi;
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
@@ -212,9 +213,10 @@ Gui::Gui(Log& log, GuiState state, Canvas& canvas,
     ImGui_ImplGlfw_InitForOpenGL(view, true);
     ImGui_ImplOpenGL3_Init(GLSL_VERSION);
     ImGui::StyleColorsDark();
-    float font_size = 20.0f;
+    float font_size = 24.0f / dpi;
 
     this->view_ = view;
+    this->dpi_ = dpi;
     std::string cwd = Util::emergence_dir();
     this->font_r = io.Fonts->AddFontFromFileTTF(
         (cwd + "/../opt/roboto/RobotoMono-Regular.ttf").c_str(), font_size);
@@ -560,8 +562,8 @@ Gui::draw_save_load(char dialog)
     int view_width;
     int view_height;
     glfwGetFramebufferSize(this->view_, &view_width, &view_height);
-    int w = 400;
-    int h = 220;
+    int w = std::max((int)(400.0f / this->dpi_), (int)(view_width * 0.75f));
+    int h = std::max((int)(250.0f / this->dpi_), (int)(view_height * 0.3f));
     std::string title = "Save state to where?";
     std::string button = "SAVE";
     bool (GuiState::*func)(const std::string&) = &GuiState::save;
@@ -639,8 +641,8 @@ Gui::draw_quit(char dialog)
     int view_width;
     int view_height;
     glfwGetFramebufferSize(this->view_, &view_width, &view_height);
-    int w = 400;
-    int h = 380;
+    int w = std::max((int)(420.0f / this->dpi_), (int)(view_width * 0.75f));
+    int h = std::max((int)(460.0f / this->dpi_), (int)(view_width * 0.5f));
     static char path[128];
     auto color_bad = ImVec4(1.0f, 0.25f, 0.25f, 1.0f);
     static char bad_input = ' ';

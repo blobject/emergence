@@ -1,3 +1,6 @@
+set(DPI 200)
+set(CL 1) # 0=off, 1=on
+
 cmake_minimum_required(VERSION 3.18)
 set(CMAKE_CXX_COMPILER "clang++")
 set(CMAKE_CXX_STANDARD 11)
@@ -42,11 +45,12 @@ add_library(lib${ME} STATIC
   src/util/util.cc
   src/util/log.cc)
 
+target_compile_definitions(lib${ME} PUBLIC DPI=${DPI})
 target_compile_definitions(lib${ME} PUBLIC MESA_GL_VERSION_OVERRIDE=3.3)
 target_compile_definitions(lib${ME} PUBLIC MESA_GLSL_VERSION_OVERRIDE=330)
 
 if(OpenCL_FOUND AND EXISTS "${OpenCL_INCLUDE_DIR}/CL/cl2.hpp")
-  target_compile_definitions(lib${ME} PUBLIC HAS_CL=1)
+  target_compile_definitions(lib${ME} PUBLIC HAS_CL=${CL})
   target_compile_definitions(lib${ME} PUBLIC CL_TARGET_OPENCL_VERSION=210)
   target_compile_definitions(lib${ME} PUBLIC CL_HPP_TARGET_OPENCL_VERSION=210)
   set(LIBRARIES lib${ME} GLEW glfw imgui OpenCL OpenGL)

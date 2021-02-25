@@ -172,6 +172,7 @@ class Gui
   private:
     GuiState     state_;
     Log&         log_;
+    float        dpi_;
     ImFont*      font_r;
     ImFont*      font_b;
     ImFont*      font_i;

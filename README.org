@@ -48,6 +48,7 @@ This is a rewrite and extension of an [[https://github.com/blobject/mff/tree/mas
 - Build ::
 1. Retrieve this repository from https://github.com/blobject/emergence.
 1. ~cd emergence~
+1. Optionally configure =DPI= and =CL= in CMakeLists.txt.
 1. ~rm -R build; mkdir build; cd build~
 1. ~cmake ..~
 1. ~make~
