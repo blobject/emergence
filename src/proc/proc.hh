@@ -26,7 +26,8 @@ class Proc : public Subject
     /// \param log  Log object
     /// \param state  State object
     /// \param cl  Cl object
-    Proc(Log& log, State& state, Cl& cl);
+    /// \param no_cl  whether user has specified disabling of OpenCL
+    Proc(Log& log, State& state, Cl& cl, bool no_cl);
 
     /// next(): Let the system perform one action step.
     void next();

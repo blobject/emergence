@@ -24,7 +24,8 @@ class Log : public Subject
   public:
     /// constructor: Set a limit to the number of messages retained.
     /// \param limit  limit to the number of messages
-    Log(unsigned int limit);
+    /// \param quiet  whether to suppress standard printing
+    Log(unsigned int limit, bool quiet = false);
 
     /// add(): Push a new message into the log.
     /// \param attn  type of message
@@ -39,5 +40,6 @@ class Log : public Subject
 
   private:
     unsigned int limit_; // limit to the number of messages
+    bool quiet_;         // whether to suppress standard printing
 };
 

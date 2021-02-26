@@ -1,8 +1,8 @@
 #include "log.hh"
 
 
-Log::Log(unsigned int limit)
-    : limit_(limit)
+Log::Log(unsigned int limit, bool quiet /* = false */)
+    : limit_(limit), quiet_(quiet)
 {}
 
 
@@ -30,6 +30,12 @@ Log::add(Attn attn, const std::string& message, bool /* headless */)
     if      (attn == Attn::E)   { m = "Error: "     + m; }
     else if (attn == Attn::Ecl) { m = "Error(cl): " + m; }
     else if (attn == Attn::Egl) { m = "Error(gl): " + m; }
-    std::cout << m << std::endl;
+    std::ostream* stream = &std::cerr;
+    if (!this->quiet_) {
+      if (attn == Attn::O) {
+        stream = &std::cout;
+      }
+      *stream << m << std::endl;
+    }
 }
 

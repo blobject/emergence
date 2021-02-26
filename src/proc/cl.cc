@@ -44,7 +44,7 @@ Cl::Cl(Log& log)
     this->max_freq_ = this->device_.getInfo<CL_DEVICE_MAX_CLOCK_FREQUENCY>();
     this->max_gmem_ = this->device_.getInfo<CL_DEVICE_GLOBAL_MEM_SIZE>();
 
-    message = "Using OpenCL\n  device: " + name
+    message = "Found OpenCL\n  device: " + name
         + "\n  max compute units:\t" + std::to_string(this->max_cu_)
         + "\n  max clock frequency:\t" + std::to_string(this->max_freq_)
         + " MHz\n  max global memory:\t"

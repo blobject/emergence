@@ -103,8 +103,8 @@ class Control
      * - Namely:
      *
      * START WIDTH HEIGHT ALPHA BETA SCOPE SPEED
-     * 0 X_0 Y_0 PHI_0 RAD_0
-     * 1 X_1 Y_1 PHI_1 RAD_1
+     * 0 X0 Y0 PHI0 RAD0
+     * 1 X1 Y1 PHI1 RAD1
      * ...
      */
 

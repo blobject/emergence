@@ -4,14 +4,17 @@
 #include <GL/glew.h>
 
 
-Proc::Proc(Log& log, State& state, Cl& cl)
+Proc::Proc(Log& log, State& state, Cl& cl, bool no_cl)
     : state_(state), cl_(cl)
 {
     this->paused_ = false;
     this->cl_good_ = this->cl_.good();
+    if (no_cl) {
+      this->cl_good_ = false;
+    }
     if (!this->cl_good_) {
         std::string message = "Proceeding without OpenCL parallelisation.";
-        log.add(Attn::O, message, true);
+        log.add(Attn::O, "Proceeding without OpenCL parallelisation.", true);
     }
 }
 

@@ -19,11 +19,13 @@ argue(Log& log, std::map<std::string,std::string>& opts);
 int
 main(int argc, char* argv[])
 {
-    // logger object
-    Log log = Log(256);
-
-    // arguments
+    // arguments prep
     std::map<std::string,std::string> opts = args(argc, argv);
+
+    // logger object (after arguments prep to account for "quiet")
+    Log log = Log(256, !opts["quiet"].empty());
+
+    // arguments more
     argue(log, opts);
     if (!opts["return"].empty()) {
         return std::stoi(opts["return"]);
@@ -33,6 +35,7 @@ main(int argc, char* argv[])
     std::string init = opts["inputstate"];
     bool headless = !opts["headless"].empty();
     bool hide_side = !opts["hideside"].empty();
+    bool no_cl = !opts["nocl"].empty();
 
     /* dependency & observation graph
      * ----------   ...........
@@ -47,7 +50,7 @@ main(int argc, char* argv[])
     // system objects
     auto state = State(log);
     auto cl = Cl(log); // stub object if OpenCL is unavailable
-    auto proc = Proc(log, state, cl);
+    auto proc = Proc(log, state, cl, no_cl);
     auto ctrl = Control(log, state, proc, init);
     std::unique_ptr<View> view = View::init(log, ctrl, headless, hide_side);
 
@@ -64,7 +67,7 @@ main(int argc, char* argv[])
 static void
 usage()
 {
-    std::cout << "Usage: " << std::string(ME) << " -(f FILE|g|c|v|h?)"
+    std::cout << "Usage: " << std::string(ME) << " -(?h|c|f FILE|g|p|q|v)"
               << std::endl;
 }
 
@@ -76,11 +79,13 @@ help()
     usage();
     std::cout << "\nPrimordial particle system visualiser/processor.\n\n"
               << "Options:\n"
+              << "  -?|-h    show this help"
+              << "  -c       hide the visualiser control side bar\n"
               << "  -f FILE  supply an initial state\n"
               << "  -g       run in headless mode\n"
-              << "  -c       hide the visualiser control side bar\n"
+              << "  -p       disable OpenCL\n"
+              << "  -q       suppress log to stdout (does not apply to headless ui)\n"
               << "  -v       show version\n"
-              << "  -h|-?    show this help"
               << std::endl;
 }
 
@@ -93,17 +98,21 @@ static std::map<std::string,std::string>
 args(int argc, char* argv[])
 {
     std::map<std::string,std::string> opts = {{"quit", ""},
-                                              {"return", ""},
                                               {"headless", ""},
+                                              {"hideside", ""},
                                               {"inputstate", ""},
-                                              {"hidectrl", ""}};
+                                              {"nocl", ""},
+                                              {"quiet", ""},
+                                              {"return", ""}};
     int opt;
-    while (-1 != (opt = getopt(argc, argv, "?cf:ghv"))) {
+    while (-1 != (opt = getopt(argc, argv, "?cf:ghpqv"))) {
         switch (opt) {
-        case 'g': opts["headless"] = "y"; break;
-        case 'c': opts["hidectrl"] = "y"; break;
-        case 'v': opts["quit"] = "version"; opts["return"] = "0"; break;
+        case 'c': opts["hideside"] = "."; break;
+        case 'g': opts["headless"] = "."; break;
         case 'h': case '?': opts["quit"] = "help"; opts["return"] = "0"; break;
+        case 'p': opts["nocl"] = "."; break;
+        case 'q': opts["quiet"] = "."; break;
+        case 'v': opts["quit"] = "version"; opts["return"] = "0"; break;
         case ':': opts["quit"] = "nofile"; opts["return"] = "-1"; break;
         case 'f': opts["inputstate"] = optarg; break;
         default: opts["quit"] = optopt; opts["return"] = "-1"; break;

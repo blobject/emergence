@@ -1,4 +1,89 @@
+#include "../src/util/common.hh"
+#include "../src/util/log.hh"
+#include "../src/util/observation.hh"
 #include "../src/util/util.hh"
+
+
+// common
+
+TEST_CASE("util/common")
+{
+  std::string me = ME;
+  std::string glsl_version = GLSL_VERSION;
+  REQUIRE(0 == std::string(ME).compare("emergence"));
+  REQUIRE(0 == std::string(GLSL_VERSION).compare("#version 330 core"));
+  REQUIRE(Approx(Util::deg_to_rad(180)) == PI);
+  REQUIRE(Approx(Util::deg_to_rad(360)) == TAU);
+}
+
+
+// log
+
+TEST_CASE("Log::Log")
+{
+  Log log = Log(1);
+  REQUIRE(0 == log.messages_.size());
+}
+
+TEST_CASE("Log::add")
+{
+  Log log = Log(2);
+  log.add(Attn::E, "bar");
+  std::pair<Attn,std::string> message = log.messages_.front();
+  REQUIRE(Attn::E == message.first);
+  REQUIRE("Error: bar" == message.second);
+  log.add(Attn::O, "foo");
+  message = log.messages_.front();
+  REQUIRE(Attn::O == message.first);
+  REQUIRE("foo" == message.second);
+  log.add(Attn::O, "baz");
+  message = log.messages_.front();
+  REQUIRE(Attn::O == message.first);
+  REQUIRE("baz" == message.second);
+  message = log.messages_.back();
+  REQUIRE(Attn::O == message.first);
+  REQUIRE("foo" == message.second);
+}
+
+
+// observation
+
+class TestSubject : public Subject
+{
+  public:
+    TestSubject() = default;
+    void foo() { this->notify(Issue::StateChanged); }
+    void bar() { this->notify(Issue::ProcDone); }
+    void baz() { this->notify(Issue::NewMessage); }
+};
+
+class TestObserver : public Observer
+{
+  public:
+    TestObserver(TestSubject &sub) : sub_(sub), val_(0) { sub.attach(*this); }
+    ~TestObserver() override { this->sub_.detach(*this); }
+    void react(Issue issue) override {
+      if  (Issue::StateChanged == issue) { this->val_ = 1; }
+      else if (Issue::ProcDone == issue) { this->val_ = 2; }
+      else {                               this->val_ = 3; }
+    }
+    TestSubject& sub_;
+    int val_;
+};
+
+TEST_CASE("observation cycle")
+{
+  TestSubject sub = TestSubject();
+  TestObserver obs = TestObserver(sub);
+  REQUIRE(0 == obs.val_);
+  sub.foo();
+  REQUIRE(1 == obs.val_);
+  sub.bar();
+  REQUIRE(2 == obs.val_);
+  sub.baz();
+  REQUIRE(3 == obs.val_);
+}
+
 
 // math
 

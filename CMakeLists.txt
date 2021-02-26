@@ -1,5 +1,5 @@
 set(DPI 200)
-set(CL 1) # 0=off, 1=on
+set(CL 0) # 0=off, 1=on
 
 cmake_minimum_required(VERSION 3.18)
 set(CMAKE_CXX_COMPILER "clang++")
