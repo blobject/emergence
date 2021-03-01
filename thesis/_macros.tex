@@ -1,0 +1,74 @@
+% sane chapter headings
+\makeatletter
+\def\@makechapterhead#1{
+  {\parindent \z@ \raggedright \normalfont
+   \Huge\bfseries \thechapter. #1
+   \par\nobreak
+   \vskip 20\p@
+}}
+\def\@makeschapterhead#1{
+  {\parindent \z@ \raggedright \normalfont
+   \Huge\bfseries #1
+   \par\nobreak
+   \vskip 20\p@
+}}
+\makeatother
+
+% define unnumbered, but included in toc, chapters
+\def\chapwithtoc#1{
+\chapter*{#1}
+\addcontentsline{toc}{chapter}{#1}
+}
+
+% line overflow slugs
+\overfullrule=1mm
+
+% (amsthm) theorems, claims, examples, proofs
+\theoremstyle{plain}
+\newtheorem{thm}{Theorem}
+\newtheorem{lemma}[thm]{Lemma}
+\newtheorem{claim}[thm]{Claim}
+
+\theoremstyle{plain}
+\newtheorem{defn}{Definition}
+
+\theoremstyle{remark}
+\newtheorem*{cor}{Corollary}
+\newtheorem*{rem}{Remark}
+\newtheorem*{example}{Example}
+
+\newenvironment{myproof}{
+  \par\medskip\noindent
+  \textit{Proof}.
+}{
+\newline
+\rightline{$\qedsymbol$}
+}
+
+% (fancyvrb) code, verbatim
+\DefineVerbatimEnvironment{code}{Verbatim}{fontsize=\small, frame=single}
+
+% fields
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\N}{\mathbb{N}}
+
+% statistics, probability
+\DeclareMathOperator{\pr}{\textsf{P}}
+\DeclareMathOperator{\E}{\textsf{E}\,}
+\DeclareMathOperator{\var}{\textrm{var}}
+\DeclareMathOperator{\sd}{\textrm{sd}}
+
+% vector/matrix transposition
+\newcommand{\T}[1]{#1^\top}
+
+% misc math
+\newcommand{\goto}{\rightarrow}
+\newcommand{\gotop}{\stackrel{P}{\longrightarrow}}
+\newcommand{\maon}[1]{o(n^{#1})}
+\newcommand{\abs}[1]{\left|{#1}\right|}
+\newcommand{\dint}{\int_0^\tau\!\!\int_0^\tau}
+\newcommand{\isqr}[1]{\frac{1}{\sqrt{#1}}}
+
+% misc tables
+\newcommand{\pulrad}[1]{\raisebox{1.5ex}[0pt]{#1}}
+\newcommand{\mc}[1]{\multicolumn{1}{c}{#1}}

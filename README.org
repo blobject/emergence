@@ -10,7 +10,7 @@
 
 This project is based on the article, /How a life-like system emerges from a simple particle motion law/, by  Schmickl, Stefanec, and Crailsheim: https://www.nature.com/articles/srep37969, and extends it with our own [[https://zool33.uni-graz.at/artlife/pps_3d][version of three-dimensionality]].
 
-This is a rewrite and extension of an [[https://github.com/blobject/mff/tree/master/emergence][earlier JavaScript + HTML5 version]] which ran via web browser and Node.js. The present project uses OpenGL + GLEW (graphics), glm (math), GLFW (windowing), ImGui (user interface), OpenCL (parallelisation), and C++ (implementation language). It runs as a native desktop application on Linux (Xorg).
+This is a rewrite and extension of an [[https://github.com/blobject/mff/tree/master/emergence][earlier JavaScript + HTML5 version]] which ran via web browser and Node.js. The present project uses OpenGL + GLEW (graphics), GLFW (windowing), glm (math), ImGui (user interface), OpenCL (parallelisation), and C++ (implementation language). It runs as a native desktop application on Linux (Xorg).
 
 ** Build & Run
 
