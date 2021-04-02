@@ -2,6 +2,7 @@
 
 #include "util/common.hh"
 #include "util/log.hh"
+#include "exp/exp.hh"
 #include "view/view.hh"
 #include <fstream>
 #include <map>
@@ -19,47 +20,48 @@ argue(Log& log, std::map<std::string,std::string>& opts);
 int
 main(int argc, char* argv[])
 {
-    // arguments prep
-    std::map<std::string,std::string> opts = args(argc, argv);
+  // arguments prep
+  std::map<std::string,std::string> opts = args(argc, argv);
 
-    // logger object (after arguments prep to account for "quiet")
-    Log log = Log(256, !opts["quiet"].empty());
+  // logger object (after arguments prep to account for "quiet")
+  Log log = Log(256, !opts["quiet"].empty());
 
-    // arguments more
-    argue(log, opts);
-    if (!opts["return"].empty()) {
-        return std::stoi(opts["return"]);
-    }
+  // arguments more
+  argue(log, opts);
+  if (!opts["return"].empty()) {
+    return std::stoi(opts["return"]);
+  }
 
-    // configuration
-    std::string init = opts["inputstate"];
-    bool headless = !opts["headless"].empty();
-    bool hide_side = !opts["hideside"].empty();
-    bool no_cl = !opts["nocl"].empty();
+  // configuration
+  std::string init = opts["inputstate"];
+  bool headless = !opts["headless"].empty();
+  bool no_cl = !opts["nocl"].empty();
+  bool two = !opts["two"].empty();
 
-    /* dependency & observation graph
-     * ----------   ...........
-     *
-     *   .................................
-     *   v          v                    :
-     * State <---- Proc <-- Cl           :  .-------> Gl
-     *         |    ^              .-- Canvas <--.
-     *         |    |              |             '--> Gui
-     *         '-- Ctrl <-- View <---- Headless
-     */
-    // system objects
-    auto state = State(log);
-    auto cl = Cl(log); // stub object if OpenCL is unavailable
-    auto proc = Proc(log, state, cl, no_cl);
-    auto ctrl = Control(log, state, proc, init);
-    std::unique_ptr<View> view = View::init(log, ctrl, headless, hide_side);
+  /* dependency & observation graph
+   * ----------   ...........
+   *
+   *   .................................
+   *   v          v                    :
+   * State <---- Proc <-- Cl           :  .-------> Gl
+   *         |    ^              .-- Canvas <--.
+   *         |    |              |             '--> Gui
+   *         '-- Ctrl <-- View <---- Headless
+   */
+  // system objects
+  auto state = State(log);
+  auto cl = Cl(log); // stub object if OpenCL is unavailable
+  auto proc = Proc(log, state, cl, no_cl);
+  auto exp = Exp(log, state);
+  auto ctrl = Control(log, state, proc, exp, init);
+  std::unique_ptr<View> view = View::init(log, ctrl, headless, two);
 
-    // execution
-    while (!ctrl.quit_) {
-        ctrl.next();
-    }
+  // execution
+  while (!ctrl.quit_) {
+    ctrl.next();
+  }
 
-    return 0;
+  return 0;
 }
 
 
@@ -67,8 +69,8 @@ main(int argc, char* argv[])
 static void
 usage()
 {
-    std::cout << "Usage: " << std::string(ME) << " -(?h|c|f FILE|g|p|q|v)"
-              << std::endl;
+  std::cout << "Usage: " << std::string(ME) << " -(?h|2|f FILE|g|p|q|v)"
+            << std::endl;
 }
 
 
@@ -76,17 +78,17 @@ usage()
 static void
 help()
 {
-    usage();
-    std::cout << "\nPrimordial particle system visualiser/processor.\n\n"
-              << "Options:\n"
-              << "  -?|-h    show this help"
-              << "  -c       hide the visualiser control side bar\n"
-              << "  -f FILE  supply an initial state\n"
-              << "  -g       run in headless mode\n"
-              << "  -p       disable OpenCL\n"
-              << "  -q       suppress log to stdout (does not apply to headless ui)\n"
-              << "  -v       show version\n"
-              << std::endl;
+  usage();
+  std::cout << "\nPrimordial particle system visualiser/processor.\n\n"
+            << "Options:\n"
+            << "  -?|-h    show this help\n"
+            << "  -2       run in 2d mode (does not apply to headless ui)\n"
+            << "  -f FILE  supply an initial state\n"
+            << "  -g       run in headless mode\n"
+            << "  -p       disable OpenCL\n"
+            << "  -q       suppress log to stdout (does not apply to headless ui)\n"
+            << "  -v       show version\n"
+            << std::endl;
 }
 
 
@@ -97,28 +99,39 @@ help()
 static std::map<std::string,std::string>
 args(int argc, char* argv[])
 {
-    std::map<std::string,std::string> opts = {{"quit", ""},
-                                              {"headless", ""},
-                                              {"hideside", ""},
-                                              {"inputstate", ""},
-                                              {"nocl", ""},
-                                              {"quiet", ""},
-                                              {"return", ""}};
-    int opt;
-    while (-1 != (opt = getopt(argc, argv, "?cf:ghpqv"))) {
-        switch (opt) {
-        case 'c': opts["hideside"] = "."; break;
-        case 'g': opts["headless"] = "."; break;
-        case 'h': case '?': opts["quit"] = "help"; opts["return"] = "0"; break;
-        case 'p': opts["nocl"] = "."; break;
-        case 'q': opts["quiet"] = "."; break;
-        case 'v': opts["quit"] = "version"; opts["return"] = "0"; break;
-        case ':': opts["quit"] = "nofile"; opts["return"] = "-1"; break;
-        case 'f': opts["inputstate"] = optarg; break;
-        default: opts["quit"] = optopt; opts["return"] = "-1"; break;
-        }
+  std::map<std::string,std::string> opts = {{"quit", ""},
+                                            {"headless", ""},
+                                            {"inputstate", ""},
+                                            {"nocl", ""},
+                                            {"two", ""},
+                                            {"quiet", ""},
+                                            {"return", ""}};
+  int opt;
+  while (-1 != (opt = getopt(argc, argv, "?2cf:ghpqv"))) {
+    if ('g' == opt) {
+      opts["headless"] = ".";
+    } else if ('h' == opt || '?' == opt) {
+      opts["quit"] = "help";
+      opts["return"] = "0";
+    } else if ('2' == opt) {
+      opts["two"] = ".";
+    } else if ('p' == opt) {
+      opts["nocl"] = ".";
+    } else if ('q' == opt) {
+      opts["quiet"] = ".";
+    } else if ('v' == opt) {
+      opts["quit"] = "version"; opts["return"] = "0";
+    } else if (':' == opt) {
+      opts["quit"] = "nofile";
+      opts["return"] = "-1";
+    } else if ('f' == opt) {
+      opts["inputstate"] = optarg;
+    } else {
+      opts["quit"] = optopt;
+      opts["return"] = "-1";
     }
-    return opts;
+  }
+  return opts;
 }
 
 
@@ -128,46 +141,46 @@ args(int argc, char* argv[])
 static void
 argue(Log& log, std::map<std::string,std::string>& opts)
 {
-    std::string opt = opts["quit"];
-    if (!opts["inputstate"].empty())
-    {
-        std::ifstream stream;
-        stream = std::ifstream(opts["inputstate"]);
-        if (stream) {
-            stream.close();
-        } else {
-            log.add(Attn::E, "unreadable file: " + opts["inputstate"], true);
-            opts["return"] = "-1";
-            usage();
-        }
-        return;
+  std::string opt = opts["quit"];
+  if (!opts["inputstate"].empty())
+  {
+    std::ifstream stream;
+    stream = std::ifstream(opts["inputstate"]);
+    if (stream) {
+      stream.close();
+    } else {
+      opts["return"] = "-1";
+      log.add(Attn::E, "unreadable file: " + opts["inputstate"], true);
+      usage();
     }
-    if (!opt.empty()) {
-        if ("help" == opt) {
-            help();
-            return;
-        } else if ("version" == opt) {
-            log.add(Attn::O, std::string(ME) + " version "
-                    + std::string(VERSION), true);
-            return;
-        } else if ("nofile" == opt) {
-            log.add(Attn::E, "no file provided\n", true);
-        } else if ("inputstate" == opt) {
-        } else {
-            log.add(Attn::E, "unknown argument: " + opts["quit"], true);
-        }
-        usage();
-        return;
+    return;
+  }
+  if (!opt.empty()) {
+    if ("help" == opt) {
+      help();
+      return;
+    } else if ("version" == opt) {
+      log.add(Attn::O, std::string(ME) + " version " + std::string(VERSION),
+              true);
+      return;
+    } else if ("nofile" == opt) {
+      log.add(Attn::E, "no file provided\n", true);
+    } else if ("inputstate" == opt) {
+    } else {
+      log.add(Attn::E, "unknown argument: " + opts["quit"], true);
     }
-    std::string message = "Running emergence";
-    if (opts["headless"].empty()) {
-        message += " canvas";
-    }
-    else {
-        opt = opts["inputstate"];
-        message += " headless";
-        if (!opt.empty()) message += ": " + opt;
-    }
-    log.add(Attn::O, message, true);
+    usage();
+    return;
+  }
+  std::string message = "Running emergence:";
+  if (opts["headless"].empty()) {
+    message += " canvas";
+  }
+  else {
+    opt = opts["inputstate"];
+    message += " headless";
+    if (!opt.empty()) message += ": " + opt;
+  }
+  log.add(Attn::O, message, true);
 }
 

@@ -7,7 +7,8 @@ TEST_CASE("Control::Control")
   auto state = State(log);
   auto cl = Cl(log);
   auto proc = Proc(log, state, cl, false);
-  auto ctrl = Control(log, state, proc, "");
+  auto exp = Exp(log, state);
+  auto ctrl = Control(log, state, proc, exp, "");
   REQUIRE(-1 == ctrl.stop_);
 }
 

@@ -16,19 +16,19 @@
 
 class View
 {
-  public:
-    virtual ~View() {}
+ public:
+  virtual ~View() {}
 
-    /// init(): Factory of views.
-    /// \param log  Log object
-    /// \param ctrl Control object
-    /// \param headless  whether view is non-graphical
-    /// \param hide_side  whether to hide the control side bar
-    /// \returns a View, either Canvas or Headless
-    static std::unique_ptr<View> init(Log& log, Control& ctrl,
-                                      bool headless, bool hide_side);
+  /// init(): Factory of views.
+  /// \param log  Log object
+  /// \param ctrl Control object
+  /// \param headless  whether view is non-graphical
+  /// \param two  whether graphical view is in 2d
+  /// \returns a View, either Canvas or Headless
+  static std::unique_ptr<View> init(Log& log, Control& ctrl, bool headless,
+                                    bool two);
 
-    /// exec(): Reaction to one iteration of particle processing.
-    virtual void exec() = 0;
+  /// exec(): Reaction to one iteration of particle processing.
+  virtual void exec() = 0;
 };
 

@@ -11,120 +11,164 @@
 #pragma once
 
 #include "proc.hh"
-#include "../util/log.hh"
+#include "../exp/exp.hh"
 
 
+enum class Coloring;
+class Exp;
 class Proc;
 class State;
 
 struct Stative
 {
-    long long    stop;   // number of ticks until processing stops
-    int          num;    // number of particles (negative for error)
-    unsigned int width;  // processable space width
-    unsigned int height; // processable space height
-    float        alpha;  // alpha in main formula (radians)
-    float        beta;   // beta in main formula (radians)
-    float        scope;  // vicinity radius
-    float        speed;  // movement multiplier
-    int          colors; // visualisation colorscheme
+  long long    stop;     // number of ticks until processing stops
+  int          num;      // number of particles (negative for error)
+  unsigned int width;    // processable space width
+  unsigned int height;   // processable space height
+  float        alpha;    // alpha in main formula (radians)
+  float        beta;     // beta in main formula (radians)
+  float        scope;    // vicinity radius
+  float        speed;    // movement multiplier
+  float        prad;     // particle radius
+  int          coloring; // particle color scheme (int)
 };
 
 
 class Control
 {
-  public:
-    /// constructor: Prepare ticking and the initial state if necessary.
-    /// \param log  Log object
-    /// \param state  State object
-    /// \param proc  Proc object
-    /// \param init  path to the file containing an initial state
-    Control(Log& log, State& state, Proc& proc, const std::string& init);
+ public:
+  /// constructor: Prepare ticking and the initial state if necessary.
+  /// \param log  Log object
+  /// \param state  State object
+  /// \param proc  Proc object
+  /// \param init  path to the file containing an initial state
+  Control(Log& log, State& state, Proc& proc, Exp& exp,
+          const std::string& init);
 
-    /// Observer pattern helpers for at/de-taching View to State/Proc.
-    void attach_to_state(Observer& observer);
-    void detach_from_state(Observer& observer);
-    void attach_to_proc(Observer& observer);
-    void detach_from_proc(Observer& observer);
+  // State ////////////////////////////////////////////////////////////////////
 
-    /// next(): Call Proc::next() while handling paused state and the remaining
-    ///         ticks.
-    void    next();
+  /// Observer pattern helpers for at/de-taching View to State.
+  void attach_to_state(Observer& observer);
+  void detach_from_state(Observer& observer);
 
-    /// pause(): Do not let the system perform any processing.
-    /// \param yesno  whether processing ought to be paused
-    void    pause(bool yesno);
+  /// get_state(): Return a reference to the State.
+  /// \returns  reference to the state
+  State& get_state() const;
 
-    /// done(): Thin wrapper around Proc::done().
-    void    done() const;
+  /// get_num(): Return the number of particles.
+  /// \returns  number of particles
+  int get_num() const;
 
-    /// quit(): Stops the main() loop.
-    void    quit();
+  /// get_num(): Return the particle color scheme.
+  /// \returns  particle color scheme
+  Coloring get_coloring() const;
 
-    /// cl_good(): Thin wrapper around Cl::good().
-    /// \returns  true if OpenCL is enabled
-    bool    cl_good() const;
+  /// different(): Whether the input system parameters is different from the
+  ///              true system parameters?
+  /// \param input  input system parameters
+  /// \returns  true if input system parameters is different from the true
+  ///           system parameters
+  bool different(Stative& input);
 
-    /// get_state(): Return a reference to the State.
-    /// \returns  reference to the state
-    State& get_state() const;
+  /// change(): Change system parameters.
+  /// \param input  input system parameters
+  /// \returns  true if particle parameters were respawned
+  bool change(Stative& input) const;
 
-    /// get_num(): Return the number of particles.
-    /// \returns  number of particles
-    int get_num() const;
+  /// load(): Patch in an initialising state.
+  /// \param path  path to the file containing an initial state
+  /// \returns  loaded system parameters (on failure, Stative.num is -1)
+  Stative load(const std::string& path);
 
-    /// different(): Whether the input system parameters is different from the
-    ///              true system parameters?
-    /// \param input  input system parameters
-    /// \returns  true if input system parameters is different from the true
-    ///           system parameters
-    bool    different(Stative& input);
+  /// save(): Record the current state.
+  /// \param path  path to the file to save the current state to
+  /// \returns  whether the save was successful
+  bool save(const std::string& path);
 
-    /// change(): Change system parameters.
-    /// \param input  input system parameters
-    /// \returns  true if particle parameters were respawned
-    bool    change(Stative& input) const;
+  /* state file format
+   *
+   * - Delimited by horizontal space (' ') and vertical space ('\n')
+   * - First line contains non-particle-specific data
+   * - Second line and onwards contain particle data
+   * - Namely:
+   *
+   * START WIDTH HEIGHT ALPHA BETA SCOPE SPEED PRAD
+   * 0 X0 Y0 PHI0
+   * 1 X1 Y1 PHI1
+   * ...
+   */
 
-    /// load(): Patch in an initialising state.
-    /// \param path  path to the file containing an initial state
-    /// \returns  loaded system parameters (on failure, Stative.num is -1)
-    Stative load(const std::string& path);
+  /// load_file(): Parse a file containing an initialising State.
+  /// \param path  path to the file containing an initial state
+  /// \returns  whether the load was successful
+  bool load_file(const std::string& path);
 
-    /// save(): Record the current state.
-    /// \param path  path to the file to save the current state to
-    /// \returns  whether the save was successful
-    bool    save(const std::string& path);
+  /// save_file(): Write the current State to a file.
+  /// \param path  path to the file to save the current state to
+  /// \returns  whether the save was successful
+  bool save_file(const std::string& path);
 
-    /* state file format
-     *
-     * - Delimited by horizontal space (' ') and vertical space ('\n')
-     * - First line contains non-particle-specific data
-     * - Second line and onwards contain particle data
-     * - Namely:
-     *
-     * START WIDTH HEIGHT ALPHA BETA SCOPE SPEED
-     * 0 X0 Y0 PHI0 RAD0
-     * 1 X1 Y1 PHI1 RAD1
-     * ...
-     */
+  // Proc /////////////////////////////////////////////////////////////////////
 
-    /// load_file(): Parse a file containing an initialising State.
-    /// \param path  path to the file containing an initial state
-    /// \returns  whether the load was successful
-    bool    load_file(const std::string& path);
+  /// Observer pattern helpers for at/de-taching View to Proc.
+  void attach_to_proc(Observer& observer);
+  void detach_from_proc(Observer& observer);
 
-    /// save_file(): Write the current State to a file.
-    /// \param path  path to the file to save the current state to
-    /// \returns  whether the save was successful
-    bool    save_file(const std::string& path);
+  /// next(): Call Proc::next() while handling paused state and the remaining
+  ///         ticks.
+  void next();
 
-    long long start_; // initial number of ticks
-    long long stop_;  // number of ticks until processing stops
-    bool      quit_;  // whether processing ought to stop
+  /// pause(): Whether system should perform processing.
+  /// \param yesno  whether processing ought to be paused
+  void pause(bool yesno);
 
-  private:
-    Log&   log_;
-    Proc&  proc_;
-    State& state_;
+  /// done(): Thin wrapper around Proc::done().
+  void done() const;
+
+  /// quit(): Stops the main() loop.
+  void quit();
+
+  /// cl_good(): Thin wrapper around Cl::good().
+  /// \returns  true if OpenCL is enabled
+  bool cl_good() const;
+
+  // Exp //////////////////////////////////////////////////////////////////////
+
+  /// reset_exp(): Thin wrapper around Exp::reset().
+  void reset_exp();
+
+  /// coloring(): Thin wrapper around Exp::coloring().
+  /// \param scheme  particle coloring scheme
+  void coloring(Coloring scheme);
+
+  /// cluster(): Thin wrapper around Exp::cluster().
+  /// \returns  analysis result message
+  std::string cluster();
+
+  /// cluster2(): Thin wrapper around Exp::cluster2().
+  /// \param radius  neighborhood radius, aka. epsilon
+  /// \param minpts  minimum number of neighbors to be considered "core"
+  /// \returns  analysis result message
+  std::string cluster2(float radius, unsigned int minpts);
+
+  /// inject(): Thin wrapper around Exp::inject().
+  /// \returns  analysis result message
+  std::string inject();
+
+  /// densities(): Thin wrapper around Exp::densities().
+  /// \returns  analysis result message
+  std::string densities();
+
+  // members //////////////////////////////////////////////////////////////////
+
+  long long start_; // initial number of ticks
+  long long stop_;  // number of ticks until processing stops
+  bool      quit_;  // whether processing ought to stop
+
+ private:
+  Exp&   exp_;
+  Log&   log_;
+  Proc&  proc_;
+  State& state_;
 };
 

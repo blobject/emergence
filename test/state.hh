@@ -14,6 +14,7 @@ TEST_CASE("State::State")
   REQUIRE(Approx(Util::deg_to_rad(17)) == state.beta_);
   REQUIRE(24.0f == state.scope_);
   REQUIRE(4.0f == state.speed_);
+  REQUIRE(2.0f == state.prad_);
   REQUIRE(24.0f * 24.0f == state.scope_squared_);
   REQUIRE(num == state.px_.size());
   REQUIRE(num == state.py_.size());
@@ -23,9 +24,8 @@ TEST_CASE("State::State")
   REQUIRE(num == state.pn_.size());
   REQUIRE(num == state.pl_.size());
   REQUIRE(num == state.pr_.size());
-  REQUIRE(num == state.prad_.size());
-  REQUIRE(num == state.pgcol_.size());
-  REQUIRE(num == state.pgrow_.size());
+  REQUIRE(num == state.gcol_.size());
+  REQUIRE(num == state.grow_.size());
 }
 
 TEST_CASE("State::respawn")
@@ -42,9 +42,8 @@ TEST_CASE("State::respawn")
   REQUIRE(num == state.pn_.size());
   REQUIRE(num == state.pl_.size());
   REQUIRE(num == state.pr_.size());
-  REQUIRE(num == state.prad_.size());
-  REQUIRE(num == state.pgcol_.size());
-  REQUIRE(num == state.pgrow_.size());
+  REQUIRE(num == state.gcol_.size());
+  REQUIRE(num == state.grow_.size());
 }
 
 TEST_CASE("State::clear")
@@ -60,9 +59,8 @@ TEST_CASE("State::clear")
   REQUIRE(0 == state.pn_.size());
   REQUIRE(0 == state.pl_.size());
   REQUIRE(0 == state.pr_.size());
-  REQUIRE(0 == state.prad_.size());
-  REQUIRE(0 == state.pgcol_.size());
-  REQUIRE(0 == state.pgrow_.size());
+  REQUIRE(0 == state.gcol_.size());
+  REQUIRE(0 == state.grow_.size());
 }
 
 TEST_CASE("State::change")
@@ -78,7 +76,8 @@ TEST_CASE("State::change")
                      state.beta_,
                      state.scope_,
                      state.speed_,
-                     state.colors_};
+                     state.prad_,
+                     state.coloring_};
   REQUIRE(false == state.change(stative));
   stative = {-1,
              state.num_,
@@ -88,7 +87,8 @@ TEST_CASE("State::change")
              state.beta_,
              state.scope_,
              state.speed_,
-             state.colors_};
+             state.prad_,
+             state.coloring_};
   REQUIRE(true == state.change(stative));
   REQUIRE(1 == log.messages_.size());
   REQUIRE("Changing state without respawn." == log.messages_.front().second);
@@ -100,7 +100,8 @@ TEST_CASE("State::change")
              state.beta_,
              state.scope_,
              state.speed_,
-             state.colors_};
+             state.prad_,
+             state.coloring_};
   REQUIRE(true == state.change(stative));
   REQUIRE(2 == log.messages_.size());
   REQUIRE("Changing state and respawning." == log.messages_.front().second);

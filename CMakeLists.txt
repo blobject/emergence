@@ -1,5 +1,5 @@
-set(DPI 200)
-set(CL 0) # 0=off, 1=on
+set(DPI 200) # higher dpi decreases font size
+set(CL 1) # 0=off, 1=on
 
 cmake_minimum_required(VERSION 3.18)
 set(CMAKE_CXX_COMPILER "clang++")
@@ -35,6 +35,8 @@ add_library(lib${ME} STATIC
   src/proc/cl.cc
   src/proc/proc.cc
   src/proc/control.cc
+  # exp
+  src/exp/exp.cc
   # view
   src/view/view.cc
   src/view/headless.cc
@@ -50,7 +52,7 @@ target_compile_definitions(lib${ME} PUBLIC MESA_GL_VERSION_OVERRIDE=3.3)
 target_compile_definitions(lib${ME} PUBLIC MESA_GLSL_VERSION_OVERRIDE=330)
 
 if(OpenCL_FOUND AND EXISTS "${OpenCL_INCLUDE_DIR}/CL/cl2.hpp")
-  target_compile_definitions(lib${ME} PUBLIC HAS_CL=${CL})
+  target_compile_definitions(lib${ME} PUBLIC CL_ENABLED=${CL})
   target_compile_definitions(lib${ME} PUBLIC CL_TARGET_OPENCL_VERSION=210)
   target_compile_definitions(lib${ME} PUBLIC CL_HPP_TARGET_OPENCL_VERSION=210)
   set(LIBRARIES lib${ME} GLEW glfw imgui OpenCL OpenGL)
