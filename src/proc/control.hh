@@ -63,17 +63,10 @@ class Control
   /// \returns  particle color scheme
   Coloring get_coloring() const;
 
-  /// different(): Whether the input system parameters is different from the
-  ///              true system parameters?
-  /// \param input  input system parameters
-  /// \returns  true if input system parameters is different from the true
-  ///           system parameters
-  bool different(Stative& input);
-
   /// change(): Change system parameters.
   /// \param input  input system parameters
-  /// \returns  true if particle parameters were respawned
-  bool change(Stative& input) const;
+  /// \param respawn  whether system should respawn
+  void change(Stative& input, bool respawn) const;
 
   /// load(): Patch in an initialising state.
   /// \param path  path to the file containing an initial state
@@ -142,14 +135,10 @@ class Control
   void coloring(Coloring scheme);
 
   /// cluster(): Thin wrapper around Exp::cluster().
+  /// \param radius  DBSCAN neighborhood radius ("epsilon" in literature)
+  /// \param minpts  DBSCAN minimum number of neighbors to be considered "core"
   /// \returns  analysis result message
-  std::string cluster();
-
-  /// cluster2(): Thin wrapper around Exp::cluster2().
-  /// \param radius  neighborhood radius, aka. epsilon
-  /// \param minpts  minimum number of neighbors to be considered "core"
-  /// \returns  analysis result message
-  std::string cluster2(float radius, unsigned int minpts);
+  std::string cluster(float radius, unsigned int minpts);
 
   /// inject(): Thin wrapper around Exp::inject().
   /// \returns  analysis result message

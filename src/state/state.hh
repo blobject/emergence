@@ -35,8 +35,8 @@ class State : public Subject
 
   /// change(): Mutate the system parameters.
   /// \param input  system parameters to change to
-  /// \returns  whether respawning of particle parameters ought to occur
-  bool change(Stative& input);
+  /// \param respawn  whether system should respawn
+  void change(Stative& input, bool respawn);
 
   //// particle
   // (volatile) location & direction
@@ -58,7 +58,7 @@ class State : public Subject
   std::vector<float> xb_;        // blue
 
   // transportable
-  int          num_;      // # particles (negative for error)
+  int          num_;      // # particles (negative for encoding input error)
   unsigned int width_;    // processable space width
   unsigned int height_;   // processable space height
   float        alpha_;    // alpha in main formula (radians)

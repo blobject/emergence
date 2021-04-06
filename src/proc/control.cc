@@ -68,27 +68,10 @@ Control::get_coloring() const
 }
 
 
-bool
-Control::different(Stative& input)
+void
+Control::change(Stative& input, bool respawn) const
 {
-  State& truth = this->state_;
-  return (input.stop   != this->stop_   ||
-          input.num    != truth.num_    ||
-          input.width  != truth.width_  ||
-          input.height != truth.height_ ||
-          Util::round_float(input.alpha) != Util::round_float(truth.alpha_) ||
-          Util::round_float(input.beta)  != Util::round_float(truth.beta_)  ||
-          Util::round_float(input.scope) != Util::round_float(truth.scope_) ||
-          Util::round_float(input.speed) != Util::round_float(truth.speed_) ||
-          Util::round_float(input.prad) != Util::round_float(truth.prad_) ||
-          input.coloring != truth.coloring_);
-}
-
-
-bool
-Control::change(Stative& input) const
-{
-  return this->state_.change(input);
+  this->state_.change(input, respawn);
 }
 
 
@@ -299,16 +282,9 @@ Control::coloring(Coloring scheme)
 
 
 std::string
-Control::cluster()
+Control::cluster(float radius, unsigned int minpts)
 {
-  return this->exp_.cluster();
-}
-
-
-std::string
-Control::cluster2(float radius, unsigned int minpts)
-{
-  return this->exp_.cluster2(radius, minpts);
+  return this->exp_.cluster(radius, minpts);
 }
 
 std::string

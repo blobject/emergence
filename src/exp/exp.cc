@@ -1,5 +1,4 @@
 #include "exp.hh"
-//#include "../util/common.hh"
 #include "../util/util.hh"
 
 
@@ -15,10 +14,9 @@ Exp::reset()
 {
   this->neighbor_sets_.clear();
   this->cores_.clear();
-  this->ambiguous_.clear();
+  this->vague_.clear();
   this->clusters_.clear();
-  this->cluster_index_sets_.clear();
-  this->random_colors_.clear();
+  this->palette_.clear();
 }
 
 
@@ -48,32 +46,14 @@ Exp::coloring(Coloring scheme)
       xb[p] = 0.2f;
     }
     std::vector<float> color = {};
-    this->random_color_index_ = 0;
+    this->palette_index_ = 0;
     for (auto& c : this->clusters_) {
-      ++this->random_color_index_;
-      color = this->random_color();
+      ++this->palette_index_;
+      color = this->palette_sample();
       for (int p : c) {
         xr[p] = color[0];
         xg[p] = color[1];
         xb[p] = color[2];
-      }
-    }
-    return;
-  }
-
-  if (Coloring::Half == scheme) {
-    State& state = this->state_;
-    unsigned int w = state.width_;
-    std::vector<float>& px = state.px_;
-    for (int p = 0; p < state.num_; ++p) {
-      if (px[p] < w / 2) {
-        xr[p] = 1.0f;
-        xg[p] = 0.2f;
-        xb[p] = 0.2f;
-      } else {
-        xr[p] = 0.2f;
-        xg[p] = 0.2f;
-        xb[p] = 1.0f;
       }
     }
     return;
@@ -100,10 +80,10 @@ Exp::coloring(Coloring scheme)
 
 
 std::vector<float>
-Exp::random_color()
+Exp::palette_sample()
 {
-  unsigned int index = this->random_color_index_;
-  std::vector<std::vector<float>>& colors = this->random_colors_;
+  unsigned int index = this->palette_index_;
+  std::vector<std::vector<float>>& colors = this->palette_;
   if (index > colors.size()) {
     colors.push_back({
       Util::distribute(0.3f, 1.0f),
@@ -123,37 +103,23 @@ Exp::random_color()
  *        '------------------------> particles
  */
 
-
 std::string
-Exp::cluster()
-{
-  return "";
-}
-
-
-void
-Exp::hdbscan()
-{
-}
-
-
-std::string
-Exp::cluster2(float radius, unsigned int minpts)
+Exp::cluster(float radius, unsigned int minpts)
 {
   this->reset();
   this->dbscan_categorise(radius, minpts);
   this->dbscan_collect();
 
+  float num = static_cast<float>(this->state_.num_);
+  unsigned int cores = this->cores_.size();
+  unsigned int vague = this->vague_.size();
+
   std::stringstream s;
-  s << "cores: " << this->cores_.size()
-    << "\nambiguous: " << this->ambiguous_.size()
-    << "\nCLUSTERS: " << this->clusters_.size() << std::flush;
-  //for (auto p : this->cores_) {
-  //  s << p << " ";
-  //}
-  //for (auto p : this->ambiguous_) {
-  //  s << p << " ";
-  //}
+  s.precision(4);
+  s << this->clusters_.size() << " clusters\n"
+    << "cores: " << cores << " (" << cores * 100 / num << "%)\n"
+    << "vague: " << vague << " (" << vague * 100 / num << "%)\n"
+    << "noise: " << static_cast<int>(num - cores - vague) << std::flush;
 
   return s.str();
 }
@@ -162,93 +128,54 @@ Exp::cluster2(float radius, unsigned int minpts)
 void
 Exp::dbscan_categorise(float radius, unsigned int minpts)
 {
-  this->dbscan_neighborhood2(radius);
+  this->dbscan_neighborhood(radius);
 
-  std::unordered_map<int,std::vector<int>>& neighbor_sets = this->neighbor_sets_;
+  std::unordered_map<int,std::vector<int>>& ns = this->neighbor_sets_;
   std::vector<int>& cores = this->cores_;
-  std::vector<int>& ambiguous = this->ambiguous_;
+  std::vector<int>& vague = this->vague_;
 
-  std::unordered_map<int,std::vector<int>>::iterator it = neighbor_sets.begin();
-  while (it != neighbor_sets.end()) {
-    //if (it->second.empty()) {
-    //  ++it;
-    //  continue;
-    //}
+  std::unordered_map<int,std::vector<int>>::iterator it = ns.begin();
+  while (it != ns.end()) {
     if (minpts > it->second.size()) {
-      ambiguous.push_back(it->first);
+      vague.push_back(it->first);
     } else {
       cores.push_back(it->first);
     }
     ++it;
   }
 
-/*
+/* pseudocode
 def:
   N: set of sets of neighbors
 input: PTS, RAD, MIN
-output: N, CORES, DUNNOS
+output: N, CORES, VAGUE
 
 categorise(PTS, RAD, MIN):
   N := {}
   CORES := {}
-  DUNNOS := {}
+  VAGUE := {}
   foreach P in PTS:
     N_P := neighbors(P, PTS, RAD)
     if |N_P| == 0:
       continue
     add N_P to N
-    add P to (|N_P| < MIN ? DUNNOS : CORES)
-  return N, CORES, DUNNOS
+    add P to (|N_P| < MIN ? VAGUE : CORES)
+  return N, CORES, VAGUE
 */
-}
-
-
-void
-Exp::dbscan_neighborhood(float radius)
-{
-  State& state = this->state_;
-  int num = state.num_;
-  std::vector<float>& px = state.px_;
-  std::vector<float>& py = state.py_;
-  std::unordered_map<int,std::vector<int>>& n = this->neighbor_sets_;
-  float squared = radius * radius;
-  float srcx;
-  float srcy;
-  float dstx;
-  float dsty;
-  float dx;
-  float dy;
-  for (int srci = 0; srci < num; ++srci) {
-    for (int dsti = srci + 1; dsti < num; ++dsti) {
-      srcx = px[srci];
-      srcy = py[srci];
-      dstx = px[dsti];
-      dsty = py[dsti];
-      dx = dstx - srcx;
-      dy = dsty - srcy;
-
-      if ((dx * dx) + (dy * dy) > squared) {
-        continue;
-      }
-
-      n[srci].push_back(dsti);
-      n[dsti].push_back(srci);
-    }
-  }
 }
 
 
 void
 Exp::dbscan_collect()
 {
-  std::unordered_map<int, std::vector<int>>& neighbor_sets = this->neighbor_sets_;
+  std::unordered_map<int, std::vector<int>>& ns = this->neighbor_sets_;
   std::vector<int>& cores = this->cores_;
   std::vector<std::unordered_set<int>>& clusters = this->clusters_;
   auto visited = std::unordered_set<int>();
   auto stack = std::unordered_set<int>();
   int q;
   for (int p : cores) {
-    if (visited.count(p)) {
+    if (0 < visited.count(p)) {
       continue;
     }
     stack.insert(p);
@@ -256,13 +183,13 @@ Exp::dbscan_collect()
     while (!stack.empty()) {
       q = *stack.begin();
       stack.erase(stack.begin());
-      if (cluster.count(q)) {
+      if (0 < cluster.count(q)) {
         continue;
       }
       cluster.insert(q);
-      for (int r : neighbor_sets[q]) {
+      for (int r : ns[q]) {
         if (std::find(cores.begin(), cores.end(), r) != cores.end() &&
-            !cluster.count(r)) {
+            0 >= cluster.count(r)) {
           stack.insert(r);
         }
       }
@@ -272,7 +199,13 @@ Exp::dbscan_collect()
     }
     clusters.push_back(cluster);
   }
-/*
+
+/* - no need to test if Q (popped from WORKING) is in NEWCLUSTER
+ * invariant, nothing can enter working if it is in cluster
+ * (change working to set)
+ */
+
+/* pseudocode
 input: N, CORES
 output: CLUSTERS
 
@@ -295,7 +228,8 @@ collect(N, CORES):
     foreach Q in NEWCLUSTER:
       add Q to VIS (ignore redundant)
     add NEWCLUSTER to CLUSTERS
----
+  return CLUSTERS
+--- ignore ---
     foreach Q in N[P]:
       if Q in CORES:
         add Q to C
@@ -310,22 +244,8 @@ collect(N, CORES):
 }
 
 
-std::string
-Exp::inject()
-{
-  return "";
-}
-
-
-std::string
-Exp::densities()
-{
-  return "";
-}
-
-
 void
-Exp::dbscan_neighborhood2(float radius)
+Exp::dbscan_neighborhood(float radius)
 {
   State& state = this->state_;
   int num = state.num_;
@@ -341,7 +261,7 @@ Exp::dbscan_neighborhood2(float radius)
   float unit_h = h / rows;
   std::vector<int> gcol;
   std::vector<int> grow;
-  std::unordered_map<int,std::vector<int>>& n = this->neighbor_sets_;
+  std::unordered_map<int,std::vector<int>>& ns = this->neighbor_sets_;
 
   int col;
   int row;
@@ -450,10 +370,24 @@ Exp::dbscan_neighborhood2(float radius)
           continue;
         }
 
-        n[srci].push_back(dsti);
-        n[dsti].push_back(srci);
+        ns[srci].push_back(dsti);
+        ns[dsti].push_back(srci);
       }
     }
   }
+}
+
+
+std::string
+Exp::inject()
+{
+  return "";
+}
+
+
+std::string
+Exp::densities()
+{
+  return "";
 }
 

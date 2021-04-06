@@ -1,5 +1,4 @@
 #include "gui.hh"
-#include "../util/common.hh"
 
 #include <regex>
 
@@ -18,7 +17,7 @@ GuiState::GuiState(Control& ctrl)
   this->speed_    = truth.speed_;
   this->prad_     = truth.prad_;
   this->coloring_ = (Coloring)truth.coloring_;
-  this->preset_   = 0;
+  this->pattern_   = 0;
 }
 
 
@@ -35,24 +34,47 @@ GuiState::current() const
           this->scope_,
           this->speed_,
           this->prad_,
-          (int)this->coloring_};
+          static_cast<int>(this->coloring_)};
 }
 
 
-bool
+int
 GuiState::untrue() const
 {
-  Stative state = this->current();
-  return this->ctrl_.different(state);
+  Control& ctrl = this->ctrl_;
+  State& truth = ctrl.get_state();
+  Stative current = this->current();
+
+  if (current.num    != truth.num_   ||
+      current.width  != truth.width_ ||
+      current.height != truth.height_)
+  {
+    return -1;
+  }
+
+  if (current.stop                     != ctrl.stop_                      ||
+      Util::round_float(current.alpha) != Util::round_float(truth.alpha_) ||
+      Util::round_float(current.beta)  != Util::round_float(truth.beta_)  ||
+      Util::round_float(current.scope) != Util::round_float(truth.scope_) ||
+      Util::round_float(current.speed) != Util::round_float(truth.speed_) ||
+      Util::round_float(current.prad)  != Util::round_float(truth.prad_))
+  {
+    return 1;
+  }
+
+  return 0;
 }
 
 
-bool
-GuiState::deceive() const
+void
+GuiState::deceive(bool respawn /*= false*/) const
 {
-  Stative state = this->current();
+  Stative current = this->current();
+  if (!respawn && 0 > this->untrue()) {
+    respawn = true;
+  }
   // truth change provokes Canvas (observer) reaction
-  return this->ctrl_.change(state);
+  this->ctrl_.change(current, respawn);
 }
 
 
@@ -91,56 +113,56 @@ GuiState::coloring(Log& log, Coloring scheme)
 
 
 void
-GuiState::preset(Log& log)
+GuiState::pattern(Log& log)
 {
   std::string message;
-  int preset = this->preset_;
-  if (0 == preset) {
+  int pattern = this->pattern_;
+  if (0 == pattern) {
     this->alpha_ = 180.0f; this->beta_ = 17.0f;
     message = "Lifelike structures 1";
-  } else if (1 == preset) {
+  } else if (1 == pattern) {
     this->alpha_ = 180.0f; this->beta_ = -7.0f;
     message = "Moving structures";
-  } else if (2 == preset) {
+  } else if (2 == pattern) {
     this->alpha_ = 180.0f; this->beta_ = -15.0f;
     message = "Clean cow pattern";
-  } else if (3 == preset) {
+  } else if (3 == pattern) {
     this->alpha_ = 90.0f; this->beta_ = -21.0f;
     message = "Chaos w/ random aggr. 1";
-  } else if (4 == preset) {
+  } else if (4 == pattern) {
     this->alpha_ = 0.0f; this->beta_ = -10.0f;
     message = "Fingerprint pattern";
-  } else if (5 == preset) {
+  } else if (5 == pattern) {
     this->alpha_ = 0.0f; this->beta_ = -41.0f;
     message = "Chaos w/ random aggr. 2";
-  } else if (6 == preset) {
+  } else if (6 == pattern) {
     this->alpha_ = 0.0f; this->beta_ = -25.0f;
     message = "Untidy cow pattern";
-  } else if (7 == preset) {
+  } else if (7 == pattern) {
     this->alpha_ = -180.0f; this->beta_ = -48.0f;
     message = "Chaos w/ random aggr. 3";
-  } else if (8 == preset) {
+  } else if (8 == pattern) {
     this->alpha_ = -180.0f; this->beta_ = 5.0f;
     message = "Regular pattern";
-  } else if (9 == preset) {
+  } else if (9 == pattern) {
     this->alpha_ = -159.0f; this->beta_ = 15.0f;
     message = "Lifelike structures 2";
-  } else if (10 == preset) {
+  } else if (10 == pattern) {
     this->alpha_ = 0.0f; this->beta_ = 1.0f;
     message = "Stable cluster pattern";
-  } else if (11 == preset) {
+  } else if (11 == pattern) {
     this->alpha_ = -180.0f; this->beta_ = 58.0f;
     message = "Chaotic pattern 1";
-  } else if (12 == preset) {
+  } else if (12 == pattern) {
     this->alpha_ = 0.0f; this->beta_ = 40.0f;
     message = "Chaotic pattern 2";
-  } else if (13 == preset) {
+  } else if (13 == pattern) {
     this->alpha_ = 0.0f; this->beta_ = 8.0f;
     message = "Cells & moving cluster";
-  } else if (14 == preset) {
+  } else if (14 == pattern) {
     this->alpha_ = 0.0f; this->beta_ = 0.0f;
     message = "Chaotic pattern 3";
-  } else if (15 == preset) {
+  } else if (15 == pattern) {
     this->alpha_ = 45.0f; this->beta_ = 4.0f;
     message = "Stable rings";
   }
@@ -180,48 +202,27 @@ GuiState::load(const std::string& path)
 }
 
 
-Gui::Gui(Log& log, GuiState state, Canvas& canvas,
-         unsigned int width, unsigned int height, bool two)
-  : canvas_(canvas), state_(state), log_(log)
+Gui::Gui(Log& log, GuiState state, Canvas& canvas, GLFWwindow* window,
+         float scale, bool three)
+  : canvas_(canvas), state_(state), log_(log), window_(window),
+    scale_(scale), three_(three)
 {
-  // glfw
-  GLFWwindow* view;
-  if (!glfwInit()) {
-    log.add(Attn::Egl, "glfwInit");
-    return;
-  }
-  float dpi = (float)DPI / 100.0f;
-  unsigned int gui_width = width / dpi;
-  unsigned int gui_height = height / dpi;
-  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-  glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-  view = glfwCreateWindow(gui_width, gui_height, ME, NULL, NULL);
-  if (!view) {
-    log.add(Attn::Egl, "glfwCreateWindow");
-    glfwTerminate();
-    return;
-  }
-  glfwMakeContextCurrent(view);
-  glfwSwapInterval(1);
-  glfwSetKeyCallback(view, key_callback);
-  glfwSetCursorPosCallback(view, mouse_move_callback);
-  glfwSetMouseButtonCallback(view, mouse_button_callback);
-  glfwSetScrollCallback(view, mouse_scroll_callback);
-  glfwSetWindowSizeCallback(view, resize_callback);
+  // more glfw
+  glfwSetKeyCallback(window, key_callback);
+  glfwSetCursorPosCallback(window, mouse_move_callback);
+  glfwSetMouseButtonCallback(window, mouse_button_callback);
+  glfwSetScrollCallback(window, mouse_scroll_callback);
 
   // imgui
   IMGUI_CHECKVERSION();
   ImGui::CreateContext();
   ImGuiIO& io = ImGui::GetIO();
   static_cast<void>(io);
-  ImGui_ImplGlfw_InitForOpenGL(view, true);
+  ImGui_ImplGlfw_InitForOpenGL(window, true);
   ImGui_ImplOpenGL3_Init(GLSL_VERSION);
   ImGui::StyleColorsDark();
-  float font_size = 24.0f / dpi;
 
-  this->view_ = view;
-  this->dpi_ = dpi;
+  float font_size = 28.0f / scale;
   std::string font = Util::emergence_dir() + "/../opt/fonts/LiberationMono-";
   this->font_r = io.Fonts->AddFontFromFileTTF(
     (font + "Regular.ttf").c_str(), font_size);
@@ -231,8 +232,6 @@ Gui::Gui(Log& log, GuiState state, Canvas& canvas,
     (font + "Italic.ttf").c_str(), font_size);
   this->font_z = io.Fonts->AddFontFromFileTTF(
     (font + "BoldItalic.ttf").c_str(), font_size);
-  this->gui_width_ = gui_width;
-  this->gui_height_ = gui_height;
   this->brief_ = true;
   this->messages_ = false;
   this->dialog_ = ' ';
@@ -241,11 +240,12 @@ Gui::Gui(Log& log, GuiState state, Canvas& canvas,
   this->fps_ = 0.0f;
   this->x_ = 0.0;
   this->y_ = 0.0;
-  this->three_ = !two;
   this->dolly_ = false;
   this->pivot_ = false;
-  this->cluster_radius_ = 10.0f;
-  this->cluster_minpts_ = 10;
+  this->cluster_radius_ = state.scope_;
+  this->cluster_minpts_ = 14; // size of premature spore (Schmickl et al.)
+  this->inject_model_ = 4; // triangle cell
+  this->inject_dpe_ = static_cast<float>(state.num_) / state.width_ / state.height_;
   this->density_threshold_ = 0;
 }
 
@@ -293,15 +293,13 @@ Gui::draw_brief(bool draw)
   if (!draw) {
     return;
   }
-  GuiState& state = this->state_;
-  Canvas& canvas = this->canvas_;
   int width;
   int height;
-  glfwGetFramebufferSize(this->view_, &width, &height);
+  glfwGetFramebufferSize(this->window_, &width, &height);
   auto color = ImVec4(0.75f, 0.75f, 0.75f, 0.75f);
   auto color_b = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
   const char* status = "running";
-  if (canvas.paused_) {
+  if (this->canvas_.paused_) {
     status = "paused";
   }
   ImGuiStyle& style = ImGui::GetStyle();
@@ -312,31 +310,38 @@ Gui::draw_brief(bool draw)
   if (ImGui::Begin("brief", NULL,
                    ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize)) {
     ImGui::PushFont(this->font_b);
-    ImGui::TextColored(color_b, "%s", status); ImGui::SameLine();
+    ImGui::TextColored(color_b, "%s", status);
+    ImGui::SameLine();
     ImGui::PopFont();
     ImGui::TextColored(color, "(");
     this->backspace(2);
     ImGui::PushFont(this->font_i);
-    ImGui::TextColored(color, "Space"); ImGui::SameLine();
+    ImGui::TextColored(color, "Space");
+    ImGui::SameLine();
     ImGui::PopFont();
     this->backspace();
     ImGui::TextColored(color, ")");
-    ImGui::TextColored(color, "x"); ImGui::SameLine();
+    ImGui::TextColored(color, "x");
+    ImGui::SameLine();
     ImGui::PushFont(this->font_b);
-    ImGui::TextColored(color_b, "%.0f", this->x_); ImGui::SameLine();
+    ImGui::TextColored(color_b, "%.0f", this->x_);
+    ImGui::SameLine();
     ImGui::PopFont();
-    ImGui::TextColored(color, "y"); ImGui::SameLine();
+    ImGui::TextColored(color, "y");
+    ImGui::SameLine();
     ImGui::PushFont(this->font_b);
     ImGui::TextColored(color_b, "%.0f", height - this->y_);
     ImGui::PopFont();
-    ImGui::TextColored(color, "fps"); ImGui::SameLine();
+    ImGui::TextColored(color, "fps");
+    ImGui::SameLine();
     ImGui::PushFont(this->font_b);
     ImGui::TextColored(color_b, "%.1f", this->fps_);
     ImGui::PopFont();
-    ImGui::TextColored(color, "opencl"); ImGui::SameLine();
+    ImGui::TextColored(color, "opencl");
+    ImGui::SameLine();
     ImGui::PushFont(this->font_b);
     ImGui::TextColored(color_b, "%s",
-                       state.ctrl_.cl_good() ? "on" : "off");
+                       this->state_.ctrl_.cl_good() ? "on" : "off");
     ImGui::PopFont();
     ImGui::PushFont(this->font_i);
     ImGui::TextColored(color, "Escape");
@@ -355,11 +360,11 @@ Gui::draw_messages(bool draw)
   if (!draw) {
     return;
   }
-  int view_width;
-  int view_height;
-  glfwGetFramebufferSize(this->view_, &view_width, &view_height);
-  float width = view_width;
-  float height = view_height / 2.0f;
+  int window_width;
+  int window_height;
+  glfwGetFramebufferSize(this->window_, &window_width, &window_height);
+  float width = window_width;
+  float height = window_height / 2.0f;
   auto color_e = ImVec4(1.0f, 0.5f, 0.5f, 1.0f);
   auto color_ecl = ImVec4(1.0f, 1.0f, 0.5f, 1.0f);
   auto color_egl = ImVec4(1.0f, 0.5f, 1.0f, 1.0f);
@@ -369,7 +374,7 @@ Gui::draw_messages(bool draw)
 
   ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Always);
   ImGui::SetNextWindowSize(ImVec2(width, height), ImGuiCond_Always);
-  ImGui::SetNextWindowBgAlpha(0.75f);
+  ImGui::SetNextWindowBgAlpha(0.85f);
   if (ImGui::Begin("messages", NULL,
                    ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize)) {
     for (std::pair<Attn,std::string>& message : messages) {
@@ -397,13 +402,13 @@ Gui::draw_config(char dialog)
   Log& log = this->log_;
   GuiState& state = this->state_;
   Canvas& canvas = this->canvas_;
-  bool untrue = state.untrue();
+  int untrue = state.untrue();
   float margin = 4.0f * this->font_width_;
-  int view_width;
-  int view_height;
-  glfwGetFramebufferSize(this->view_, &view_width, &view_height);
-  float width = view_width - 2.0f * margin;
-  float height = view_height - 2.0f * margin;
+  int window_width;
+  int window_height;
+  glfwGetFramebufferSize(this->window_, &window_width, &window_height);
+  float width = window_width - 2.0f * margin;
+  float height = window_height - 2.0f * margin;
   auto color_status = ImVec4(1.0f, 0.25f, 0.25f, 1.0f);
   auto color_title = ImVec4(1.0f, 0.75f, 0.25f, 1.0f);
   auto color_exp = ImVec4(0.25f, 1.00f, 0.75f, 1.0f);
@@ -422,51 +427,50 @@ Gui::draw_config(char dialog)
 
   ImGui::SetNextWindowPos(ImVec2(margin, margin), ImGuiCond_Always);
   ImGui::SetNextWindowSize(ImVec2(width, height), ImGuiCond_Always);
-  ImGui::SetNextWindowBgAlpha(0.75f);
+  ImGui::SetNextWindowBgAlpha(0.85f);
   if (ImGui::Begin("config", NULL,
                    ImGuiWindowFlags_HorizontalScrollbar |
                    ImGuiWindowFlags_NoTitleBar |
                    ImGuiWindowFlags_NoResize)) {
     if (ImGui::Button(pause.c_str())) {
-      this->pause();
+      canvas.pause();
     }
     ImGui::SameLine();
     if (ImGui::Button("Save")) {
       this->dialog_ = 's';
       if (!canvas_.paused_) {
-        this->pause();
+        canvas.pause();
       }
     }
     ImGui::SameLine();
     if (ImGui::Button("Load")) {
       this->dialog_ = 'l';
-      if (!canvas_.paused_) {
-        this->pause();
+      if (!canvas.paused_) {
+        canvas.pause();
+      }
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Take picture")) {
+      this->dialog_ = 'p';
+      if (!canvas.paused_) {
+        canvas.pause();
       }
     }
     ImGui::SameLine();
     if (ImGui::Button("Quit")) {
       this->dialog_ = 'q';
-      if (!canvas_.paused_) {
-        this->pause();
+      if (!canvas.paused_) {
+        canvas.pause();
       }
     }
-    ImGui::PushFont(this->font_b);
-    ImGui::TextColored(color_title, "Graphics");
-    ImGui::PopFont();
-    if (ImGui::Checkbox("3d", &this->three_)) {
-      canvas.three(this->three_);
-    }
-    ImGui::Text("colors         %d", (int)state.coloring_);
-    ImGui::AlignTextToFramePadding();
-    ImGui::Text("particle size"); ImGui::SameLine();
-    this->auto_width(2);
-    ImGui::InputFloat("r", &state.prad_, 0.5f, 64.0f, "%.3f");
-    ImGui::PopItemWidth();
     ImGui::Dummy(ImVec2(0.0f, 1.0f));
     if (untrue) {
       ImGui::PushFont(this->font_z);
-      status = "Parameter modified (Enter to apply)";
+      status = "Parameter modified (Enter to apply";
+      if (0 > untrue) {
+        status += " & respawn";
+      }
+      status += ")";
       ImGui::TextColored(color_status, "%s", status.c_str());
       ImGui::PopFont();
     } else {
@@ -476,31 +480,58 @@ Gui::draw_config(char dialog)
                          status.c_str());
       ImGui::PopFont();
     }
+    ImGui::Dummy(ImVec2(0.0f, 1.0f));
+    ImGui::PushFont(this->font_b);
+    ImGui::TextColored(color_title, "Graphics");
+    ImGui::PopFont();
+    ImGui::AlignTextToFramePadding();
+    ImGui::Text("space ");
+    ImGui::SameLine();
+    if (ImGui::Checkbox("3D", &this->three_)) {
+      canvas.three(this->three_);
+    }
+    ImGui::AlignTextToFramePadding();
+    ImGui::Text("p. rad"); ImGui::SameLine();
+    ImGui::SameLine();
+    this->auto_width(width);
+    ImGui::InputFloat("r", &state.prad_, 0.5f, 64.0f, "%.3f");
+    ImGui::PopItemWidth();
+    ImGui::Dummy(ImVec2(0.0f, 1.0f));
     ImGui::PushFont(this->font_b);
     ImGui::TextColored(color_title, "Habitat");
     ImGui::PopFont();
     ImGui::AlignTextToFramePadding();
-    ImGui::Text("num   "); ImGui::SameLine();
-    this->auto_width(2);
+    ImGui::Text("stop  ");
+    ImGui::SameLine();
+    this->auto_width(width);
+    ImGui::InputScalar("!", ImGuiDataType_S64, &state.stop_,
+                       &negone, &max_stop);
+    ImGui::PopItemWidth();
+    ImGui::AlignTextToFramePadding();
+    ImGui::Text("num   ");
+    ImGui::SameLine();
+    this->auto_width(width);
     ImGui::InputScalar("n", ImGuiDataType_U32, &state.num_, &zero, &max_num);
     ImGui::PopItemWidth();
     ImGui::AlignTextToFramePadding();
-    ImGui::Text("width "); ImGui::SameLine();
-    this->auto_width(2);
+    ImGui::Text("width ");
+    ImGui::SameLine();
+    this->auto_width(width);
     ImGui::InputScalar("w", ImGuiDataType_U32, &state.width_, &zero, &max_dim);
     ImGui::PopItemWidth();
     ImGui::AlignTextToFramePadding();
-    ImGui::Text("height"); ImGui::SameLine();
-    this->auto_width(2);
+    ImGui::Text("height");
+    ImGui::SameLine();
+    this->auto_width(width);
     ImGui::InputScalar("h", ImGuiDataType_U32, &state.height_, &zero,
                        &max_dim);
     ImGui::PopItemWidth();
     if (ImGui::Button("Random pattern")) {
       state.random(log);
     }
-    this->auto_width(2);
     ImGui::SameLine();
-    if (ImGui::Combo("p", &state.preset_,
+    this->auto_width(width);
+    if (ImGui::Combo("p", &state.pattern_,
                      "lifelike structures 1\0"
                      "moving structures\0"
                      "clean cow pattern\0"
@@ -517,34 +548,32 @@ Gui::draw_config(char dialog)
                      "cells & moving cluster\0"
                      "chaotic pattern 3\0"
                      "stable rings\0\0")) {
-      state.preset(log);
+      state.pattern(log);
     }
     ImGui::PopItemWidth();
     ImGui::AlignTextToFramePadding();
-    ImGui::Text("alpha "); ImGui::SameLine();
-    this->auto_width(2);
+    ImGui::Text("alpha ");
+    ImGui::SameLine();
+    this->auto_width(width);
     ImGui::InputFloat("a", &state.alpha_, -180.0f, 180.0f, "%.3f");
     ImGui::PopItemWidth();
     ImGui::AlignTextToFramePadding();
-    ImGui::Text("beta  "); ImGui::SameLine();
-    this->auto_width(2);
+    ImGui::Text("beta  ");
+    ImGui::SameLine();
+    this->auto_width(width);
     ImGui::InputFloat("b", &state.beta_, -180.0f, 180.0f, "%.3f");
     ImGui::PopItemWidth();
     ImGui::AlignTextToFramePadding();
-    ImGui::Text("scope "); ImGui::SameLine();
-    this->auto_width(2);
+    ImGui::Text("scope ");
+    ImGui::SameLine();
+    this->auto_width(width);
     ImGui::InputFloat("v", &state.scope_, 1.0f, 256.0f, "%.3f");
     ImGui::PopItemWidth();
     ImGui::AlignTextToFramePadding();
-    ImGui::Text("speed "); ImGui::SameLine();
-    this->auto_width(2);
+    ImGui::Text("speed ");
+    ImGui::SameLine();
+    this->auto_width(width);
     ImGui::InputFloat("s", &state.speed_, 1.0f, 64.0f, "%.3f");
-    ImGui::PopItemWidth();
-    ImGui::AlignTextToFramePadding();
-    ImGui::Text("stop  "); ImGui::SameLine();
-    this->auto_width(2);
-    ImGui::InputScalar("!", ImGuiDataType_S64, &state.ctrl_.stop_,
-                       &negone, &max_stop);
     ImGui::PopItemWidth();
     ImGui::Dummy(ImVec2(0.0f, 1.0f));
     ImGui::PushFont(this->font_b);
@@ -557,33 +586,55 @@ Gui::draw_config(char dialog)
       this->message_exp_density_ = "";
       state.coloring(log, Coloring::Normal);
     }
-    if (ImGui::Button("Half color")) {
-      state.coloring(log, Coloring::Half);
-    }
     if (ImGui::Button("Count clusters")) {
-      //this->message_exp_cluster_ = state.ctrl_.cluster();
-      this->message_exp_cluster_ = state.ctrl_.cluster2(this->cluster_radius_,
-                                                this->cluster_minpts_);
+      this->message_exp_inject_ = "";
+      this->message_exp_density_ = "";
+      this->message_exp_cluster_ = state.ctrl_.cluster(this->cluster_radius_,
+                                                       this->cluster_minpts_);
       state.coloring(log, Coloring::Cluster);
     }
-    this->auto_width(4);
+    this->auto_width(width, 3);
     ImGui::SameLine();
-    ImGui::InputFloat("cr", &this->cluster_radius_, 1.0f, 512.0f, "%.3f");
+    ImGui::Text("radius");
     ImGui::SameLine();
-    ImGui::InputScalar("cn", ImGuiDataType_U32, &this->cluster_minpts_, &zero, &max_num);
+    ImGui::InputFloat(";", &this->cluster_radius_, 1.0f, 10000.0f, "%.3f");
+    ImGui::SameLine();
+    ImGui::Text("minpts");
+    ImGui::SameLine();
+    ImGui::InputScalar(":", ImGuiDataType_U32, &this->cluster_minpts_, &zero, &max_num);
     ImGui::PopItemWidth();
     if (!this->message_exp_cluster_.empty()) {
       ImGui::TextColored(color_exp, "%s", this->message_exp_cluster_.c_str());
     }
     if (ImGui::Button("Inject clusters")) {
+      this->message_exp_cluster_ = "";
+      this->message_exp_density_ = "";
       this->message_exp_inject_ = state.ctrl_.inject();
     }
+    this->auto_width(width, 3);
+    ImGui::SameLine();
+    ImGui::Text("model");
+    ImGui::SameLine();
+    if (ImGui::Combo(",", &this->inject_model_,
+                     "premature spore\0"
+                     "mature spore\0"
+                     "ring\0"
+                     "premature cell\0"
+                     "triangle cell\0"
+                     "square cell\0"
+                     "pentagon cell\0\0")) {
+    }
+    ImGui::SameLine();
+    ImGui::Text("  DPE ");
+    ImGui::SameLine();
+    ImGui::InputFloat(".", &this->inject_dpe_, 0.01f, 10.0f, "%.5f");
     if (!this->message_exp_inject_.empty()) {
       ImGui::TextColored(color_exp, "%s", this->message_exp_inject_.c_str());
     }
     ImGui::AlignTextToFramePadding();
-    ImGui::Text("Density map "); ImGui::SameLine();
-    this->auto_width(2);
+    ImGui::Text("Density map ");
+    ImGui::SameLine();
+    this->auto_width(width);
     if (ImGui::Combo("d", &this->density_threshold_,
                      "none\0"
                      "n = 10\0"
@@ -591,6 +642,8 @@ Gui::draw_config(char dialog)
                      "n = 20\0"
                      "n = 25\0"
                      "n = 30\0\0")) {
+      this->message_exp_cluster_ = "";
+      this->message_exp_inject_ = "";
       Coloring scheme = Coloring::Normal;
       int threshold = this->density_threshold_;
       if (0 == threshold) {
@@ -620,51 +673,134 @@ Gui::draw_config(char dialog)
     }
     ImGui::Dummy(ImVec2(0.0f, 1.0f));
     ImGui::PushFont(this->font_b);
-    ImGui::TextColored(color_title, "Keyboard shortcuts");
+    ImGui::TextColored(color_title, "Usage help");
+    ImGui::TextColored(color_dimmer, "pause/resume:");
     ImGui::PopFont();
-    ImGui::TextColored(color_dimmer, "pause/resume:"); ImGui::SameLine();
+    ImGui::SameLine();
     ImGui::TextColored(color_dim, "Space");
-    ImGui::TextColored(color_dimmer, "quit: Ctrl+");
+    ImGui::PushFont(this->font_b);
+    ImGui::TextColored(color_dimmer, "quit");
+    ImGui::PopFont();
     this->backspace();
-    ImGui::TextColored(color_dim, "Q");
-    this->backspace();
-    ImGui::TextColored(color_dimmer, "/Ctrl+");
+    ImGui::TextColored(color_dimmer, ": Ctrl+");
     this->backspace();
     ImGui::TextColored(color_dim, "C");
-    ImGui::TextColored(color_dimmer, "save: Ctrl+");
+    this->backspace();
+    ImGui::TextColored(color_dimmer, ", Ctrl+");
+    this->backspace();
+    ImGui::TextColored(color_dim, "Q");
+    ImGui::PushFont(this->font_b);
+    ImGui::TextColored(color_dimmer, "save");
+    ImGui::PopFont();
+    this->backspace();
+    ImGui::TextColored(color_dimmer, ": Ctrl+");
     this->backspace();
     ImGui::TextColored(color_dim, "S");
-    ImGui::TextColored(color_dimmer, "load: Ctrl+");
+    ImGui::PushFont(this->font_b);
+    ImGui::TextColored(color_dimmer, "load");
+    ImGui::PopFont();
+    this->backspace();
+    ImGui::TextColored(color_dimmer, ": Ctrl+");
     this->backspace();
     ImGui::TextColored(color_dim, "L");
-    ImGui::TextColored(color_dimmer, "show messages:"); ImGui::SameLine();
-    ImGui::TextColored(color_dim, "Grave(`)");
-    ImGui::TextColored(color_dimmer, "show brief:   "); ImGui::SameLine();
-    ImGui::TextColored(color_dim, "S");
-    ImGui::TextColored(color_dim, "               QWE          UIO");
-    ImGui::TextColored(color_dimmer, "camera  dolly:"); ImGui::SameLine();
-    ImGui::TextColored(color_dim, "A D"); ImGui::SameLine();
-    ImGui::TextColored(color_dimmer, " pivot:"); ImGui::SameLine();
-    ImGui::TextColored(color_dim, "J L");
-    ImGui::TextColored(color_dim, "               ZXC          M,.");
+    ImGui::PushFont(this->font_b);
+    ImGui::TextColored(color_dimmer, "take picture");
+    ImGui::PopFont();
+    this->backspace();
+    ImGui::TextColored(color_dimmer, ": Ctrl+");
+    this->backspace();
+    ImGui::TextColored(color_dim, "P");
+    ImGui::TextColored(color_dim, "               QWE");
+    ImGui::SameLine();
+    ImGui::SetCursorPosX(ImGui::GetCursorPosX() - 2 + 8 * this->font_width_);
+    ImGui::TextColored(color_dim, "UIO");
+    ImGui::PushFont(this->font_b);
+    ImGui::TextColored(color_dimmer, "camera  dolly");
+    ImGui::PopFont();
+    this->backspace();
+    ImGui::TextColored(color_dimmer, ":");
+    ImGui::SameLine();
+    ImGui::TextColored(color_dim, "A D");
+    ImGui::SameLine();
+    ImGui::PushFont(this->font_b);
+    ImGui::TextColored(color_dimmer, " pivot:");
+    ImGui::PopFont();
+    this->backspace(-1);
+    ImGui::TextColored(color_dim, " J L");
+    ImGui::TextColored(color_dim, "               ZXC");
+    ImGui::SameLine();
+    ImGui::SetCursorPosX(ImGui::GetCursorPosX() - 2 + 8 * this->font_width_);
+    ImGui::TextColored(color_dim, "M,.");
     ImGui::TextColored(color_dimmer, "            mouse");
     this->backspace();
-    ImGui::TextColored(color_dim, "L"); ImGui::SameLine();
+    ImGui::TextColored(color_dim, "L");
+    ImGui::SameLine();
     ImGui::TextColored(color_dimmer, "     mouse");
     this->backspace();
     ImGui::TextColored(color_dim, "R");
-    ImGui::TextColored(color_dimmer, "         zoom:"); ImGui::SameLine();
-    ImGui::TextColored(color_dim, "Minus(-)");
+    ImGui::PushFont(this->font_b);
+    ImGui::TextColored(color_dimmer, "         zoom");
+    ImGui::PopFont();
     this->backspace();
-    ImGui::TextColored(color_dimmer, "/");
+    ImGui::TextColored(color_dimmer, ":");
+    ImGui::SameLine();
+    ImGui::TextColored(color_dim, "Minus");
     this->backspace();
-    ImGui::TextColored(color_dim, "Equal(=)");
+    ImGui::TextColored(color_dimmer, "(");
     this->backspace();
-    ImGui::TextColored(color_dimmer, "/mouse");
+    ImGui::TextColored(color_dim, "-");
+    this->backspace();
+    ImGui::TextColored(color_dimmer, "), ");
+    this->backspace();
+    ImGui::TextColored(color_dim, "Equal");
+    this->backspace();
+    ImGui::TextColored(color_dimmer, "(");
+    this->backspace();
+    ImGui::TextColored(color_dim, "=");
+    this->backspace();
+    ImGui::TextColored(color_dimmer, "), mouse");
     this->backspace();
     ImGui::TextColored(color_dim, "wheel");
-    ImGui::TextColored(color_dimmer, "        reset:"); ImGui::SameLine();
-    ImGui::TextColored(color_dim, "Slash(/)");
+    ImGui::PushFont(this->font_b);
+    ImGui::TextColored(color_dimmer, "        reset");
+    ImGui::PopFont();
+    this->backspace();
+    ImGui::TextColored(color_dimmer, ":");
+    ImGui::SameLine();
+    ImGui::TextColored(color_dim, "Slash");
+    this->backspace();
+    ImGui::TextColored(color_dimmer, "(");
+    this->backspace();
+    ImGui::TextColored(color_dim, "/");
+    this->backspace();
+    ImGui::TextColored(color_dimmer, ")");
+    ImGui::PushFont(this->font_b);
+    ImGui::TextColored(color_dimmer, "messages box");
+    ImGui::PopFont();
+    this->backspace();
+    ImGui::TextColored(color_dimmer, ":   ");
+    ImGui::SameLine();
+    ImGui::TextColored(color_dim, "Grave");
+    this->backspace();
+    ImGui::TextColored(color_dimmer, "(");
+    this->backspace();
+    ImGui::TextColored(color_dim, "`");
+    this->backspace();
+    ImGui::TextColored(color_dimmer, ")");
+    ImGui::PushFont(this->font_b);
+    ImGui::TextColored(color_dimmer, "brief corner");
+    ImGui::PopFont();
+    this->backspace();
+    ImGui::TextColored(color_dimmer, ":   ");
+    ImGui::SameLine();
+    ImGui::TextColored(color_dim, "S");
+    ImGui::PushFont(this->font_b);
+    ImGui::TextColored(color_dimmer, "this config box");
+    ImGui::PopFont();
+    this->backspace();
+    ImGui::TextColored(color_dimmer, ":");
+    ImGui::SameLine();
+    ImGui::TextColored(color_dim, "Escape");
   }
   ImGui::End();
 }
@@ -676,11 +812,14 @@ Gui::draw_save_load(char dialog)
   if (dialog != 's' && dialog != 'l') {
     return;
   }
-  int view_width;
-  int view_height;
-  glfwGetFramebufferSize(this->view_, &view_width, &view_height);
-  int w = std::max((int)(400.0f / this->dpi_), (int)(view_width * 0.75f));
-  int h = std::max((int)(250.0f / this->dpi_), (int)(view_height * 0.3f));
+  Canvas& canvas = this->canvas_;
+  int window_width;
+  int window_height;
+  glfwGetFramebufferSize(this->window_, &window_width, &window_height);
+  int w = std::max(static_cast<int>(400.0f / this->scale_),
+                   static_cast<int>(window_width * 0.75f));
+  int h = std::max(static_cast<int>(250.0f / this->scale_),
+                   static_cast<int>(window_height * 0.3f));
   std::string title = "Save state to where?";
   std::string button = "SAVE";
   bool (GuiState::*func)(const std::string&) = &GuiState::save;
@@ -695,7 +834,8 @@ Gui::draw_save_load(char dialog)
   static bool bad_save = false;
   std::string allowed = "[/ A-Za-z0-9!@#%()\\[\\],.=+_-]+";
 
-  ImGui::SetNextWindowPos(ImVec2((view_width - w) / 2, (view_height - h) / 3));
+  ImGui::SetNextWindowPos(ImVec2((window_width - w) / 2,
+                                 (window_height - h) / 3));
   ImGui::SetNextWindowSize(ImVec2(w, h));
   if (ImGui::Begin(title.c_str(), NULL,
                    ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse)) {
@@ -729,8 +869,8 @@ Gui::draw_save_load(char dialog)
         bad_save = !(this->state_.*func)(path);
         if (!bad_save) {
           this->dialog_ = ' ';
-          if (!canvas_.paused_) {
-            this->pause();
+          if (!canvas.paused_) {
+            canvas.pause();
           }
         }
       }
@@ -743,7 +883,7 @@ Gui::draw_save_load(char dialog)
       bad_input = ' ';
       bad_save = false;
       this->dialog_ = ' ';
-      this->pause();
+      canvas.pause();
     }
   }
   ImGui::End();
@@ -756,18 +896,22 @@ Gui::draw_quit(char dialog)
   if (dialog != 'q') {
     return;
   }
-  int view_width;
-  int view_height;
-  glfwGetFramebufferSize(this->view_, &view_width, &view_height);
-  int w = std::max((int)(420.0f / this->dpi_), (int)(view_width * 0.75f));
-  int h = std::max((int)(460.0f / this->dpi_), (int)(view_width * 0.5f));
+  Canvas& canvas = this->canvas_;
+  int window_width;
+  int window_height;
+  glfwGetFramebufferSize(this->window_, &window_width, &window_height);
+  int w = std::max(static_cast<int>(420.0f / this->scale_),
+                   static_cast<int>(window_width * 0.75f));
+  int h = std::max(static_cast<int>(460.0f / this->scale_),
+                   static_cast<int>(window_width * 0.5f));
   static char path[128];
   auto color_bad = ImVec4(1.0f, 0.25f, 0.25f, 1.0f);
   static char bad_input = ' ';
   static bool bad_save = false;
   std::string allowed = "[/ A-Za-z0-9!@#%()\\[\\],.=+_-]+";
 
-  ImGui::SetNextWindowPos(ImVec2((view_width - w) / 2, (view_height - h) / 3));
+  ImGui::SetNextWindowPos(ImVec2((window_width - w) / 2,
+                                 (window_height - h) / 3));
   ImGui::SetNextWindowSize(ImVec2(w, h));
   if (ImGui::Begin("Save before quitting?", NULL,
                    ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse)) {
@@ -797,7 +941,7 @@ Gui::draw_quit(char dialog)
       } else {
         bad_save = !this->state_.save(path);
         if (!bad_save) {
-          this->close();
+          canvas.close();
         }
       }
     }
@@ -805,7 +949,7 @@ Gui::draw_quit(char dialog)
       ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 40);
       if (ImGui::Button("QUIT without saving",
                         ImVec2(ImGui::GetContentRegionAvail().x - 40, 0))) {
-        this->close();
+        canvas.close();
       }
       ImGui::PopFont();
       ImGui::Text("");
@@ -815,7 +959,7 @@ Gui::draw_quit(char dialog)
         bad_input = ' ';
         bad_save = false;
         this->dialog_ = ' ';
-        this->pause();
+        canvas.pause();
       }
       ImGui::Text("");
       ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f),
@@ -826,84 +970,51 @@ Gui::draw_quit(char dialog)
 
 
 void
-Gui::auto_width(int factor)
+Gui::auto_width(int width, int factor /*= 1*/)
 {
-  float width = std::max(ImGui::GetContentRegionAvail().x / (float)factor, 400.0f / (float)factor);
-  ImGui::PushItemWidth(width);
+  float w;
+  if (1 == factor) {
+    w = -0.25f * width;
+  } else {
+    w = ImGui::GetContentRegionAvail().x / (factor + 1);
+  }
+  ImGui::PushItemWidth(w);
 }
 
 
 void
-Gui::next() const
-{
-  glfwSwapBuffers(this->view_);
-  glfwPollEvents();
-}
-
-
-void
-Gui::pause()
-{
-  this->canvas_.pause();
-}
-
-
-void
-Gui::set_pointer()
-{
-  // for KeyCallback to access gui
-  glfwSetWindowUserPointer(this->view_, this);
-}
-
-
-void
-Gui::close()
-{
-  glfwSetWindowShouldClose(this->view_, true);
-  this->canvas_.quit();
-}
-
-
-bool
-Gui::closing() const
-{
-  return glfwWindowShouldClose(this->view_);
-}
-
-
-void
-Gui::key_callback(GLFWwindow* view, int key, int /* scancode */, int action,
+Gui::key_callback(GLFWwindow* window, int key, int /* scancode */, int action,
                   int mods)
 {
-  Gui* gui = static_cast<Gui*>(glfwGetWindowUserPointer(view));
-  Canvas& canvas = gui->canvas_;
+  Canvas* canvas = static_cast<Canvas*>(glfwGetWindowUserPointer(window));
+  Gui* gui = canvas->gui_;
 
   if (action == GLFW_PRESS) {
     if (mods & GLFW_MOD_CONTROL) {
       if ('q' == gui->dialog_) {
         if (key == GLFW_KEY_C || key == GLFW_KEY_Q) {
-          gui->close();
+          canvas->close();
           return;
         }
       }
       if (key == GLFW_KEY_C || key == GLFW_KEY_Q) {
         gui->dialog_ = 'q';
-        if (!gui->canvas_.paused_) {
-          gui->pause();
+        if (!canvas->paused_) {
+          canvas->pause();
         }
         return;
       }
       if (key == GLFW_KEY_L) {
         gui->dialog_ = 'l';
-        if (!gui->canvas_.paused_) {
-          gui->pause();
+        if (!canvas->paused_) {
+          canvas->pause();
         }
         return;
       }
       if (key == GLFW_KEY_S) {
         gui->dialog_ = 's';
-        if (!gui->canvas_.paused_) {
-          gui->pause();
+        if (!canvas->paused_) {
+          canvas->pause();
         }
         return;
       }
@@ -919,13 +1030,18 @@ Gui::key_callback(GLFWwindow* view, int key, int /* scancode */, int action,
     if (' ' != gui->dialog_ && 'c' != gui->dialog_) {
       return;
     }
-    if (key == GLFW_KEY_ENTER) { gui->state_.deceive(); return; }
-    if (key == GLFW_KEY_SPACE) { gui->pause(); return; }
+    if (key == GLFW_KEY_ENTER) {
+      gui->state_.deceive();
+      gui->inject_dpe_ = static_cast<float>(gui->state_.num_)
+                         / gui->state_.width_ / gui->state_.height_;
+      return;
+    }
+    if (key == GLFW_KEY_SPACE) { canvas->pause(); return; }
     if (key == GLFW_KEY_GRAVE_ACCENT) {
       gui->messages_ = !gui->messages_;
       return;
     }
-    if (key == GLFW_KEY_SLASH) { canvas.camera_default(); return; }
+    if (key == GLFW_KEY_SLASH) { canvas->camera_default(); return; }
     if (key == GLFW_KEY_S) { gui->brief_ = !gui->brief_; return; }
   }
 
@@ -937,61 +1053,62 @@ Gui::key_callback(GLFWwindow* view, int key, int /* scancode */, int action,
     return;
   }
 
-  float d = canvas.dollyd_;
-  float z = canvas.zoomd_;
-  float p = canvas.pivotd_;
+  float d = canvas->dollyd_;
+  float z = canvas->zoomd_;
+  float p = canvas->pivotd_;
   // camera translate x y
-  if (key == GLFW_KEY_W) { canvas.camera(   0,-1*d,0,0,0); return; }
-  if (key == GLFW_KEY_A) { canvas.camera(   d,   0,0,0,0); return; }
-  if (key == GLFW_KEY_X) { canvas.camera(   0,   d,0,0,0); return; }
-  if (key == GLFW_KEY_D) { canvas.camera(-1*d,   0,0,0,0); return; }
-  if (key == GLFW_KEY_Q) { canvas.camera(   d,-1*d,0,0,0); return; }
-  if (key == GLFW_KEY_E) { canvas.camera(-1*d,-1*d,0,0,0); return; }
-  if (key == GLFW_KEY_Z) { canvas.camera(   d,   d,0,0,0); return; }
-  if (key == GLFW_KEY_C) { canvas.camera(-1*d,   d,0,0,0); return; }
+  if (key == GLFW_KEY_W) { canvas->camera(   0,-1*d,0,0,0); return; }
+  if (key == GLFW_KEY_A) { canvas->camera(   d,   0,0,0,0); return; }
+  if (key == GLFW_KEY_X) { canvas->camera(   0,   d,0,0,0); return; }
+  if (key == GLFW_KEY_D) { canvas->camera(-1*d,   0,0,0,0); return; }
+  if (key == GLFW_KEY_Q) { canvas->camera(   d,-1*d,0,0,0); return; }
+  if (key == GLFW_KEY_E) { canvas->camera(-1*d,-1*d,0,0,0); return; }
+  if (key == GLFW_KEY_Z) { canvas->camera(   d,   d,0,0,0); return; }
+  if (key == GLFW_KEY_C) { canvas->camera(-1*d,   d,0,0,0); return; }
   // camera translate z
-  if (key == GLFW_KEY_EQUAL) { canvas.camera(0,0,   z,0,0); return; }
-  if (key == GLFW_KEY_MINUS) { canvas.camera(0,0,-1*z,0,0); return; }
+  if (key == GLFW_KEY_EQUAL) { canvas->camera(0,0,   z,0,0); return; }
+  if (key == GLFW_KEY_MINUS) { canvas->camera(0,0,-1*z,0,0); return; }
   // camera rotate
-  if (key == GLFW_KEY_I) { canvas.camera(0,0,0,   p,   0); return; }
-  if (key == GLFW_KEY_J) { canvas.camera(0,0,0,   0,   p); return; }
-  if (key == GLFW_KEY_COMMA) { canvas.camera(0,0,0,-1*p,0); return; }
-  if (key == GLFW_KEY_L) { canvas.camera(0,0,0,   0,-1*p); return; }
-  if (key == GLFW_KEY_U) { canvas.camera(0,0,0,   p,   p); return; }
-  if (key == GLFW_KEY_O) { canvas.camera(0,0,0,   p,-1*p); return; }
-  if (key == GLFW_KEY_M) { canvas.camera(0,0,0,-1*p,   p); return; }
-  if (key == GLFW_KEY_PERIOD) { canvas.camera(0,0,0,-1*p,-1*p); return; }
+  if (key == GLFW_KEY_I) { canvas->camera(0,0,0,   p,   0); return; }
+  if (key == GLFW_KEY_J) { canvas->camera(0,0,0,   0,   p); return; }
+  if (key == GLFW_KEY_COMMA) { canvas->camera(0,0,0,-1*p,0); return; }
+  if (key == GLFW_KEY_L) { canvas->camera(0,0,0,   0,-1*p); return; }
+  if (key == GLFW_KEY_U) { canvas->camera(0,0,0,   p,   p); return; }
+  if (key == GLFW_KEY_O) { canvas->camera(0,0,0,   p,-1*p); return; }
+  if (key == GLFW_KEY_M) { canvas->camera(0,0,0,-1*p,   p); return; }
+  if (key == GLFW_KEY_PERIOD) { canvas->camera(0,0,0,-1*p,-1*p); return; }
 }
 
 
 void
-Gui::mouse_move_callback(GLFWwindow* view, double x, double y)
+Gui::mouse_move_callback(GLFWwindow* window, double x, double y)
 {
-  Gui* gui = static_cast<Gui*>(glfwGetWindowUserPointer(view));
+  Canvas* canvas = static_cast<Canvas*>(glfwGetWindowUserPointer(window));
+  Gui* gui = canvas->gui_;
 
   if (' ' != gui->dialog_ || gui->messages_) {
     return;
   }
 
-  Canvas& canvas = gui->canvas_;
   double dx = x - gui->x_;
   double dy = y - gui->y_;
   dx *= 0.00005f;
   dy *= 0.00005f;
-  if (gui->dolly_) { canvas.camera(dx,-1.0f*dy,0,0,0); return; }
+  if (gui->dolly_) { canvas->camera(dx,-1.0f*dy,0,0,0); return; }
   dx *= 100.0f;
   dy *= 100.0f;
-  if (gui->pivot_) { canvas.camera(0,0,0,dy,dx); return; }
+  if (gui->pivot_) { canvas->camera(0,0,0,dy,dx); return; }
   gui->x_ = x;
   gui->y_ = y;
 }
 
 
 void
-Gui::mouse_button_callback(GLFWwindow* view, int button, int action,
+Gui::mouse_button_callback(GLFWwindow* window, int button, int action,
                            int /* mods */)
 {
-  Gui* gui = static_cast<Gui*>(glfwGetWindowUserPointer(view));
+  Canvas* canvas = static_cast<Canvas*>(glfwGetWindowUserPointer(window));
+  Gui* gui = canvas->gui_;
 
   if (' ' != gui->dialog_ || gui->messages_) {
     return;
@@ -1011,23 +1128,16 @@ Gui::mouse_button_callback(GLFWwindow* view, int button, int action,
 
 
 void
-Gui::mouse_scroll_callback(GLFWwindow* view, double /* dx */, double dy)
+Gui::mouse_scroll_callback(GLFWwindow* window, double /* dx */, double dy)
 {
-  Gui* gui = static_cast<Gui*>(glfwGetWindowUserPointer(view));
+  Canvas* canvas = static_cast<Canvas*>(glfwGetWindowUserPointer(window));
+  Gui* gui = canvas->gui_;
 
   if (' ' != gui->dialog_ || gui->messages_) {
     return;
   }
 
   dy *= 0.1f;
-  gui->canvas_.camera(0,0,dy,0,0);
-}
-
-
-void
-Gui::resize_callback(GLFWwindow* view, int w, int h)
-{
-  Gui* gui = static_cast<Gui*>(glfwGetWindowUserPointer(view));
-  gui->canvas_.camera_resize(w, h);
+  canvas->camera(0,0,dy,0,0);
 }
 

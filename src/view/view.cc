@@ -6,7 +6,7 @@
 // Factory of Views
 
 std::unique_ptr<View>
-View::init(Log& log, Control& ctrl, bool headless, bool two)
+View::init(Log& log, Control& ctrl, bool headless, bool gui_on, bool three)
 {
   State& state = ctrl.get_state();
   if (headless) {
@@ -15,7 +15,7 @@ View::init(Log& log, Control& ctrl, bool headless, bool two)
   }
   std::unique_ptr<View> view(new Canvas(log, ctrl,
                                         state.width_, state.height_,
-                                        two));
+                                        gui_on, three));
   return view;
 }
 

@@ -73,27 +73,9 @@ State::clear()
 }
 
 
-bool
-State::change(Stative& input)
+void
+State::change(Stative& input, bool respawn)
 {
-  bool respawn = false;
-
-  if (input.width  != this->width_  ||
-      input.height != this->height_ ||
-      input.num    != this->num_) {
-      respawn = true;
-  }
-
-  if (!respawn &&
-    input.alpha    == this->alpha_ &&
-    input.beta     == this->beta_  &&
-    input.scope    == this->scope_ &&
-    input.speed    == this->speed_ &&
-    input.prad     == this->prad_  &&
-    input.coloring == this->coloring_) {
-    return false;
-  }
-
   this->num_      = input.num;
   this->width_    = input.width;
   this->height_   = input.height;
@@ -113,8 +95,6 @@ State::change(Stative& input)
     message += " without respawn.";
   }
   this->log_.add(Attn::O, message);
-
   this->notify(Issue::StateChanged); // Canvas reacts
-  return true;
 }
 

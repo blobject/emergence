@@ -66,9 +66,9 @@ class Proc : public Subject
   void plain_seek();
 
   /// plain_seek_vicinity(): For the non-OpenCL version of seek.
-  ///                      Iterate through every other particle in the
-  ///                      vicinity, ie. the 3x3 neighboring subset of the
-  ///                      grid centered around src.
+  ///                        Iterate through every other particle in the
+  ///                        vicinity, ie. the 3x3 neighboring subset of the
+  ///                        grid centered around src.
   /// \param grid  flat vector representing the grid
   /// \param stride  stride between each grid unit
   /// \param col  grid columns vector
@@ -80,8 +80,8 @@ class Proc : public Subject
                            int col, int row, int cols, int rows, int srci);
 
   /// plain_seek_tally(): For the non-OpenCL version of seek.
-  ///                   Update N, L, R of the two particles provided
-  ///                   respectively by the two foregoing callers.
+  ///                     Update N, L, R of the two particles provided
+  ///                     respectively by the two foregoing callers.
   /// \param srci  index of the source particle
   /// \param dsti  index of the destination particle
   /// \param cunder  whether the column is underflowing
@@ -92,7 +92,7 @@ class Proc : public Subject
                         bool cunder, bool cover, bool runder, bool rover);
 
   /// plain_move(): Non-OpenCL version of move.
-  ///             Update X, Y, PHI of every particle.
+  ///               Update X, Y, PHI of every particle.
   void plain_move();
 
   Cl&              cl_; // NOTE: if a pointer instead, clCreateBuffer fails

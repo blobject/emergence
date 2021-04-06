@@ -34,7 +34,7 @@ Headless::exec()
 {
   // flushing makes ticking smooth but slows processing
   if (-1 == this->ctrl_.stop_) {
-    std::cout << "   Processing until eternity...\r";
+    std::cout << "   Processing for eternity...\r";
   } else {
     std::cout << "   Tick " << this->ctrl_.stop_ << "          \r"
               << std::flush;

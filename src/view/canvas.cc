@@ -3,37 +3,32 @@
 
 
 Canvas::Canvas(Log& log, Control& ctrl,
-               unsigned int width, unsigned int height, bool two)
-  : ctrl_(ctrl), log_(log)
+               unsigned int width, unsigned int height,
+               bool gui_on, bool three)
+  : ctrl_(ctrl), log_(log), gui_on_(gui_on), three_(three)
 {
   ctrl.attach_to_state(*this);
   ctrl.attach_to_proc(*this);
-  auto gui_state = GuiState(ctrl);
-  this->gui_ = new Gui(log, gui_state, *this, width, height, two);
-  if (nullptr == this->gui_->view_) {
-    return; // TODO: handle error
-  }
-  this->gui_->set_pointer();
-  glewExperimental = true; // for core profile
-  if (GLEW_OK != glewInit()) {
-    log.add(Attn::E, "glewInit");
+
+  this->width_ = static_cast<GLfloat>(width);
+  this->height_ = static_cast<GLfloat>(height);
+  float window_scale = DPI / 100.0f;
+
+  this->preamble(this->width_ / window_scale, this->height_ / window_scale);
+
+  if (gui_on) {
+    auto gui_state = GuiState(ctrl);
+    this->gui_ = new Gui(log, gui_state, *this, this->window_, window_scale,
+                         three);
+    this->ago_ = glfwGetTime();
   }
 
-  DOGL(glClearColor(0.0f, 0.0f, 0.0f, 1.0f));
-  DOGL(glEnable(GL_DEPTH_TEST));
-  DOGL(glEnable(GL_BLEND));
-  DOGL(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
-
-  this->three_ = !two;
+  this->paused_ = false;
   this->levels_ = 50;
   this->level_ = 1;
   this->shift_counts_ = 5;
   this->shift_count_ = 0;
-  this->ago_ = glfwGetTime();
-  this->paused_ = false;
 
-  this->width_ = 1000.0f;
-  this->height_ = 1000.0f;
   this->zoomdef_ = -3.2f;
   this->neardef_ = -50.0f;
   this->dolly_ = glm::vec3(0.0f, 0.0f, this->zoomdef_);
@@ -62,6 +57,47 @@ Canvas::Canvas(Log& log, Control& ctrl,
 }
 
 
+void
+Canvas::preamble(unsigned int window_width, unsigned int window_height)
+{
+  // glfw
+  GLFWwindow* window;
+  if (!glfwInit()) {
+    this->log_.add(Attn::Egl, "glfwInit");
+    return;
+  }
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+  glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+  window = glfwCreateWindow(window_width, window_height, ME, NULL, NULL);
+  if (!window) {
+    this->log_.add(Attn::Egl, "glfwCreateWindow");
+    glfwTerminate();
+    return;
+  }
+  glfwMakeContextCurrent(window);
+  glfwSwapInterval(1);
+  glfwSetWindowSizeCallback(window, resize_callback);
+  if (!this->gui_on_) {
+    glfwSetKeyCallback(window, key_callback_no_gui);
+  }
+  this->window_ = window;
+  this->set_pointer();
+
+  // glew
+  glewExperimental = true; // for core profile
+  if (GLEW_OK != glewInit()) {
+    this->log_.add(Attn::E, "glewInit");
+  }
+
+  // gl
+  DOGL(glClearColor(0.0f, 0.0f, 0.0f, 1.0f));
+  DOGL(glEnable(GL_DEPTH_TEST));
+  DOGL(glEnable(GL_BLEND));
+  DOGL(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
+}
+
+
 Canvas::~Canvas()
 {
   this->ctrl_.detach_from_state(*this);
@@ -77,8 +113,7 @@ Canvas::~Canvas()
 void
 Canvas::exec()
 {
-  Gui* gui = this->gui_;
-  if (gui->closing()) {
+  if (this->closing()) {
     return;
   }
 
@@ -110,8 +145,11 @@ Canvas::exec()
   }
 
   this->clear();
-  ctrl.coloring(this->ctrl_.get_coloring());
+  ctrl.coloring(ctrl.get_coloring());
   this->draw(4, num, this->vertex_array_, this->shader_);
+  if (this->gui_on_) {
+    this->gui_->draw();
+  }
   // if paused, only particle processing (Proc) gets paused
   if (!this->paused_) {
     if (this->three_) {
@@ -120,8 +158,7 @@ Canvas::exec()
       this->next2d();
     }
   }
-  gui->draw();
-  gui->next();
+  this->next();
 
   /**
   // profiling
@@ -168,27 +205,25 @@ Canvas::spawn()
   std::vector<GLfloat>& rgba = this->rgba_;
   GLfloat near = this->neardef_;
   for (int i = 0; i < state.num_; ++i) {
-    /* x */ xyz.push_back(px[i]);
-    /* y */ xyz.push_back(py[i]);
-    /* z */ xyz.push_back(near);
-    /* r */ rgba.push_back(xr[i]);
-    /* g */ rgba.push_back(xg[i]);
-    /* b */ rgba.push_back(xb[i]);
-    /* a */ rgba.push_back(1.0f);
+    xyz.push_back(px[i]);
+    xyz.push_back(py[i]);
+    xyz.push_back(near);
+    rgba.push_back(xr[i]);
+    rgba.push_back(xg[i]);
+    rgba.push_back(xb[i]);
+    rgba.push_back(1.0f);
   }
-  // TODO: dynamic particle radii
   GLfloat prad = state.prad_;
   GLfloat quad[] = {0.0f, prad,
                    -prad, 0.0f,
                     prad, 0.0f,
                     0.0f,-prad};
 
-  GLfloat* xyzarray = &xyz[0];
-  GLfloat* rgbaarray = &rgba[0];
-  VertexBuffer* vb_xyz = new VertexBuffer(xyzarray, xyz.size()
-                                          * sizeof(float));
-  VertexBuffer* vb_rgba = new VertexBuffer(rgbaarray, rgba.size()
-                                          * sizeof(float));
+  GLfloat* p_xyz = &xyz[0];
+  GLfloat* p_rgba = &rgba[0];
+  VertexBuffer* vb_xyz = new VertexBuffer(p_xyz, xyz.size() * sizeof(float));
+  VertexBuffer* vb_rgba = new VertexBuffer(p_rgba, rgba.size()
+                                           * sizeof(float));
   VertexBuffer* vb_quad = new VertexBuffer(quad, sizeof(quad));
   VertexArray* va = new VertexArray();
   va->add_buffer(0, *vb_xyz, VertexBufferAttribs::gen<GLfloat>(3, 3, 0));
@@ -207,6 +242,13 @@ Canvas::spawn()
   this->vertex_buffer_rgba_ = vb_rgba;
   this->vertex_buffer_quad_ = vb_quad;
   this->vertex_array_ = va;
+
+  // in case state changed but canvas is paused
+  if (this->three_) {
+    this->next3d();
+  } else {
+    this->next2d();
+  }
 }
 
 
@@ -224,13 +266,12 @@ Canvas::respawn()
 
 
 void
-Canvas::draw(GLuint instances, GLuint instance_count, VertexArray* vertex_array,
-             Shader* shader) const
+Canvas::draw(GLuint instances, GLuint instance_count,
+             VertexArray* vertex_array, Shader* shader) const
 {
   shader->bind();
   vertex_array->bind();
-  DOGL(glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, instances,
-                             instance_count));
+  DOGL(glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, instances, instance_count));
 }
 
 
@@ -238,7 +279,6 @@ void
 Canvas::next2d()
 {
   State& state = this->ctrl_.get_state();
-  int num = state.num_;
   std::vector<float>& px = state.px_;
   std::vector<float>& py = state.py_;
   std::vector<float>& xr = state.xr_;
@@ -254,20 +294,20 @@ Canvas::next2d()
   // insert updated particle positions and colors into the buffer
   unsigned int xyzi = 0;
   unsigned int rgbai = 0;
-  for (int p = 0; p < num; ++p) {
-    xyz[xyzi++] = px[p];
-    xyz[xyzi++] = py[p];
+  for (int i = 0; i < state.num_; ++i) {
+    xyz[xyzi++] = px[i];
+    xyz[xyzi++] = py[i];
     xyz[xyzi++] = near;
-    rgba[rgbai++] = xr[p];
-    rgba[rgbai++] = xg[p];
-    rgba[rgbai++] = xb[p];
+    rgba[rgbai++] = xr[i];
+    rgba[rgbai++] = xg[i];
+    rgba[rgbai++] = xb[i];
     rgba[rgbai++] = 1.0f;
   }
 
-  GLfloat* xyzarray = &xyz[0];
-  GLfloat* rgbaarray = &rgba[0];
-  vb_xyz->update(xyzarray, xyz.size() * sizeof(float));
-  vb_rgba->update(rgbaarray, rgba.size() * sizeof(float));
+  GLfloat* p_xyz = &xyz[0];
+  GLfloat* p_rgba = &rgba[0];
+  vb_xyz->update(p_xyz, xyz.size() * sizeof(float));
+  vb_rgba->update(p_rgba, rgba.size() * sizeof(float));
   va->add_buffer(0, *vb_xyz, VertexBufferAttribs::gen<GLfloat>(3, 3, 0));
   va->add_buffer(1, *vb_rgba, VertexBufferAttribs::gen<GLfloat>(4, 4, 0));
 }
@@ -303,15 +343,15 @@ Canvas::next3d()
   // insert updated particle positions into the buffer
   unsigned int xyzi = 0;
   unsigned int rgbai = 0;
-  for (int p = 0; p < num; ++p) {
+  for (int i = 0; i < num; ++i) {
     // shift particle levels (ie. represent passage of time via z & a)
-    /* x */ this->shift(shift, level, px[p], 0.0f, xyz, xyzi, xyzspan);
-    /* y */ this->shift(shift, level, py[p], 0.0f, xyz, xyzi, xyzspan);
-    /* z */ this->shift(shift, level, near, 1.0f, xyz, xyzi, xyzspan);
-    /* r */ this->shift(shift, level, xr[p], 0.0f, rgba, rgbai, rgbaspan);
-    /* g */ this->shift(shift, level, xg[p], 0.0f, rgba, rgbai, rgbaspan);
-    /* b */ this->shift(shift, level, xb[p], 0.0f, rgba, rgbai, rgbaspan);
-    /* a */ this->shift(shift, level, 1.0f, -1.0f, rgba, rgbai, rgbaspan);
+    this->shift(shift, level, px[i], 0.0f, xyz, xyzi, xyzspan);
+    this->shift(shift, level, py[i], 0.0f, xyz, xyzi, xyzspan);
+    this->shift(shift, level, near,  1.0f, xyz, xyzi, xyzspan);
+    this->shift(shift, level, xr[i], 0.0f, rgba, rgbai, rgbaspan);
+    this->shift(shift, level, xg[i], 0.0f, rgba, rgbai, rgbaspan);
+    this->shift(shift, level, xb[i], 0.0f, rgba, rgbai, rgbaspan);
+    this->shift(shift, level, 1.0f, -1.0f, rgba, rgbai, rgbaspan);
   }
 
   // restrict the number of levels
@@ -325,10 +365,10 @@ Canvas::next3d()
     this->shift_count_ = 0;
   }
 
-  GLfloat* xyzarray = &xyz[0];
-  GLfloat* rgbaarray = &rgba[0];
-  vb_xyz->update(xyzarray, xyz.size() * sizeof(float));
-  vb_rgba->update(rgbaarray, rgba.size() * sizeof(float));
+  GLfloat* p_xyz = &xyz[0];
+  GLfloat* p_rgba = &rgba[0];
+  vb_xyz->update(p_xyz, xyz.size() * sizeof(float));
+  vb_rgba->update(p_rgba, rgba.size() * sizeof(float));
   va->add_buffer(0, *vb_xyz, VertexBufferAttribs::gen<GLfloat>(3, 3, 0));
   va->add_buffer(1, *vb_rgba, VertexBufferAttribs::gen<GLfloat>(4, 4, 0));
 }
@@ -413,5 +453,65 @@ Canvas::camera_resize(GLfloat w, GLfloat h)
   this->height_ = h;
   this->proj_ = glm::perspective(glm::radians(50.0f), w / h, 0.1f, 100.0f);
   this->camera_set();
+}
+
+
+void
+Canvas::next() const
+{
+  glfwSwapBuffers(this->window_);
+  glfwPollEvents();
+}
+
+
+void
+Canvas::set_pointer()
+{
+  // for KeyCallback to access gui
+  glfwSetWindowUserPointer(this->window_, this);
+}
+
+
+void
+Canvas::close()
+{
+  glfwSetWindowShouldClose(this->window_, true);
+  this->quit();
+}
+
+
+bool
+Canvas::closing() const
+{
+  return glfwWindowShouldClose(this->window_);
+}
+
+
+void
+Canvas::key_callback_no_gui(
+  GLFWwindow* window, int key, int /* scancode */, int action, int mods
+) {
+  Canvas* canvas = static_cast<Canvas*>(glfwGetWindowUserPointer(window));
+
+  if (action == GLFW_PRESS) {
+    if (mods & GLFW_MOD_CONTROL) {
+      if (key == GLFW_KEY_C || key == GLFW_KEY_Q) {
+        canvas->close();
+        return;
+      }
+    }
+    if (key == GLFW_KEY_SPACE) {
+      canvas->pause();
+      return;
+    }
+  }
+}
+
+
+void
+Canvas::resize_callback(GLFWwindow* window, int w, int h)
+{
+  Canvas* canvas = static_cast<Canvas*>(glfwGetWindowUserPointer(window));
+  canvas->camera_resize(w, h);
 }
 

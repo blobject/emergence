@@ -13,7 +13,10 @@
 #include "gl.hh"
 #include "gui.hh"
 #include "view.hh"
+#include "../util/common.hh"
 #include "../util/log.hh"
+
+#include <GLFW/glfw3.h>
 
 
 class Gui;
@@ -27,9 +30,15 @@ class Canvas : public View, Observer
   /// \param ctrl  Control object
   /// \param width  width of the graphical window
   /// \param height  height of the graphical height
-  /// \param two  whether in 2D mode
+  /// \param gui_on  whether GUI is enabled
+  /// \param three  whether in 3D mode
   Canvas(Log& log, Control& ctrl, unsigned int width, unsigned int height,
-         bool two);
+         bool gui_on, bool three);
+
+  /// preamble(): OpenGL related preamble.
+  /// \param window_width  scaled window width
+  /// \param window_height  scaled window height
+  void preamble(unsigned int window_width, unsigned int window_height);
 
   /// destructor: Detach from observation and delete the OpenGL constructs.
   ~Canvas() override;
@@ -65,10 +74,9 @@ class Canvas : public View, Observer
   void next3d();
 
   /// shift(): Convenience function for next3d() that does one shift for a
-  ///          given particle within a given vertex buffer (representing the
-  ///          particle parameter), where "shifting" means drawing a copy of
-  ///          all particles with an incremented z and alpha value, which
-  ///          effectively shows passage of time.
+  ///          given particle within a given vertex buffer, where "shifting"
+  ///          means drawing a copy of all particles with an incremented z and
+  ///          alpha value, which effectively shows passage of time.
   /// \param shift  whether shifting ought to happen.
   /// \param level  current number of levels
   /// \param next  new value of the particle parameter
@@ -129,6 +137,34 @@ class Canvas : public View, Observer
                                      * this->model_ * this->orth_);
   }
 
+  /// next(): Swap OpenGL buffers and poll for events.
+  void next() const;
+
+  /// set_pointer(): Create a pointer to self for access in callbacks.
+  void set_pointer();
+
+  /// close(): Begin shutting down the window.
+  void close();
+
+  /// closing(): Whether the window is shutting down.
+  bool closing() const;
+
+  /// key_callback_no_gui(): User key input bindings (only pause and quit).
+  /// \param window  pointer to the window object
+  /// \param key  engaged key
+  /// \param scancode  key scancode
+  /// \param action  manner of key engagement
+  /// \param mods  engaged modifier keys
+  static void key_callback_no_gui(GLFWwindow* window, int key, int scancode,
+                                  int action, int mods);
+
+  // resize_callback: Window resize bindings.
+  /// \param window  pointer to the window object
+  /// \param w  new window width
+  /// \param h  new window height
+  static void resize_callback(GLFWwindow* window, int w, int h);
+
+  GLFWwindow*   window_;
   Gui*          gui_;
   Control&      ctrl_;
   VertexBuffer* vertex_buffer_xyz_;  // position vector buffer
@@ -136,33 +172,34 @@ class Canvas : public View, Observer
   VertexBuffer* vertex_buffer_quad_; // quad (particle shape) vector buffer
   VertexArray*  vertex_array_;
   Shader*       shader_;
-  GLfloat dollyd_;    // camera position delta
-  GLfloat pivotd_;    // camera pivot angle delta
-  GLfloat zoomd_;     // camera zoom delta
-  bool paused_;       // no particle movement but accept user movement input
+  bool paused_;    // no particle motion but accept user input
+  GLfloat dollyd_; // camera position delta
+  GLfloat pivotd_; // camera pivot angle delta
+  GLfloat zoomd_;  // camera zoom delta
 
  private:
-  Log& log_;
+  Log&      log_;
   std::vector<GLfloat> xyz_;  // position vector
   std::vector<GLfloat> rgba_; // color vector
+  GLfloat   width_;           // canvas width
+  GLfloat   height_;          // canvas width
+  bool      gui_on_;          // whether GUI is enabled
+  bool      three_;           // whether in 3D mode
+  unsigned int levels_;       // total number of (z-)levels
+  unsigned int level_;        // current number of levels
+  unsigned int shift_counts_; // number of iterations until level shift
+  unsigned int shift_count_;  // current iteration until level shift
   glm::mat4 orth_;            // orthogonalisation matrix
   glm::mat4 model_;           // model-to-world matrix
   glm::mat4 view_;            // world-to-view matrix
   glm::mat4 proj_;            // perspective-projection matrix
   glm::vec3 dolly_;           // camera position vector
-  GLfloat width_;             // canvas width
-  GLfloat height_;            // canvas width
-  GLfloat pivotax_;           // camera horizontal pivot angle
-  GLfloat pivotay_;           // camera vertical pivot angle
-  GLfloat pivotx_;            // camera horizontal pivot amount
-  GLfloat pivoty_;            // camera vertical pivot amount
-  GLfloat zoomdef_;           // camera zoom default
-  GLfloat neardef_;           // model's "near" default
-  bool    three_;
-  unsigned int levels_;       // total number of (z-)levels
-  unsigned int level_;        // current number of levels
-  unsigned int shift_counts_; // number of iterations until level shift
-  unsigned int shift_count_;  // current iteration until level shift
-  double ago_;                // previous time measurement
+  GLfloat   pivotax_;         // camera horizontal pivot angle
+  GLfloat   pivotay_;         // camera vertical pivot angle
+  GLfloat   pivotx_;          // camera horizontal pivot amount
+  GLfloat   pivoty_;          // camera vertical pivot amount
+  GLfloat   zoomdef_;         // camera zoom default
+  GLfloat   neardef_;         // model's "near" default
+  double    ago_;             // previous time measurement
 };
 

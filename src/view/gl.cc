@@ -122,9 +122,7 @@ Shader::compile_shader(GLuint type, const std::string& source, Log& log)
 int
 Shader::get_uniform_location(const std::string& name)
 {
-  if (this->uniform_location_cache_.find(name) !=
-      this->uniform_location_cache_.end())
-  {
+  if (0 < this->uniform_location_cache_.count(name)) {
     return this->uniform_location_cache_[name];
   }
   DOGL(int location = glGetUniformLocation(this->id_, name.c_str()));
