@@ -16,7 +16,13 @@
 
 // Attn: Type of log message.
 
-enum class Attn { O = 0, E, Ecl, Egl };
+enum class Attn
+{
+  O = 0,
+  E,
+  Ecl,
+  Egl
+};
 
 
 class Log : public Subject

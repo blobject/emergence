@@ -22,7 +22,16 @@
 
 // Dialog: Type of dialog.
 
-enum class Dialog { None = 0, Config, Capture, Captured, Save, Load, Quit };
+enum class Dialog
+{
+  None = 0,
+  Config,
+  Capture,
+  Captured,
+  Save,
+  Load,
+  Quit
+};
 
 
 class Canvas;
@@ -147,13 +156,13 @@ class Gui
   bool         three_;    // whether in 3D mode
   bool         dolly_;    // whether mouse activated camera's dolly movement
   bool         pivot_;    // whether mouse activated camera's pivot movement
-  bool         capturing_;           // whether Gui is taking picture of window
-  std::string  capture_path_;        // path to taken picture
-  bool         bad_capture_;         // whether taking picture failed
-  float        cluster_radius_;      // DBSCAN radius
-  unsigned int cluster_minpts_;      // DBSCAN minpts
-  int          inject_sprite_;       // particle cluster sprite to be injected
-  float        inject_dpe_;          // resulting DPE after injection
+  bool         capturing_;      // whether Gui is taking picture of window
+  std::string  capture_path_;   // path to taken picture
+  bool         bad_capture_;    // whether taking picture failed
+  float        cluster_radius_; // DBSCAN radius
+  unsigned int cluster_minpts_; // DBSCAN minpts
+  int          inject_sprite_;  // particle cluster sprite model to be injected
+  float        inject_dpe_;     // DPE after injection
   int          density_threshold_;   // current density mapping threshold
   std::string  message_exp_cluster_; // cluster-analysis-related message
   std::string  message_exp_inject_;  // injection-analysis-related message

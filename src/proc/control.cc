@@ -143,6 +143,8 @@ Control::load_file(const std::string& path)
       if (linestream >> speed)  truth.speed_  = speed;
       if (linestream >> prad)   truth.prad_   = prad;
   }
+  float w = static_cast<float>(truth.width_);
+  float h = static_cast<float>(truth.height_);
   unsigned int i;
   float px;
   float py;
@@ -156,15 +158,15 @@ Control::load_file(const std::string& path)
     linestream = std::istringstream(line);
     linestream >> i; // ignore the leading particle index
     if (!(linestream >> px)) {
-      px = Util::distribute<float>(0.0f, static_cast<float>(truth.width_));
+      px = Util::dist(0.0f, w);
     }
     truth.px_.push_back(px);
     if (!(linestream >> py)) {
-      py = Util::distribute<float>(0.0f, static_cast<float>(truth.height_));
+      py = Util::dist(0.0f, h);
     }
     truth.py_.push_back(py);
     if (!(linestream >> pf)) {
-      pf = Util::distribute<float>(0.0f, TAU);
+      pf = Util::dist(0.0f, TAU);
     }
     truth.pf_.push_back(pf);
     truth.pc_.push_back(cosf(truth.pf_.back()));
@@ -223,9 +225,13 @@ Control::next()
     this->done();
   }
   proc.next();
+  this->exp_.type();
+  // countdown unless system paused
+  if (proc.paused_) {
+    return;
+  }
   ++this->tick_;
-  // decrement countdown ("stop") unless -1 (eternal) or system paused
-  if (-1 >= stop || proc.paused_) {
+  if (-1 >= stop) {
     return;
   }
   this->stop_ = stop - 1;
@@ -271,7 +277,7 @@ Control::cl_good() const
 void
 Control::reset_exp()
 {
-  this->exp_.reset_clustering();
+  this->exp_.reset_exp();
 }
 
 
@@ -293,28 +299,35 @@ Control::cluster(float radius, unsigned int minpts)
   unsigned int num_cores = exp.cores_.size();
   unsigned int num_vague = exp.vague_.size();
 
-  std::stringstream s;
-  s.precision(4);
-  s << exp.clusters_.size() << " clusters\n"
-    << "cores: " << num_cores << " (" << num_cores * 100 / num << "%)\n"
-    << "vague: " << num_vague << " (" << num_vague * 100 / num << "%)\n"
-    << "noise: " << static_cast<int>(num - num_cores - num_vague)
-    << std::flush;
+  std::stringstream message;
+  message.precision(4);
+  message << exp.clusters_.size() << " Clusters found.\n"
+          << "cells: " << exp.cell_clusters_ << "\n"
+          << "mature spores: " << exp.spore_clusters_ << "\n"
+          << "cores: " << num_cores << " (" << num_cores * 100 / num << "%)\n"
+          << "vague: " << num_vague << " (" << num_vague * 100 / num << "%)\n"
+          << "noise: " << static_cast<int>(num - num_cores - num_vague);
 
-  return s.str();
+  return message.str();
 }
 
 std::string
-Control::inject(Sprite sprite, float dpe)
+Control::inject(Type type, float dpe)
 {
-  this->exp_.inject(sprite, dpe);
-  return "";
-}
+  Exp& exp = this->exp_;
+  exp.inject(type, dpe);
+  this->log_.add(Attn::O, "Injected into state.");
+  this->state_.notify(Issue::StateChanged); // Canvas reacts
+  unsigned int size = exp.sprites_[type].size();
 
+  std::stringstream message;
+  message.precision(4);
+  message << "Injected " << exp.type_name(type) << ".\n"
+          << "index: " << exp.sprite_index_ - size << "\n"
+          << "# particles: " << size << "\n"
+          << "placement: x=" << exp.sprite_x_ << ", y=" << exp.sprite_y_
+          << ", scale=" << exp.sprite_scale_;
 
-std::string
-Control::densities()
-{
-  return this->exp_.densities();
+  return message.str();
 }
 

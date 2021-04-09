@@ -45,6 +45,7 @@ class Cl
   /// \param pc  cos(PHI) particle parameter vector
   /// \param ps  sin(PHI) particle parameter vector
   /// \param pn  N particle parameter vector
+  /// \param pnd  particle neighbors distance vector
   /// \param pl  L particle parameter vector
   /// \param pr  R particle parameter vector
   /// \param gcol  grid columns vector
@@ -54,14 +55,16 @@ class Cl
   /// \param w  width of the particle system
   /// \param h  width of the particle system
   /// \param scope2  scope squared
+  /// \param n_stride  stride between each neighborhood
   void seek(std::vector<int>& grid, unsigned int grid_stride, unsigned int n,
             std::vector<float>& px, std::vector<float>& py,
             std::vector<float>& pc, std::vector<float>& ps,
-            std::vector<unsigned int>& pn,
+            std::vector<unsigned int>& pn, std::vector<float>& pnd,
             std::vector<unsigned int>& pl, std::vector<unsigned int>& pr,
             std::vector<int>& gcol, std::vector<int>& grow,
             int cols, int rows,
-            unsigned int w, unsigned int h, float scope2);
+            unsigned int w, unsigned int h, float scope2,
+            unsigned int n_stride);
 
   /// prep_move(): Pre-build the kernel for performing particle moving.
   ///              See Proc::plain_move() for the non-OpenCL variant.

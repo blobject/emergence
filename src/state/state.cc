@@ -7,17 +7,19 @@ State::State(Log& log)
   : log_(log)
 {
   // transportable
-  this->num_ = 4000;
-  this->width_ = 1000;
-  this->height_ = 1000;
+  this->num_ = 5000;
+  this->width_ = 250;
+  this->height_ = 250;
   this->alpha_ = PI; // 180 degrees
   this->beta_ = 0.296705972839036L; // 17 degrees
-  this->scope_ = 24.0f;
-  this->speed_ = 4.0f;
-  this->prad_ = 2.0f;
+  this->scope_ = 5.0f;
+  this->speed_ = 0.67f;
+  this->prad_ = 1.0f;
   this->coloring_ = 0;
   // derived
   this->scope_squared_ = this->scope_ * this->scope_;
+  // fixed
+  this->n_stride_ = 100;
 
   this->spawn();
 }
@@ -26,17 +28,22 @@ State::State(Log& log)
 void
 State::spawn()
 {
-  unsigned int w = this->width_;
-  unsigned int h = this->height_;
+  float w = static_cast<float>(this->width_);
+  float h = static_cast<float>(this->height_);
+  unsigned int n_stride_ = this->n_stride_;
   for (int i = 0; i < this->num_; ++i) {
-    this->px_.push_back(Util::distribute<float>(0.0f, static_cast<float>(w)));
-    this->py_.push_back(Util::distribute<float>(0.0f, static_cast<float>(h)));
-    this->pf_.push_back(Util::distribute<float>(0.0f, TAU));
+    this->px_.push_back(Util::dist(0.0f, w));
+    this->py_.push_back(Util::dist(0.0f, h));
+    this->pf_.push_back(Util::dist(0.0f, TAU));
     this->pc_.push_back(cosf(this->pf_[i]));
     this->ps_.push_back(sinf(this->pf_[i]));
     this->pn_.push_back(0);
+    for (int j = 0; j < n_stride_; ++j) {
+      this->pnd_.push_back(-1.0f);
+    }
     this->pl_.push_back(0);
     this->pr_.push_back(0);
+    this->pt_.push_back(Type::None);
     this->gcol_.push_back(0);
     this->grow_.push_back(0);
     this->xr_.push_back(0.5f);
@@ -63,8 +70,10 @@ State::clear()
   this->pc_.clear();
   this->ps_.clear();
   this->pn_.clear();
+  this->pnd_.clear();
   this->pl_.clear();
   this->pr_.clear();
+  this->pt_.clear();
   this->gcol_.clear();
   this->grow_.clear();
   this->xr_.clear();

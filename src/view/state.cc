@@ -79,10 +79,10 @@ UiState::deceive(bool respawn /* = false */) const
 void
 UiState::random(Log& log)
 {
-  this->alpha_ = Util::distribute<float>(-180.0f, 180.0f);
-  this->beta_ = Util::distribute<float>(-180.0f, 180.0f);
-  this->scope_ = Util::distribute<float>(1.0f, 96.0f);
-  this->speed_ = Util::distribute<float>(1.0f, 32.0f);
+  this->alpha_ = Util::dist(-180.0f, 180.0f);
+  this->beta_ = Util::dist(-180.0f, 180.0f);
+  this->scope_ = Util::dist(1.0f, 96.0f);
+  this->speed_ = Util::dist(1.0f, 32.0f);
   log.add(Attn::O,
           "Random: a=" + std::to_string(this->alpha_)
           + ", b=" + std::to_string(this->beta_)
@@ -96,8 +96,9 @@ void
 UiState::coloring(Log& log, Coloring scheme)
 {
   std::string message;
-  if      (Coloring::Normal    == scheme) { message = "normal"; }
-  else if (Coloring::Cluster   == scheme) { message = "cluster-based"; }
+  if      (Coloring::Original  == scheme) { message = "original"; }
+  else if (Coloring::Dynamic   == scheme) { message = "dynamic"; }
+  else if (Coloring::Cluster   == scheme) { message = "clustered"; }
   else if (Coloring::Density10 == scheme) { message = "density threshold 10"; }
   else if (Coloring::Density15 == scheme) { message = "density threshold 15"; }
   else if (Coloring::Density20 == scheme) { message = "density threshold 20"; }

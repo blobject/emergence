@@ -14,7 +14,13 @@
 
 // Issue: Type of observer notification.
 
-enum class Issue { StateChanged = 0, ProcNextDone, ProcDone, NewMessage };
+enum class Issue
+{
+  StateChanged = 0,
+  ProcNextDone,
+  ProcDone,
+  NewMessage
+};
 
 
 class Subject;

@@ -69,13 +69,15 @@ Cl::prep_seek()
     "  __global const float* PC,\n"
     "  __global const float* PS,\n"
     "  __global unsigned int* PN,\n"
+    "  __global float* PND,\n"
     "  __global unsigned int* PL,\n"
     "  __global unsigned int* PR,\n"
     "  __global const int* COL,\n"
     "  __global const int* ROW,\n"
     "  int COLS,\n"
     "  int ROWS,\n"
-    "  uint STRIDE)\n"
+    "  uint STRIDE,\n"
+    "  uint NSTRIDE)\n"
     "{\n"
     "  int srci = get_global_id(0);\n"
     "  int cc  = COL[srci];\n"
@@ -102,6 +104,17 @@ Cl::prep_seek()
     "                 cc,  rrr, false, false, false, r_o,\n"
     "                 ccc, rrr, false, c_o,   false, r_o};\n"
     "  int dsti;\n"
+    "  float srcx;\n"
+    "  float srcy;\n"
+    "  float srcc;\n"
+    "  float srcs;\n"
+    "  float dstx;\n"
+    "  float dsty;\n"
+    "  float dstc;\n"
+    "  float dsts;\n"
+    "  float dx;\n"
+    "  float dy;\n"
+    "  float dist;\n"
     "  for (int v = 0; v < 54; v += 6) {\n"
     "    for (int p = 0; p < STRIDE; ++p) {\n"
     "      dsti = G[COLS * (vic[v+1] * STRIDE) + (vic[v] * STRIDE) + p];\n"
@@ -115,23 +128,30 @@ Cl::prep_seek()
     "      c_o = vic[v + 3];\n"
     "      r_u = vic[v + 4];\n"
     "      r_o = vic[v + 5];\n"
-    "      float srcx = PX[srci];\n"
-    "      float dstx = PX[dsti];\n"
-    "      float dx = dstx - srcx;\n"
+    "      srcx = PX[srci];\n"
+    "      dstx = PX[dsti];\n"
+    "      dx = dstx - srcx;\n"
     "      if (c_u) { dx -= W; } else if (c_o) { dx += W; }\n"
-    "      float srcy = PY[srci];\n"
-    "      float dsty = PY[dsti];\n"
-    "      float dy = dsty - srcy;\n"
+    "      srcy = PY[srci];\n"
+    "      dsty = PY[dsti];\n"
+    "      dy = dsty - srcy;\n"
     "      if (r_u) { dy -= H; } else if (r_o) { dy += H; }\n"
-    "      if ((dx * dx) + (dy * dy) > SCOPE) {"
+    "      dist = (dx * dx) + (dy * dy);\n"
+    "      if (SCOPE < dist) {"
     "        continue;\n"
+    "      }\n"
+    "      if (NSTRIDE > PN[srci]) {\n"
+    "        PND[NSTRIDE * srci + PN[srci]] = dist;\n"
+    "      }\n"
+    "      if (NSTRIDE > PN[dsti]) {\n"
+    "        PND[NSTRIDE * dsti + PN[dsti]] = dist;\n"
     "      }\n"
     "      ++PN[srci];\n"
     "      ++PN[dsti];\n"
-    "      float srcc = PC[srci];\n"
-    "      float srcs = PS[srci];\n"
-    "      float dstc = PC[dsti];\n"
-    "      float dsts = PS[dsti];\n"
+    "      srcc = PC[srci];\n"
+    "      srcs = PS[srci];\n"
+    "      dstc = PC[dsti];\n"
+    "      dsts = PS[dsti];\n"
     "      if (0.0f > (dx * srcs) - (dy * srcc)) { ++PR[srci]; }\n"
     "      else                                  { ++PL[srci]; }\n"
     "      if (0.0f < (dx * dsts) - (dy * dstc)) { ++PR[dsti]; }\n"
@@ -155,32 +175,35 @@ void
 Cl::seek(std::vector<int>& grid, unsigned int grid_stride, unsigned int n,
          std::vector<float>& px, std::vector<float>& py,
          std::vector<float>& pc, std::vector<float>& ps,
-         std::vector<unsigned int>& pn,
+         std::vector<unsigned int>& pn, std::vector<float>& pnd,
          std::vector<unsigned int>& pl, std::vector<unsigned int>& pr,
          std::vector<int>& gcol, std::vector<int>& grow,
-         int cols, int rows, unsigned int w, unsigned int h, float scope2)
+         int cols, int rows, unsigned int w, unsigned int h, float scope2,
+         unsigned int n_stride)
 {
-  const cl_uint floatsize = n * sizeof(float);
-  const cl_uint intsize = n * sizeof(int);
-  const cl_uint uintsize = n * sizeof(unsigned int);
+  const cl_uint float_size = n * sizeof(float);
+  const cl_uint int_size = n * sizeof(int);
+  const cl_uint uint_size = n * sizeof(unsigned int);
+  const cl_uint pnd_size = n_stride * float_size;
   try {
     cl::Buffer G(this->context_, CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR,
                  cols * rows * grid_stride * sizeof(int), grid.data());
     cl::Buffer PX(this->context_, CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR,
-                  floatsize, px.data());
+                  float_size, px.data());
     cl::Buffer PY(this->context_, CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR,
-                  floatsize, py.data());
+                  float_size, py.data());
     cl::Buffer PC(this->context_, CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR,
-                  floatsize, pc.data());
+                  float_size, pc.data());
     cl::Buffer PS(this->context_, CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR,
-                  floatsize, ps.data());
+                  float_size, ps.data());
     cl::Buffer COL(this->context_, CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR,
-                   intsize, gcol.data());
+                   int_size, gcol.data());
     cl::Buffer ROW(this->context_, CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR,
-                   intsize, grow.data());
-    cl::Buffer PN(this->context_, CL_MEM_READ_WRITE, uintsize);
-    cl::Buffer PL(this->context_, CL_MEM_READ_WRITE, uintsize);
-    cl::Buffer PR(this->context_, CL_MEM_READ_WRITE, uintsize);
+                   int_size, grow.data());
+    cl::Buffer PN(this->context_, CL_MEM_READ_WRITE, uint_size);
+    cl::Buffer PND(this->context_, CL_MEM_READ_WRITE, pnd_size);
+    cl::Buffer PL(this->context_, CL_MEM_READ_WRITE, uint_size);
+    cl::Buffer PR(this->context_, CL_MEM_READ_WRITE, uint_size);
     this->kernel_seek_.setArg( 0, static_cast<cl_float>(w));
     this->kernel_seek_.setArg( 1, static_cast<cl_float>(h));
     this->kernel_seek_.setArg( 2, static_cast<cl_float>(scope2));
@@ -190,21 +213,25 @@ Cl::seek(std::vector<int>& grid, unsigned int grid_stride, unsigned int n,
     this->kernel_seek_.setArg( 6, PC);
     this->kernel_seek_.setArg( 7, PS);
     this->kernel_seek_.setArg( 8, PN);
-    this->kernel_seek_.setArg( 9, PL);
-    this->kernel_seek_.setArg(10, PR);
-    this->kernel_seek_.setArg(11, COL);
-    this->kernel_seek_.setArg(12, ROW);
-    this->kernel_seek_.setArg(13, static_cast<cl_int>(cols));
-    this->kernel_seek_.setArg(14, static_cast<cl_int>(rows));
-    this->kernel_seek_.setArg(15, static_cast<cl_int>(grid_stride));
-    this->queue_.enqueueWriteBuffer(PN, CL_TRUE, 0, uintsize, pn.data());
-    this->queue_.enqueueWriteBuffer(PL, CL_TRUE, 0, uintsize, pl.data());
-    this->queue_.enqueueWriteBuffer(PR, CL_TRUE, 0, uintsize, pr.data());
+    this->kernel_seek_.setArg( 9, PND);
+    this->kernel_seek_.setArg(10, PL);
+    this->kernel_seek_.setArg(11, PR);
+    this->kernel_seek_.setArg(12, COL);
+    this->kernel_seek_.setArg(13, ROW);
+    this->kernel_seek_.setArg(14, static_cast<cl_int>(cols));
+    this->kernel_seek_.setArg(15, static_cast<cl_int>(rows));
+    this->kernel_seek_.setArg(16, static_cast<cl_int>(grid_stride));
+    this->kernel_seek_.setArg(17, static_cast<cl_int>(n_stride));
+    this->queue_.enqueueWriteBuffer(PN, CL_TRUE, 0, uint_size, pn.data());
+    this->queue_.enqueueWriteBuffer(PND, CL_TRUE, 0, pnd_size, pnd.data());
+    this->queue_.enqueueWriteBuffer(PL, CL_TRUE, 0, uint_size, pl.data());
+    this->queue_.enqueueWriteBuffer(PR, CL_TRUE, 0, uint_size, pr.data());
     this->queue_.enqueueNDRangeKernel(this->kernel_seek_,
                                       cl::NullRange, n, cl::NullRange);
-    this->queue_.enqueueReadBuffer(PN, CL_TRUE, 0, uintsize, pn.data());
-    this->queue_.enqueueReadBuffer(PL, CL_TRUE, 0, uintsize, pl.data());
-    this->queue_.enqueueReadBuffer(PR, CL_TRUE, 0, uintsize, pr.data());
+    this->queue_.enqueueReadBuffer(PN, CL_TRUE, 0, uint_size, pn.data());
+    this->queue_.enqueueReadBuffer(PND, CL_TRUE, 0, pnd_size, pnd.data());
+    this->queue_.enqueueReadBuffer(PL, CL_TRUE, 0, uint_size, pl.data());
+    this->queue_.enqueueReadBuffer(PR, CL_TRUE, 0, uint_size, pr.data());
     this->queue_.finish();
   } catch (cl_int err) {
     this->log_.add(Attn::Ecl, std::to_string(err));
@@ -265,20 +292,20 @@ Cl::move(unsigned int n, std::vector<float>& px, std::vector<float>& py,
          std::vector<unsigned int>& pl, std::vector<unsigned int>& pr,
          unsigned int w, unsigned int h, float a, float b, float s)
 {
-  const cl_uint floatsize = n * sizeof(float);
-  const cl_uint uintsize = n * sizeof(unsigned int);
+  const cl_uint float_size = n * sizeof(float);
+  const cl_uint uint_size = n * sizeof(unsigned int);
   try {
-    cl::Buffer PX(this->context_, CL_MEM_READ_WRITE, floatsize);
-    cl::Buffer PY(this->context_, CL_MEM_READ_WRITE, floatsize);
-    cl::Buffer PF(this->context_, CL_MEM_READ_WRITE, floatsize);
-    cl::Buffer PC(this->context_, CL_MEM_READ_WRITE, floatsize);
-    cl::Buffer PS(this->context_, CL_MEM_READ_WRITE, floatsize);
+    cl::Buffer PX(this->context_, CL_MEM_READ_WRITE, float_size);
+    cl::Buffer PY(this->context_, CL_MEM_READ_WRITE, float_size);
+    cl::Buffer PF(this->context_, CL_MEM_READ_WRITE, float_size);
+    cl::Buffer PC(this->context_, CL_MEM_READ_WRITE, float_size);
+    cl::Buffer PS(this->context_, CL_MEM_READ_WRITE, float_size);
     cl::Buffer PN(this->context_, CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR,
-                  uintsize, pn.data());
+                  uint_size, pn.data());
     cl::Buffer PL(this->context_, CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR,
-                  uintsize, pl.data());
+                  uint_size, pl.data());
     cl::Buffer PR(this->context_, CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR,
-                  uintsize, pr.data());
+                  uint_size, pr.data());
     this->kernel_move_.setArg( 0, static_cast<cl_float>(w));
     this->kernel_move_.setArg( 1, static_cast<cl_float>(h));
     this->kernel_move_.setArg( 2, static_cast<cl_float>(a));
@@ -292,19 +319,19 @@ Cl::move(unsigned int n, std::vector<float>& px, std::vector<float>& py,
     this->kernel_move_.setArg(10, PN);
     this->kernel_move_.setArg(11, PL);
     this->kernel_move_.setArg(12, PR);
-    this->kernel_move_.setArg(13, static_cast<cl_float>(TAU));
-    this->queue_.enqueueWriteBuffer(PX, CL_TRUE, 0, floatsize, px.data());
-    this->queue_.enqueueWriteBuffer(PY, CL_TRUE, 0, floatsize, py.data());
-    this->queue_.enqueueWriteBuffer(PF, CL_TRUE, 0, floatsize, pf.data());
-    this->queue_.enqueueWriteBuffer(PC, CL_TRUE, 0, floatsize, pc.data());
-    this->queue_.enqueueWriteBuffer(PS, CL_TRUE, 0, floatsize, ps.data());
+    this->kernel_move_.setArg(13, TAU);
+    this->queue_.enqueueWriteBuffer(PX, CL_TRUE, 0, float_size, px.data());
+    this->queue_.enqueueWriteBuffer(PY, CL_TRUE, 0, float_size, py.data());
+    this->queue_.enqueueWriteBuffer(PF, CL_TRUE, 0, float_size, pf.data());
+    this->queue_.enqueueWriteBuffer(PC, CL_TRUE, 0, float_size, pc.data());
+    this->queue_.enqueueWriteBuffer(PS, CL_TRUE, 0, float_size, ps.data());
     this->queue_.enqueueNDRangeKernel(this->kernel_move_,
                                       cl::NullRange, n, cl::NullRange);
-    this->queue_.enqueueReadBuffer(PX, CL_TRUE, 0, floatsize, px.data());
-    this->queue_.enqueueReadBuffer(PY, CL_TRUE, 0, floatsize, py.data());
-    this->queue_.enqueueReadBuffer(PF, CL_TRUE, 0, floatsize, pf.data());
-    this->queue_.enqueueReadBuffer(PC, CL_TRUE, 0, floatsize, pc.data());
-    this->queue_.enqueueReadBuffer(PS, CL_TRUE, 0, floatsize, ps.data());
+    this->queue_.enqueueReadBuffer(PX, CL_TRUE, 0, float_size, px.data());
+    this->queue_.enqueueReadBuffer(PY, CL_TRUE, 0, float_size, py.data());
+    this->queue_.enqueueReadBuffer(PF, CL_TRUE, 0, float_size, pf.data());
+    this->queue_.enqueueReadBuffer(PC, CL_TRUE, 0, float_size, pc.data());
+    this->queue_.enqueueReadBuffer(PS, CL_TRUE, 0, float_size, ps.data());
     this->queue_.finish();
   } catch (cl_int err) {
     this->log_.add(Attn::Ecl, std::to_string(err));

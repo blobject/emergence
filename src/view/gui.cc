@@ -115,6 +115,7 @@ Gui::draw_brief(bool draw)
   if (!draw) {
     return;
   }
+  Control& ctrl = this->uistate_.ctrl_;
   int width;
   int height;
   glfwGetFramebufferSize(this->window_, &width, &height);
@@ -133,22 +134,26 @@ Gui::draw_brief(bool draw)
                    ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize)) {
     ImGui::PushFont(this->font_b);
     ImGui::TextColored(color_b, "%s", status);
-    ImGui::SameLine();
     ImGui::PopFont();
+    ImGui::SameLine();
     ImGui::TextColored(color, "(");
     this->backspace(2);
     ImGui::PushFont(this->font_i);
     ImGui::TextColored(color, "Space");
-    ImGui::SameLine();
     ImGui::PopFont();
     this->backspace();
     ImGui::TextColored(color, ")");
+    ImGui::TextColored(color, "tick");
+    ImGui::SameLine();
+    ImGui::PushFont(this->font_b);
+    ImGui::TextColored(color_b, "%lu", ctrl.tick_);
+    ImGui::PopFont();
     ImGui::TextColored(color, "x");
     ImGui::SameLine();
     ImGui::PushFont(this->font_b);
     ImGui::TextColored(color_b, "%.0f", this->x_);
-    ImGui::SameLine();
     ImGui::PopFont();
+    ImGui::SameLine();
     ImGui::TextColored(color, "y");
     ImGui::SameLine();
     ImGui::PushFont(this->font_b);
@@ -162,8 +167,7 @@ Gui::draw_brief(bool draw)
     ImGui::TextColored(color, "opencl");
     ImGui::SameLine();
     ImGui::PushFont(this->font_b);
-    ImGui::TextColored(color_b, "%s",
-                       this->uistate_.ctrl_.cl_good() ? "on" : "off");
+    ImGui::TextColored(color_b, "%s", ctrl.cl_good() ? "on" : "off");
     ImGui::PopFont();
     ImGui::PushFont(this->font_i);
     ImGui::TextColored(color, "Escape");
@@ -410,7 +414,7 @@ Gui::draw_config(Dialog dialog)
       this->message_exp_cluster_ = "";
       this->message_exp_inject_ = "";
       this->message_exp_density_ = "";
-      uistate.coloring(log, Coloring::Normal);
+      uistate.coloring(log, Coloring::Original);
     }
     if (ImGui::Button("Count clusters")) {
       this->message_exp_inject_ = "";
@@ -436,25 +440,29 @@ Gui::draw_config(Dialog dialog)
     if (ImGui::Button("Inject clusters")) {
       this->message_exp_cluster_ = "";
       this->message_exp_density_ = "";
-      Sprite sprite = Sprite::TriangleCell;
+      Type type = Type::TriangleCell;
       int choice = this->inject_sprite_;
       if (0 == choice) {
-        sprite = Sprite::PrematureSpore;
+        type = Type::PrematureSpore;
       } else if (1 == choice) {
-        sprite = Sprite::MatureSpore;
+        type = Type::MatureSpore;
       } else if (2 == choice) {
-        sprite = Sprite::Ring;
+        type = Type::Ring;
       } else if (3 == choice) {
-        sprite = Sprite::PrematureCell;
+        type = Type::PrematureCell;
       } else if (4 == choice) {
-        sprite = Sprite::TriangleCell;
+        type = Type::TriangleCell;
       } else if (5 == choice) {
-        sprite = Sprite::SquareCell;
+        type = Type::SquareCell;
       } else if (6 == choice) {
-        sprite = Sprite::PentagonCell;
+        type = Type::PentagonCell;
       }
       this->message_exp_inject_ =
-        uistate.ctrl_.inject(sprite, this->inject_dpe_);
+        uistate.ctrl_.inject(type, this->inject_dpe_);
+        unsigned int num = uistate.ctrl_.get_num();
+      uistate.num_ = num;
+      this->inject_dpe_ = static_cast<float>(num)
+                         / uistate_.width_ / uistate_.height_;
     }
     this->auto_width(width, 3);
     ImGui::SameLine();
@@ -488,10 +496,10 @@ Gui::draw_config(Dialog dialog)
                      "n = 30\0\0")) {
       this->message_exp_cluster_ = "";
       this->message_exp_inject_ = "";
-      Coloring scheme = Coloring::Normal;
+      Coloring scheme = Coloring::Original;
       int choice = this->density_threshold_;
       if (0 == choice) {
-        scheme = Coloring::Normal;
+        scheme = Coloring::Original;
         this->message_exp_density_ = "";
       } else if (1 == choice) {
         scheme = Coloring::Density10;
@@ -1067,13 +1075,13 @@ Gui::mouse_button_callback(GLFWwindow* window, int button, int action,
   }
 
   if (action == GLFW_PRESS) {
-    if (button == GLFW_MOUSE_BUTTON_LEFT) { gui->pivot_ = true; return; }
-    if (button == GLFW_MOUSE_BUTTON_RIGHT) { gui->dolly_ = true; return; }
+    if (button == GLFW_MOUSE_BUTTON_LEFT)  { gui->dolly_ = true; return; }
+    if (button == GLFW_MOUSE_BUTTON_RIGHT) { gui->pivot_ = true; return; }
     return;
   }
   if (action == GLFW_RELEASE) {
-    if (button == GLFW_MOUSE_BUTTON_LEFT) { gui->pivot_ = false; return; }
-    if (button == GLFW_MOUSE_BUTTON_RIGHT) { gui->dolly_ = false; return; }
+    if (button == GLFW_MOUSE_BUTTON_LEFT)  { gui->dolly_ = false; return; }
+    if (button == GLFW_MOUSE_BUTTON_RIGHT) { gui->pivot_ = false; return; }
     return;
   }
 }

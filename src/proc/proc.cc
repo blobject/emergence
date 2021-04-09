@@ -18,28 +18,9 @@ Proc::Proc(Log& log, State& state, Cl& cl, bool no_cl)
 }
 
 
-/* particle hierarchy in processing
- * --------------------------------
- *
- * world --> grid --> grid unit -.
- *        |                      |
- *        '------------------------> particles
- */
-
-
 void
 Proc::next()
 {
-  /**
-  State& state = this->state_;
-  int num = state.num_;
-  int sum = 0;
-  for (int i = 0; i < num; ++i) {
-    sum += state.pn_[i];
-  }
-  std::cout << (float)sum / (float)num << std::endl;
-  //*/
-
   if (this->paused_) {
     // do no processing but still let Views do their thing
     this->notify(Issue::ProcNextDone); // Views react
@@ -80,8 +61,8 @@ Proc::plot()
     pr[i] = 0;
   }
 
-  // hydrate grid units with corresponding particle indices
-  // initialise the vicinity grid in non-flat format
+  // the columns and rows of the grid are flattened to a single list, but each
+  // element is itself a list (of particle indices)
   float width = state.width_;
   float height = state.height_;
   unsigned int scope = state.scope_;
@@ -108,16 +89,16 @@ Proc::plot()
   }
 
   // find the size of the largest grid unit
-  unsigned int max = 0;
+  unsigned int stride = 0;
   unsigned int count = 0;
   for (unsigned int i = 0; i < grid_size; ++i) {
     count = grid[i].size();
-    if (count > max) {
-      max = count;
+    if (count > stride) {
+      stride = count;
     }
   }
 
-  // flatten the grid, padding with -1
+  // flatten the grid (a single list of particle indices, padding with -1)
   auto flat = std::vector<int>();
   for (std::vector<int> unit : grid) {
     count = 0;
@@ -125,7 +106,7 @@ Proc::plot()
       flat.push_back(p);
       ++count;
     }
-    while (count < max) {
+    while (count < stride) {
       flat.push_back(-1);
       ++count;
     }
@@ -134,7 +115,7 @@ Proc::plot()
   this->grid_ = flat;
   this->grid_cols_ = cols;
   this->grid_rows_ = rows;
-  this->grid_stride_ = max;
+  this->grid_stride_ = stride;
 }
 
 
@@ -146,10 +127,11 @@ Proc::seek()
   State& state = this->state_;
   this->cl_.seek(this->grid_, this->grid_stride_, state.num_,
                  state.px_, state.py_, state.pc_, state.ps_,
-                 state.pn_, state.pl_, state.pr_,
+                 state.pn_, state.pnd_, state.pl_, state.pr_,
                  state.gcol_, state.grow_,
                  this->grid_cols_, this->grid_rows_,
-                 state.width_, state.height_, state.scope_squared_);
+                 state.width_, state.height_, state.scope_squared_,
+                 state.n_stride_);
 }
 
 
@@ -244,6 +226,8 @@ Proc::plain_seek_tally(unsigned int srci, unsigned int dsti,
                        bool cunder, bool cover, bool runder, bool rover)
 {
   State& state = this->state_;
+  std::vector<unsigned int>& pn = state.pn_;
+  unsigned int stride = state.n_stride_;
   float srcx = state.px_[srci];
   float srcy = state.py_[srci];
   float dstx = state.px_[dsti];
@@ -254,10 +238,19 @@ Proc::plain_seek_tally(unsigned int srci, unsigned int dsti,
   if (cunder) { dx -= width; }  else if (cover) { dx += width; }
   float dy = dsty - srcy;
   if (runder) { dy -= height; } else if (rover) { dy += height; }
+  float dist = (dx * dx) + (dy * dy);
 
   // ignore comparisons outside the vicinity scope
-  if ((dx * dx) + (dy * dy) > this->state_.scope_squared_) {
+  if (this->state_.scope_squared_ < dist) {
     return;
+  }
+
+  // add distance to neighbors distance list
+  if (stride > pn[srci]) {
+    state.pnd_[stride * srci + pn[srci]] = dist;
+  }
+  if (stride > pn[dsti]) {
+    state.pnd_[stride * dsti + pn[dsti]] = dist;
   }
 
   ++state.pn_[srci];

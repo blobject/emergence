@@ -14,8 +14,8 @@
 #include "../exp/exp.hh"
 
 
+enum class Type;
 enum class Coloring;
-enum class Sprite;
 class Exp;
 class Proc;
 class State;
@@ -142,14 +142,10 @@ class Control
   std::string cluster(float radius, unsigned int minpts);
 
   /// inject(): Thin wrapper around Exp::inject().
-  /// \param sprite  particle cluster sprite to be injected
-  /// \param dpe  resulting DPE after injection
+  /// \param type  particle cluster type to be injected
+  /// \param dpe  DPE after injection
   /// \returns  analysis result message
-  std::string inject(Sprite sprite, float dpe);
-
-  /// densities(): Thin wrapper around Exp::densities().
-  /// \returns  analysis result message
-  std::string densities();
+  std::string inject(Type type, float dpe);
 
   // members //////////////////////////////////////////////////////////////////
 

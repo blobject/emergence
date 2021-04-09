@@ -16,7 +16,11 @@
 
 // When: Type of report.
 
-enum class When { Done = 0, Paused };
+enum class When
+{
+  Done = 0,
+  Paused
+};
 
 
 class Headless : public View, Observer

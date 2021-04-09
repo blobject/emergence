@@ -1,8 +1,8 @@
 //===-- state/state.hh - State class declaration ---------------*- C++ -*-===//
 ///
 /// \file
-/// Declaration of the State class, which acts as the main data store for the
-/// particle system.
+/// Definition of the Type enum and declaration of the State class, which acts
+/// as the main data store for the particle system.
 ///
 //===---------------------------------------------------------------------===//
 
@@ -12,6 +12,41 @@
 #include "../util/log.hh"
 #include <string>
 #include <vector>
+
+
+// Type: Type of particle, by its vicinity/neighborhood/local density.
+//       While a type gets assigned per particle, this enum can also be used to
+//       refer to particle groups/structures/clusters.
+//       Should be continuous for TypeNames[].
+
+enum class Type
+{
+  None = 0,
+  PrematureSpore, // coloring and injecting
+  MatureSpore,    // coloring and injecting
+  Ring,           // injecting
+  PrematureCell,  // injecting
+  TriangleCell,   // injecting
+  SquareCell,     // injecting
+  PentagonCell,   // injecting
+  Nutrient,       // coloring
+  CellHull,       // coloring
+  CellCore        // coloring
+};
+
+static const std::string TypeNames[] = {
+  "(none)",
+  "premature spore",
+  "mature spore",
+  "ring",
+  "premature cell",
+  "triangle cell",
+  "square cell",
+  "pentagon cell",
+  "nutrient",
+  "cell hull",
+  "cell core"
+};
 
 
 struct Stative; // from control.hh
@@ -40,22 +75,24 @@ class State : public Subject
 
   //// particle
   // (volatile) location & direction
-  std::vector<float> px_;        // X parameter
-  std::vector<float> py_;        // Y parameter
-  std::vector<float> pf_;        // PHI parameter
-  std::vector<float> pc_;        // cos(PHI) parameter
-  std::vector<float> ps_;        // sin(PHI) parameter
+  std::vector<float> px_;         // X parameter
+  std::vector<float> py_;         // Y parameter
+  std::vector<float> pf_;         // PHI parameter
+  std::vector<float> pc_;         // cos(PHI) parameter
+  std::vector<float> ps_;         // sin(PHI) parameter
   // (volatile) vicinity
-  std::vector<unsigned int> pn_; // N(=L+R) parameter
-  std::vector<unsigned int> pl_; // L parameter
-  std::vector<unsigned int> pr_; // R parameter
+  std::vector<unsigned int> pn_;  // N(=L+R) parameter
+  std::vector<float>        pnd_; // neighbors distance list
+  std::vector<unsigned int> pl_;  // L parameter
+  std::vector<unsigned int> pr_;  // R parameter
+  std::vector<Type>         pt_;  // type (nutrient, mature spore, ring, etc.)
   // (volatile) grid
-  std::vector<int> gcol_;        // grid column the particle is in
-  std::vector<int> grow_;        // grid row the particle is in
+  std::vector<int> gcol_;         // grid column the particle is in
+  std::vector<int> grow_;         // grid row the particle is in
   // (volatile) color
-  std::vector<float> xr_;        // red
-  std::vector<float> xg_;        // green
-  std::vector<float> xb_;        // blue
+  std::vector<float> xr_;         // red
+  std::vector<float> xg_;         // green
+  std::vector<float> xb_;         // blue
 
   // transportable
   int          num_;      // # particles (negative for encoding input error)
@@ -70,6 +107,9 @@ class State : public Subject
 
   // derived
   float scope_squared_;
+
+  // fixed
+  unsigned int n_stride_; // neighbors list stride
 
  private:
   Log& log_;
