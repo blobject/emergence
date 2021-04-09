@@ -2,7 +2,7 @@
 #include "../util/util.hh"
 
 
-Canvas::Canvas(Log& log, Control& ctrl,
+Canvas::Canvas(Log& log, Control& ctrl, UiState& uistate,
                unsigned int width, unsigned int height,
                bool gui_on, bool three)
   : ctrl_(ctrl), log_(log), gui_on_(gui_on), three_(three)
@@ -17,8 +17,7 @@ Canvas::Canvas(Log& log, Control& ctrl,
   this->preamble(this->width_ / window_scale, this->height_ / window_scale);
 
   if (gui_on) {
-    auto gui_state = GuiState(ctrl);
-    this->gui_ = new Gui(log, gui_state, *this, this->window_, window_scale,
+    this->gui_ = new Gui(log, uistate, *this, this->window_, window_scale,
                          three);
     this->ago_ = glfwGetTime();
   }

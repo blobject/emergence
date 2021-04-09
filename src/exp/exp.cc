@@ -10,17 +10,6 @@ Exp::Exp(Log& log, State& state)
 
 
 void
-Exp::reset()
-{
-  this->neighbor_sets_.clear();
-  this->cores_.clear();
-  this->vague_.clear();
-  this->clusters_.clear();
-  this->palette_.clear();
-}
-
-
-void
 Exp::coloring(Coloring scheme)
 {
   State& state = this->state_;
@@ -79,6 +68,41 @@ Exp::coloring(Coloring scheme)
 }
 
 
+void
+Exp::reset_clustering()
+{
+  this->neighbor_sets_.clear();
+  this->cores_.clear();
+  this->vague_.clear();
+  this->clusters_.clear();
+  this->palette_.clear();
+}
+
+
+void
+Exp::cluster(float radius, unsigned int minpts)
+{
+  this->reset_clustering();
+  this->dbscan_categorise(radius, minpts);
+  this->dbscan_collect();
+}
+
+
+void
+Exp::inject(Sprite sprite, float dpe)
+{
+  std::cout << (int)sprite << std::endl;
+  std::cout << dpe << std::endl;
+}
+
+
+std::string
+Exp::densities()
+{
+  return "";
+}
+
+
 std::vector<float>
 Exp::palette_sample()
 {
@@ -92,36 +116,6 @@ Exp::palette_sample()
     });
   }
   return colors[index - 1];
-}
-
-
-/* particle hierarchy in clustering
- * --------------------------------
- *
- * world --> grid --> grid unit -.
- *        |                      |
- *        '------------------------> particles
- */
-
-std::string
-Exp::cluster(float radius, unsigned int minpts)
-{
-  this->reset();
-  this->dbscan_categorise(radius, minpts);
-  this->dbscan_collect();
-
-  float num = static_cast<float>(this->state_.num_);
-  unsigned int cores = this->cores_.size();
-  unsigned int vague = this->vague_.size();
-
-  std::stringstream s;
-  s.precision(4);
-  s << this->clusters_.size() << " clusters\n"
-    << "cores: " << cores << " (" << cores * 100 / num << "%)\n"
-    << "vague: " << vague << " (" << vague * 100 / num << "%)\n"
-    << "noise: " << static_cast<int>(num - cores - vague) << std::flush;
-
-  return s.str();
 }
 
 
@@ -375,19 +369,5 @@ Exp::dbscan_neighborhood(float radius)
       }
     }
   }
-}
-
-
-std::string
-Exp::inject()
-{
-  return "";
-}
-
-
-std::string
-Exp::densities()
-{
-  return "";
 }
 

@@ -1,4 +1,4 @@
-//===-- log.hh - Log class declaration -------------------------*- C++ -*-===//
+//===-- util/log.hh - Log class declaration --------------------*- C++ -*-===//
 ///
 /// \file
 /// Definition of the Attn enum and declaration of the Log class, which

@@ -1,4 +1,4 @@
-//===-- gl.hh - OpenGL wrapping --------------------------------*- C++ -*-===//
+//===-- view/gl.hh - OpenGL wrapping ---------------------------*- C++ -*-===//
 ///
 /// \file
 /// Declarations and definitions of helper classes that wrap around OpenGL
@@ -139,11 +139,13 @@ class VertexBufferAttribs
   /// \param size  number of data per stride
   /// \param offset  offset of the first vertex attribute
   /// \returns  an Attrib
-  template<typename T> inline static Attribs
+  template<typename T>
+  inline static Attribs
   gen(GLuint /* count */, GLuint /* size */, uintptr_t /* offset */) {}
 
   // float version of gen().
-  template<> inline Attribs
+  template<>
+  inline Attribs
   gen<GLfloat>(GLuint count, GLuint size, uintptr_t offset)
   {
     return {GL_FLOAT, count, GL_FALSE,
@@ -152,7 +154,8 @@ class VertexBufferAttribs
   }
 
   // unsigned int version of gen().
-  template<> inline Attribs
+  template<>
+  inline Attribs
   gen<GLuint>(GLuint count, GLuint size, uintptr_t offset)
   {
     return {GL_UNSIGNED_INT, count, GL_FALSE,

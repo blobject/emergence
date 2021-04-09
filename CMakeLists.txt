@@ -8,7 +8,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 # debugging
 set(CMAKE_BUILD_TYPE Debug)
 set(CMAKE_VERBOSE_MAKEFILE True)
-set(CMAKE_CXX_FLAGS "-Werror -Wall -Wextra")
+#set(CMAKE_CXX_FLAGS "-Werror -Wall -Wextra")
 
 set(ME emergence)
 project($ME)
@@ -31,41 +31,42 @@ add_library(imgui STATIC
 
 add_library(lib${ME} STATIC
   # core
-  src/state/state.cc
   src/proc/cl.cc
-  src/proc/proc.cc
   src/proc/control.cc
+  src/proc/proc.cc
+  src/state/state.cc
   # exp
   src/exp/exp.cc
   # view
-  src/view/view.cc
-  src/view/headless.cc
+  src/view/canvas.cc
   src/view/gl.cc
   src/view/gui.cc
-  src/view/canvas.cc
+  src/view/image.cc
+  src/view/headless.cc
+  src/view/state.cc
+  src/view/view.cc
   # util
+  src/util/log.cc
   src/util/util.cc
-  src/util/log.cc)
+)
 
 target_compile_definitions(lib${ME} PUBLIC DPI=${DPI})
 target_compile_definitions(lib${ME} PUBLIC MESA_GL_VERSION_OVERRIDE=3.3)
 target_compile_definitions(lib${ME} PUBLIC MESA_GLSL_VERSION_OVERRIDE=330)
+#target_link_libraries(lib${ME} imgui)
 
+set(LIBS lib${ME} GLEW glfw imgui OpenGL)
 if(OpenCL_FOUND AND EXISTS "${OpenCL_INCLUDE_DIR}/CL/cl2.hpp")
   target_compile_definitions(lib${ME} PUBLIC CL_ENABLED=${CL})
   target_compile_definitions(lib${ME} PUBLIC CL_TARGET_OPENCL_VERSION=210)
   target_compile_definitions(lib${ME} PUBLIC CL_HPP_TARGET_OPENCL_VERSION=210)
-  set(LIBRARIES lib${ME} GLEW glfw imgui OpenCL OpenGL)
-else()
-  set(LIBRARIES lib${ME} GLEW glfw imgui OpenGL)
+  set(LIBS ${LIBS} OpenCL)
 endif()
-
-target_link_libraries(lib${ME} imgui)
 
 add_executable(${ME} src/main.cc)
 enable_testing()
 add_executable(test${ME} test/test.cc)
 
-target_link_libraries(${ME} ${LIBRARIES})
-target_link_libraries(test${ME} ${LIBRARIES})
+target_link_libraries(${ME} ${LIBS})
+target_link_libraries(test${ME} ${LIBS})
 

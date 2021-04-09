@@ -55,7 +55,9 @@ main(int argc, char* argv[])
   auto proc = Proc(log, state, cl, no_cl);
   auto exp = Exp(log, state);
   auto ctrl = Control(log, state, proc, exp, init);
-  std::unique_ptr<View> view = View::init(log, ctrl, headless, gui_on, three);
+  auto uistate = UiState(ctrl);
+  std::unique_ptr<View> view = View::init(log, ctrl, uistate,
+                                          headless, gui_on, three);
 
   // execution
   while (!ctrl.quit_) {
@@ -70,7 +72,7 @@ main(int argc, char* argv[])
 static void
 usage()
 {
-  std::cout << "Usage: " << std::string(ME) << " -(?h|2|f FILE|g|p|q|u|v)"
+  std::cout << "Usage: " << std::string(ME) << " -(?h|2|c|f FILE|g|p|q|v)"
             << std::endl;
 }
 
@@ -83,13 +85,14 @@ help()
   std::cout << "\nPrimordial particle system visualiser/processor.\n\n"
             << "Options:\n"
             << "  -?|-h    show this help\n"
-            << "  -2       run in 2d mode (does not apply to headless mode)\n"
             << "  -f FILE  supply an initial state\n"
             << "  -g       run in headless mode\n"
             << "  -p       disable OpenCL\n"
-            << "  -q       suppress log to stdout (does not apply to headless mode)\n"
-            << "  -u       disable GUI and only show canvas (does not apply to headless mode)\n"
-            << "  -v       show version\n"
+            << "  -v       show version\n\n"
+            << "not applicable to headless mode:\n"
+            << "  -2       run in 2d mode\n"
+            << "  -c       disable GUI and only show canvas\n"
+            << "  -q       suppress log to stdout\n"
             << std::endl;
 }
 
@@ -101,40 +104,31 @@ help()
 static std::map<std::string,std::string>
 args(int argc, char* argv[])
 {
-  std::map<std::string,std::string> opts = {{"quit", ""},
-                                            {"headless", ""},
-                                            {"inputstate", ""},
-                                            {"nocl", ""},
-                                            {"nogui", ""},
-                                            {"two", ""},
-                                            {"quiet", ""},
-                                            {"return", ""}};
+  std::map<std::string,std::string> opts = {
+    {"quit", ""},
+    {"headless", ""},
+    {"inputstate", ""},
+    {"nocl", ""},
+    {"nogui", ""},
+    {"two", ""},
+    {"quiet", ""},
+    {"return", ""}
+  };
   int opt;
-  while (-1 != (opt = getopt(argc, argv, "?2cf:ghpquv"))) {
-    if ('g' == opt) {
-      opts["headless"] = ".";
-    } else if ('?' == opt || 'h' == opt) {
+  while (-1 != (opt = getopt(argc, argv, "?2cf:ghpqv"))) {
+    if ('?' == opt || 'h' == opt) {
       opts["quit"] = "help";
       opts["return"] = "0";
-    } else if ('2' == opt) {
-      opts["two"] = ".";
-    } else if ('p' == opt) {
-      opts["nocl"] = ".";
-    } else if ('q' == opt) {
-      opts["quiet"] = ".";
-    } else if ('u' == opt) {
-      opts["nogui"] = ".";
-    } else if ('v' == opt) {
-      opts["quit"] = "version"; opts["return"] = "0";
-    } else if (':' == opt) {
-      opts["quit"] = "nofile";
-      opts["return"] = "-1";
-    } else if ('f' == opt) {
-      opts["inputstate"] = optarg;
-    } else {
-      opts["quit"] = optopt;
-      opts["return"] = "-1";
     }
+    else if ('2' == opt) { opts["two"]      = "."; }
+    else if ('c' == opt) { opts["nogui"]    = "."; }
+    else if ('g' == opt) { opts["headless"] = "."; }
+    else if ('p' == opt) { opts["nocl"]     = "."; }
+    else if ('q' == opt) { opts["quiet"]    = "."; }
+    else if ('v' == opt) { opts["quit"] = "version"; opts["return"] = "0"; }
+    else if (':' == opt) { opts["quit"] = "nofile";  opts["return"] = "-1"; }
+    else if ('f' == opt) { opts["inputstate"] = optarg; }
+    else { opts["quit"] = optopt; opts["return"] = "-1"; }
   }
   return opts;
 }
@@ -170,7 +164,7 @@ argue(Log& log, std::map<std::string,std::string>& opts)
     } else if ("nofile" == opt) {
       log.add(Attn::E, "no file provided\n", true);
     } else if ("inputstate" == opt) {
-      log.add(Attn::E, "cannot read input state\n", true);
+      log.add(Attn::E, "trouble with input state\n", true);
     } else {
       log.add(Attn::E, "unknown argument: " + opts["quit"], true);
     }

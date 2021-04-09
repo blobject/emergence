@@ -1,4 +1,4 @@
-//===-- headless.hh - Headless class declaration ---------------*- C++ -*-===//
+//===-- view/headless.hh - Headless class declaration ----------*- C++ -*-===//
 ///
 /// \file
 /// Definition of the When enum and declaration of the Headless class, which is
@@ -23,10 +23,11 @@ class Headless : public View, Observer
 {
  public:
   /// constructor: Start observing Proc and Control, prepare signal handling,
-  ///              and notify user about pausing.
+  ///              and notify user about how to interact.
   /// \param log  Log object
   /// \param ctrl  Control object
-  Headless(Log& log, Control& ctrl);
+  /// \param uistate  UiState object
+  Headless(Log& log, Control& ctrl, UiState& uistate);
 
   /// destructor: Detach from observation.
   ~Headless() override;
@@ -37,15 +38,50 @@ class Headless : public View, Observer
 
   /// react(): React to Log::add(), Proc::next(), Proc::done().
   ///          This is a virtual function of the Observer class.
-  /// \param issue  which observed Subject's function to react to.
+  /// \param issue  which observed Subject's function to react to
   void react(Issue issue) override;
 
-  /// tell_pause(): Print message about pausing.
-  void tell_pause() const;
+  /// tell_usage(): Print message about pausing.
+  void tell_usage() const;
 
   /// report(): Print processed information.
-  /// \param when  whether processing is paused or done.
+  /// \param when  whether processing is paused or done
   void report(When when) const;
+
+  /// prompt_base(): Produce the base prompt.
+  void prompt_base() const;
+
+  /// prompt_analyse(): Produce the analyse prompt.
+  void prompt_analyse() const;
+
+  /// prompt_config(): Produce the config prompt.
+  void prompt_config() const;
+
+  /// tell_config(): Print current config (state).
+  /// \returns  current state
+  std::string tell_config() const;
+
+  /// prompt_param_int(): Produce an int param config prompt.
+  /// \param ask_param  param message
+  /// \param low  lower limit
+  /// \param high  higher limit
+  /// \param low_inc  whether lower limit inclusive
+  /// \param high_inc  whether higher limit inclusive
+  /// \returns  user input value
+  unsigned int prompt_param_int(const std::string& ask_param,
+                                unsigned int low, unsigned int high,
+                                bool low_inc, bool high_inc) const;
+
+  /// prompt_param_float(): Produce a float param config prompt.
+  /// \param ask_param  param message
+  /// \param low  lower limit
+  /// \param high  higher limit
+  /// \param low_inc  whether lower limit inclusive
+  /// \param high_inc  whether higher limit inclusive
+  /// \returns  user input value
+  float prompt_param_float(const std::string& ask_param,
+                           float low, float high,
+                           bool low_inc, bool high_inc) const;
 
   /// sigint_callback(): Handle Ctrl-C.
   /// \param signal  signal
@@ -54,5 +90,6 @@ class Headless : public View, Observer
  private:
   Log&     log_;
   Control& ctrl_;
+  UiState& uistate_;
 };
 

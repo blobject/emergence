@@ -1,4 +1,4 @@
-//===-- proc.hh - Proc class declaration ------------------------*- C++ -*-===//
+//===-- proc/proc.hh - Proc class declaration ------------------*- C++ -*-===//
 ///
 /// \file
 /// Declaration of the Proc class, which implements the core particle system
@@ -7,7 +7,7 @@
 /// invoked.
 /// Proc directly accesses State and is controlled by Control.
 ///
-//===----------------------------------------------------------------------===//
+//===---------------------------------------------------------------------===//
 
 #pragma once
 

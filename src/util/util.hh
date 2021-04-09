@@ -1,9 +1,9 @@
-//===-- util.hh - utility functions -----------------------------*- C++ -*-===//
+//===-- util/util.hh - utility functions -----------------------*- C++ -*-===//
 ///
 /// \file
 /// Declarations of static utility functions.
 ///
-//===----------------------------------------------------------------------===//
+//===---------------------------------------------------------------------===//
 
 #pragma once
 
@@ -121,14 +121,15 @@ class Util
     return r * 180.0f / M_PI;
   }
 
-  /// round_float(): Round to 3 decimal precision, used for State-GuiState
-  ///                comparisons.
-  /// \param f  float
-  /// \returns  float rounded to 3 decimal precision
-  static inline float
-  round_float(float f)
+  /// floats_same(): Whether two floats are the same up to 3 decimal precision.
+  ///                Used for State-UiState parameter comparisons.
+  /// \param a  a float
+  /// \param b  a float
+  /// \returns  true if a = b up to 3 decimal precision
+  static inline bool
+  floats_same(float a, float b)
   {
-    return std::round(f * 1000) / 1000.0f;
+    return std::round(a * 1000) / 1000.0f == std::round(b * 1000) / 1000.0f;
   }
 
   /// signum(): The signum function, used by Proc::plain_move().

@@ -1,11 +1,9 @@
-//===-- gui.hh - Gui class definition --------------------------*- C++ -*-===//
+//===-- view/gui.hh - Gui class definition ---------------------*- C++ -*-===//
 ///
 /// \file
-/// Definition of the GuiState struct and declaration the Control class, which
-/// is responsible for graphically rendering (via OpenGL) and managing the main
-/// window and the user interface elements.
-/// The GuiState struct is an intermediary State parameter storage before truly
-/// modifying State.
+/// Definition of the Dialog enum and declaration of the Gui class, which is
+/// responsible for graphically rendering and managing the graphical user
+/// interface elements.
 /// Gui is owned and called by the Canvas class (Canvas tells Gui to be drawn).
 /// Gui communicates with the Control class in order to access/modify State and
 /// handle Proc.
@@ -15,74 +13,16 @@
 #pragma once
 
 #include "canvas.hh"
-#include "../proc/control.hh"
-#include "../util/log.hh"
-#include "../util/util.hh"
-
+#include "image.hh"
+#include "state.hh"
 #include <imgui/imgui.h>
 #include <imgui/imgui_impl_glfw.h>
 #include <imgui/imgui_impl_opengl3.h>
 
 
-class GuiState
-{
-public:
-  /// constructor: Initialise GuiState with Control-provided State
-  ///              parameters.
-  /// \param ctrl  Control object
-  GuiState(Control& ctrl);
+// Dialog: Type of dialog.
 
-  /// current(): Get current Gui's state.
-  /// \returns  snapshot of current Gui's state
-  Stative current() const;
-
-  /// untrue(): Ask Control whether Gui's parameters are different from
-  ///           State's.
-  /// \returns  0 if Gui's state is the same as true State
-  ///           1 if Gui's state is non-respawn-different from true State
-  ///           -1 if GUi's state is respawn-different from true State
-  int untrue() const;
-
-  /// deceive(): Change true State parameters.
-  /// \param respawn  whether system should respawn
-  void deceive(bool respawn = false) const;
-
-  /// random(): Randomise true State parameters.
-  /// \param log  Log object
-  void random(Log& log);
-
-  /// coloring(): Apply coloring.
-  /// \param log  Log object
-  /// \param scheme  particle coloring scheme
-  void coloring(Log& log, Coloring scheme);
-
-  /// pattern(): Apply pattern parameters (ALPHA & BETA) to true State.
-  /// \param log  Log object
-  void pattern(Log& log);
-
-  /// save(): Thin wrapper around Control.Save().
-  /// \param path  string of path to the save file
-  bool save(const std::string& path);
-
-  /// load(): Thin wrapper around Control.load().
-  ///         Also update GuiState parameters immediately as a difference
-  ///         check would be circuitous.
-  /// \param path  string of path to the load file
-  bool load(const std::string& path);
-
-  Control&     ctrl_;
-  long long    stop_;
-  int          num_;
-  unsigned int width_;
-  unsigned int height_;
-  float        alpha_; // (degrees)
-  float        beta_; // (degrees)
-  float        scope_;
-  float        speed_;
-  float        prad_;
-  Coloring     coloring_;
-  int          pattern_;
-};
+enum class Dialog { None = 0, Config, Capture, Captured, Save, Load, Quit };
 
 
 class Canvas;
@@ -91,15 +31,14 @@ class Gui
 {
  public:
   /// constructor: Initialise the window and the UI, that is, those graphical
-  ///              entities that are not specifically related to the
-  ///              particles.
+  ///              entities that are not depended by the particle system.
   /// \param log  Log object
-  /// \param state  GuiState object
+  /// \param uistate  UiState object
   /// \param canvas  Canvas object
   /// \param window  GLFW window object
   /// \param scale  window scaling
   /// \param three  whether in 3D mode
-  Gui(Log& log, GuiState state, Canvas& canvas, GLFWwindow* window,
+  Gui(Log& log, UiState& uistate, Canvas& canvas, GLFWwindow* window,
       float scale, bool three);
 
   /// destructor: Clean up the window and the UI.
@@ -117,16 +56,24 @@ class Gui
   void draw_messages(bool draw);
 
   /// draw_config(): Render the configuration dialog.
-  /// \param draw  whether the configuration dialog should be drawn
-  void draw_config(char dialog);
+  /// \param draw  whether the onfiguration dialog should be drawn
+  void draw_config(Dialog dialog);
+
+  /// draw_capture(): Render the capture dialog.
+  /// \param dialog  whether the ca'p'ture dialog should be drawn
+  void draw_capture(Dialog dialog);
+
+  /// draw_captured(): Render the captured dialog.
+  /// \param dialog  whether the capture'd' dialog should be drawn
+  void draw_captured(Dialog dialog);
 
   /// draw_save_load(): Render the save/load dialog.
   /// \param dialog  whether the 's'ave or the 'l'oad dialog should be drawn
-  void draw_save_load(char dialog);
+  void draw_save_load(Dialog dialog);
 
   /// draw_quit(): Render the quit confirmation dialog.
   /// \param dialog  whether the 'q'uit dialog should be drawn
-  void draw_quit(char dialog);
+  void draw_quit(Dialog dialog);
 
   /// backspace(): Move cursor back one space.
   /// \param offset  how many more/less pixels to move back
@@ -177,11 +124,11 @@ class Gui
   /// \param h  new window height
   static void resize_callback(GLFWwindow* window, int w, int h);
 
-  Canvas&     canvas_;
+  Canvas& canvas_;
 
  private:
-  GuiState     state_;
   Log&         log_;
+  UiState&     uistate_;
   GLFWwindow*  window_;
   float        scale_;
   ImFont*      font_r;
@@ -189,9 +136,9 @@ class Gui
   ImFont*      font_i;
   ImFont*      font_z;
   int          font_width_;
-  bool         brief_;    // whether the brief information should be shown
-  bool         messages_; // whether the message log area should be shown
-  char         dialog_;   // which modal dialog should be shown
+  bool         brief_;    // whether brief information should be shown
+  bool         messages_; // whether message log area should be shown
+  Dialog       dialog_;   // which modal dialog should be shown
   double       ago_;      // last moment when counting of frames began (~1s)
   unsigned int frames_;   // accumulated number of draws
   float        fps_;      // calculated frames per second
@@ -200,9 +147,12 @@ class Gui
   bool         three_;    // whether in 3D mode
   bool         dolly_;    // whether mouse activated camera's dolly movement
   bool         pivot_;    // whether mouse activated camera's pivot movement
+  bool         capturing_;           // whether Gui is taking picture of window
+  std::string  capture_path_;        // path to taken picture
+  bool         bad_capture_;         // whether taking picture failed
   float        cluster_radius_;      // DBSCAN radius
   unsigned int cluster_minpts_;      // DBSCAN minpts
-  int          inject_model_;        // particle cluster model to be injected
+  int          inject_sprite_;       // particle cluster sprite to be injected
   float        inject_dpe_;          // resulting DPE after injection
   int          density_threshold_;   // current density mapping threshold
   std::string  message_exp_cluster_; // cluster-analysis-related message

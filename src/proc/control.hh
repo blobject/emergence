@@ -1,10 +1,10 @@
-//===-- control.hh - Control class declaration -----------------*- C++ -*-===//
+//===-- proc/control.hh - Control class declaration ------------*- C++ -*-===//
 ///
 /// \file
 /// Definition of the Stative struct and declaration of the Control class,
 /// which together provide the means for View to mutate/access State, either
 /// directly or through Proc.
-/// The Stative struct is a data transport between GuiState and State.
+/// The Stative struct is a data transport between UiState and State.
 ///
 //===---------------------------------------------------------------------===//
 
@@ -15,6 +15,7 @@
 
 
 enum class Coloring;
+enum class Sprite;
 class Exp;
 class Proc;
 class State;
@@ -141,8 +142,10 @@ class Control
   std::string cluster(float radius, unsigned int minpts);
 
   /// inject(): Thin wrapper around Exp::inject().
+  /// \param sprite  particle cluster sprite to be injected
+  /// \param dpe  resulting DPE after injection
   /// \returns  analysis result message
-  std::string inject();
+  std::string inject(Sprite sprite, float dpe);
 
   /// densities(): Thin wrapper around Exp::densities().
   /// \returns  analysis result message
@@ -150,9 +153,9 @@ class Control
 
   // members //////////////////////////////////////////////////////////////////
 
-  long long start_; // initial number of ticks
-  long long stop_;  // number of ticks until processing stops
-  bool      quit_;  // whether processing ought to stop
+  unsigned long tick_; // number of ticks so far
+  long long     stop_; // number of ticks until processing stops
+  bool          quit_; // whether processing ought to stop
 
  private:
   Exp&   exp_;

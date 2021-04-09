@@ -1,4 +1,4 @@
-//===-- cl.hh - Cl class declaration ---------------------------*- C++ -*-===//
+//===-- proc/cl.hh - Cl class declaration ----------------------*- C++ -*-===//
 ///
 /// \file
 /// Declaration of the (optional) Cl class, which provides the Proc class with

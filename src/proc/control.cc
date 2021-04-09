@@ -10,12 +10,12 @@ Control::Control(Log& log, State& state, Proc& proc, Exp& exp,
   : exp_(exp), log_(log), proc_(proc), state_(state)
 {
   this->stop_ = -1;
+  this->tick_ = 0;
   this->quit_ = false;
   if (!init_path.empty()) {
     this->load(init_path);
   }
-  this->start_ = this->stop_;
-  this->exp_.inject();
+  //this->exp_.inject();
 }
 
 
@@ -135,7 +135,6 @@ Control::load_file(const std::string& path)
       linestream = std::istringstream(line);
       // on read failure, the parameters are left unchanged
       if (linestream >> stop)   this->stop_   = stop;
-      this->start_ = this->stop_;
       if (linestream >> width)  truth.width_  = width;
       if (linestream >> height) truth.height_ = height;
       if (linestream >> alpha)  truth.alpha_  = Util::deg_to_rad(alpha);
@@ -224,10 +223,12 @@ Control::next()
     this->done();
   }
   proc.next();
-  // decrement tick count ("stop") unless -1 (eternal) or system paused
-  if (!proc.paused_ && -1 < stop) {
-    this->stop_ = stop - 1;
+  ++this->tick_;
+  // decrement countdown ("stop") unless -1 (eternal) or system paused
+  if (-1 >= stop || proc.paused_) {
+    return;
   }
+  this->stop_ = stop - 1;
 }
 
 
@@ -270,7 +271,7 @@ Control::cl_good() const
 void
 Control::reset_exp()
 {
-  this->exp_.reset();
+  this->exp_.reset_clustering();
 }
 
 
@@ -284,13 +285,30 @@ Control::coloring(Coloring scheme)
 std::string
 Control::cluster(float radius, unsigned int minpts)
 {
-  return this->exp_.cluster(radius, minpts);
+  Exp& exp = this->exp_;
+
+  exp.cluster(radius, minpts);
+
+  float num = static_cast<float>(this->get_num());
+  unsigned int num_cores = exp.cores_.size();
+  unsigned int num_vague = exp.vague_.size();
+
+  std::stringstream s;
+  s.precision(4);
+  s << exp.clusters_.size() << " clusters\n"
+    << "cores: " << num_cores << " (" << num_cores * 100 / num << "%)\n"
+    << "vague: " << num_vague << " (" << num_vague * 100 / num << "%)\n"
+    << "noise: " << static_cast<int>(num - num_cores - num_vague)
+    << std::flush;
+
+  return s.str();
 }
 
 std::string
-Control::inject()
+Control::inject(Sprite sprite, float dpe)
 {
-  return this->exp_.inject();
+  this->exp_.inject(sprite, dpe);
+  return "";
 }
 
 

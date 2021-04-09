@@ -1,4 +1,4 @@
-//===-- canvas.hh - Canvas class declaration -------------------*- C++ -*-===//
+//===-- view/canvas.hh - Canvas class declaration --------------*- C++ -*-===//
 ///
 /// \file
 /// Declaration of the Canvas class, which is responsible for a graphical
@@ -15,7 +15,6 @@
 #include "view.hh"
 #include "../util/common.hh"
 #include "../util/log.hh"
-
 #include <GLFW/glfw3.h>
 
 
@@ -28,11 +27,13 @@ class Canvas : public View, Observer
   ///              prepare the OpenGL environment.
   /// \param log  Log object
   /// \param ctrl  Control object
+  /// \param uistate  UiState object
   /// \param width  width of the graphical window
   /// \param height  height of the graphical height
   /// \param gui_on  whether GUI is enabled
   /// \param three  whether in 3D mode
-  Canvas(Log& log, Control& ctrl, unsigned int width, unsigned int height,
+  Canvas(Log& log, Control& ctrl, UiState& uistate,
+         unsigned int width, unsigned int height,
          bool gui_on, bool three);
 
   /// preamble(): OpenGL related preamble.
