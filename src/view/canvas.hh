@@ -28,13 +28,9 @@ class Canvas : public View, Observer
   /// \param log  Log object
   /// \param ctrl  Control object
   /// \param uistate  UiState object
-  /// \param width  width of the graphical window
-  /// \param height  height of the graphical height
   /// \param gui_on  whether GUI is enabled
   /// \param three  whether in 3D mode
-  Canvas(Log& log, Control& ctrl, UiState& uistate,
-         unsigned int width, unsigned int height,
-         bool gui_on, bool three);
+  Canvas(Log& log, Control& ctrl, UiState& uistate, bool gui_on, bool three);
 
   /// preamble(): OpenGL related preamble.
   /// \param window_width  scaled window width
@@ -114,21 +110,6 @@ class Canvas : public View, Observer
     this->three_ = yesno;
   }
 
-  /// pause(): Toggle pause of drawing and in Control.
-  inline void
-  pause()
-  {
-    this->paused_ = !this->paused_;
-    this->ctrl_.pause(this->paused_);
-  }
-
-  /// quit: Turn off system processing.
-  inline void
-  quit()
-  {
-    this->ctrl_.quit();
-  }
-
   /// camera_set(): Apply the current MVP matrices and set the corresponding
   ///               uniform for the vertex shader.
   inline void
@@ -144,13 +125,13 @@ class Canvas : public View, Observer
   /// set_pointer(): Create a pointer to self for access in callbacks.
   void set_pointer();
 
-  /// close(): Begin shutting down the window.
+  /// close(): Begin shutting down window.
   void close();
 
-  /// closing(): Whether the window is shutting down.
+  /// closing(): Whether window is shutting down.
   bool closing() const;
 
-  /// key_callback_no_gui(): User key input bindings (only pause and quit).
+  /// key_callback_no_gui(): User key input bindings (only pause, step, quit).
   /// \param window  pointer to the window object
   /// \param key  engaged key
   /// \param scancode  key scancode
@@ -173,7 +154,6 @@ class Canvas : public View, Observer
   VertexBuffer* vertex_buffer_quad_; // quad (particle shape) vector buffer
   VertexArray*  vertex_array_;
   Shader*       shader_;
-  bool paused_;    // no particle motion but accept user input
   GLfloat dollyd_; // camera position delta
   GLfloat pivotd_; // camera pivot angle delta
   GLfloat zoomd_;  // camera zoom delta

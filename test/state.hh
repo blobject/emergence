@@ -7,15 +7,17 @@ TEST_CASE("State::State")
   Log log = Log(1);
   State state = State(log);
   unsigned int num = state.num_;
-  REQUIRE(4000 == state.num_);
-  REQUIRE(1000 == state.width_);
-  REQUIRE(1000 == state.height_);
+  REQUIRE(5000 == state.num_);
+  REQUIRE(250 == state.width_);
+  REQUIRE(250 == state.height_);
   REQUIRE(Approx(Util::deg_to_rad(180)) == state.alpha_);
   REQUIRE(Approx(Util::deg_to_rad(17)) == state.beta_);
-  REQUIRE(24.0f == state.scope_);
-  REQUIRE(4.0f == state.speed_);
-  REQUIRE(2.0f == state.prad_);
-  REQUIRE(24.0f * 24.0f == state.scope_squared_);
+  REQUIRE(5.0f == state.scope_);
+  REQUIRE(1.3f == state.ascope_);
+  REQUIRE(0.67f == state.speed_);
+  REQUIRE(1.0f == state.prad_);
+  REQUIRE(5.0f * 5.0f == state.scope_squared_);
+  REQUIRE(1.3f * 1.3f == state.ascope_squared_);
   REQUIRE(num == state.px_.size());
   REQUIRE(num == state.py_.size());
   REQUIRE(num == state.pf_.size());
@@ -67,46 +69,44 @@ TEST_CASE("State::change")
 {
   Log log = Log(2);
   REQUIRE(0 == log.messages_.size());
+
   State state = State(log);
-  Stative stative = {-1,
-                     state.num_,
-                     state.width_,
-                     state.height_,
-                     state.alpha_,
-                     state.beta_,
-                     state.scope_,
-                     state.speed_,
-                     state.prad_,
-                     state.coloring_};
-  // TODO
-  //REQUIRE(false == state.change(stative));
-  stative = {-1,
-             state.num_,
-             state.width_,
-             state.height_,
-             state.alpha_ + 0.1f,
-             state.beta_,
-             state.scope_,
-             state.speed_,
-             state.prad_,
-             state.coloring_};
-  // TODO
-  //REQUIRE(true == state.change(stative));
+  Stative stative = {
+    -1,
+    state.num_,
+    state.width_,
+    state.height_,
+    state.alpha_ + 0.1f,
+    state.beta_,
+    state.scope_,
+    state.ascope_,
+    state.speed_,
+    state.prad_,
+    state.coloring_
+  };
+  state.change(stative, false);
   REQUIRE(1 == log.messages_.size());
-  REQUIRE("Changing state without respawn." == log.messages_.front().second);
-  stative = {-1,
-             state.num_ + 1,
-             state.width_,
-             state.height_,
-             state.alpha_,
-             state.beta_,
-             state.scope_,
-             state.speed_,
-             state.prad_,
-             state.coloring_};
-  // TODO
-  //REQUIRE(true == state.change(stative));
+  REQUIRE("Changed state without respawn." == log.messages_.front().second);
+
+  state.change(stative, true);
   REQUIRE(2 == log.messages_.size());
-  REQUIRE("Changing state and respawning." == log.messages_.front().second);
+  REQUIRE("Changed state with respawn." == log.messages_.front().second);
+
+  stative = {
+    -1,
+    state.num_ + 1,
+    state.width_,
+    state.height_,
+    state.alpha_,
+    state.beta_,
+    state.scope_,
+    state.ascope_,
+    state.speed_,
+    state.prad_,
+    state.coloring_
+  };
+  state.change(stative, true);
+  REQUIRE(3 == log.messages_.size());
+  REQUIRE("Changed state with respawn." == log.messages_.front().second);
 }
 

@@ -3,15 +3,14 @@
 
 
 Canvas::Canvas(Log& log, Control& ctrl, UiState& uistate,
-               unsigned int width, unsigned int height,
                bool gui_on, bool three)
   : ctrl_(ctrl), log_(log), gui_on_(gui_on), three_(three)
 {
   ctrl.attach_to_state(*this);
   ctrl.attach_to_proc(*this);
 
-  this->width_ = static_cast<GLfloat>(width);
-  this->height_ = static_cast<GLfloat>(height);
+  this->width_ = static_cast<GLfloat>(1000.0f);
+  this->height_ = static_cast<GLfloat>(1000.0f);
   float window_scale = DPI / 100.0f;
 
   this->preamble(this->width_ / window_scale, this->height_ / window_scale);
@@ -22,7 +21,8 @@ Canvas::Canvas(Log& log, Control& ctrl, UiState& uistate,
     this->ago_ = glfwGetTime();
   }
 
-  this->paused_ = false;
+  State& state = ctrl.get_state();
+
   this->levels_ = 50;
   this->level_ = 1;
   this->shift_counts_ = 5;
@@ -40,7 +40,8 @@ Canvas::Canvas(Log& log, Control& ctrl, UiState& uistate,
   view = glm::rotate(view, glm::radians(this->pivotax_),
                      glm::vec3(this->pivotx_, this->pivoty_, 1.0f));
   this->view_ = view;
-  this->orth_ = glm::ortho(0.0f, this->width_, 0.0f, this->height_,
+  this->orth_ = glm::ortho(0.0f, static_cast<GLfloat>(state.width_),
+                           0.0f, static_cast<GLfloat>(state.height_),
                            this->neardef_, this->neardef_ + 100.0f);
   this->model_ = glm::mat4(1.0f);
   this->proj_ = glm::perspective(glm::radians(50.0f),
@@ -144,13 +145,13 @@ Canvas::exec()
   }
 
   this->clear();
-  ctrl.coloring(ctrl.get_coloring());
+  ctrl.color(ctrl.get_coloring());
   this->draw(4, num, this->vertex_array_, this->shader_);
   if (this->gui_on_) {
     this->gui_->draw();
   }
   // if paused, only particle processing (Proc) gets paused
-  if (!this->paused_) {
+  if (!ctrl.paused_ || ctrl.step_) {
     if (this->three_) {
       this->next3d();
     } else {
@@ -186,7 +187,7 @@ Canvas::react(Issue issue)
     this->respawn();
     return;
   } if (Issue::ProcDone == issue) {
-    this->paused_ = true;
+    // empty
   }
 }
 
@@ -200,6 +201,7 @@ Canvas::spawn()
   std::vector<float>& xr = state.xr_;
   std::vector<float>& xg = state.xg_;
   std::vector<float>& xb = state.xb_;
+  std::vector<float>& xa = state.xa_;
   std::vector<GLfloat>& xyz = this->xyz_;
   std::vector<GLfloat>& rgba = this->rgba_;
   GLfloat near = this->neardef_;
@@ -210,7 +212,7 @@ Canvas::spawn()
     rgba.push_back(xr[i]);
     rgba.push_back(xg[i]);
     rgba.push_back(xb[i]);
-    rgba.push_back(1.0f);
+    rgba.push_back(xa[i]);
   }
   GLfloat prad = state.prad_;
   GLfloat quad[] = {0.0f, prad,
@@ -283,6 +285,7 @@ Canvas::next2d()
   std::vector<float>& xr = state.xr_;
   std::vector<float>& xg = state.xg_;
   std::vector<float>& xb = state.xb_;
+  std::vector<float>& xa = state.xa_;
   std::vector<GLfloat>& xyz = this->xyz_;
   std::vector<GLfloat>& rgba = this->rgba_;
   VertexBuffer* vb_xyz = this->vertex_buffer_xyz_;
@@ -300,7 +303,7 @@ Canvas::next2d()
     rgba[rgbai++] = xr[i];
     rgba[rgbai++] = xg[i];
     rgba[rgbai++] = xb[i];
-    rgba[rgbai++] = 1.0f;
+    rgba[rgbai++] = xa[i];
   }
 
   GLfloat* p_xyz = &xyz[0];
@@ -322,6 +325,7 @@ Canvas::next3d()
   std::vector<float>& xr = state.xr_;
   std::vector<float>& xg = state.xg_;
   std::vector<float>& xb = state.xb_;
+  std::vector<float>& xa = state.xa_;
   std::vector<GLfloat>& xyz = this->xyz_;
   std::vector<GLfloat>& rgba = this->rgba_;
   VertexBuffer* vb_xyz = this->vertex_buffer_xyz_;
@@ -350,7 +354,7 @@ Canvas::next3d()
     this->shift(shift, level, xr[i], 0.0f, rgba, rgbai, rgbaspan);
     this->shift(shift, level, xg[i], 0.0f, rgba, rgbai, rgbaspan);
     this->shift(shift, level, xb[i], 0.0f, rgba, rgbai, rgbaspan);
-    this->shift(shift, level, 1.0f, -1.0f, rgba, rgbai, rgbaspan);
+    this->shift(shift, level, xa[i], -1.0f, rgba, rgbai, rgbaspan);
   }
 
   // restrict the number of levels
@@ -398,8 +402,7 @@ Canvas::shift(bool shift, unsigned int level, GLfloat next, GLfloat d,
 void
 Canvas::camera_default()
 {
-  GLfloat w = this->width_;
-  GLfloat h = this->height_;
+  State& state = this->ctrl_.get_state();
   this->dolly_ = glm::vec3(0.0f, 0.0f, this->zoomdef_);
   this->pivotax_ = 0.0f;
   this->pivotay_ = 0.0f;
@@ -410,7 +413,11 @@ Canvas::camera_default()
   this->model_ = glm::mat4(1.0f);
   this->view_ = glm::rotate(view, glm::radians(this->pivotax_),
                             glm::vec3(this->pivotx_, this->pivoty_, 1.0f));
-  this->proj_ = glm::perspective(glm::radians(50.0f), w / h, 0.1f, 100.0f);
+  this->orth_ = glm::ortho(0.0f, static_cast<GLfloat>(state.width_),
+                           0.0f, static_cast<GLfloat>(state.height_),
+                           this->neardef_, this->neardef_ + 100.0f);
+  this->proj_ = glm::perspective(glm::radians(50.0f),
+                                 this->width_ / this->height_, 0.1f, 100.0f);
   this->camera_set();
 }
 
@@ -448,8 +455,12 @@ void
 Canvas::camera_resize(GLfloat w, GLfloat h)
 {
   DOGL(glViewport(0, 0, w, h));
+  State& state = this->ctrl_.get_state();
   this->width_ = w;
   this->height_ = h;
+  this->orth_ = glm::ortho(0.0f, static_cast<GLfloat>(state.width_),
+                           0.0f, static_cast<GLfloat>(state.height_),
+                           this->neardef_, this->neardef_ + 100.0f);
   this->proj_ = glm::perspective(glm::radians(50.0f), w / h, 0.1f, 100.0f);
   this->camera_set();
 }
@@ -475,7 +486,7 @@ void
 Canvas::close()
 {
   glfwSetWindowShouldClose(this->window_, true);
-  this->quit();
+  this->ctrl_.quit();
 }
 
 
@@ -491,6 +502,7 @@ Canvas::key_callback_no_gui(
   GLFWwindow* window, int key, int /* scancode */, int action, int mods
 ) {
   Canvas* canvas = static_cast<Canvas*>(glfwGetWindowUserPointer(window));
+  Control& ctrl = canvas->ctrl_;
 
   if (action == GLFW_PRESS) {
     if (mods & GLFW_MOD_CONTROL) {
@@ -500,7 +512,7 @@ Canvas::key_callback_no_gui(
       }
     }
     if (key == GLFW_KEY_SPACE) {
-      canvas->pause();
+      ctrl.pause(!ctrl.paused_);
       return;
     }
   }

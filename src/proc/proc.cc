@@ -7,7 +7,6 @@
 Proc::Proc(Log& log, State& state, Cl& cl, bool no_cl)
   : state_(state), cl_(cl)
 {
-  this->paused_ = false;
   this->cl_good_ = this->cl_.good();
   if (no_cl) {
     this->cl_good_ = false;
@@ -21,11 +20,6 @@ Proc::Proc(Log& log, State& state, Cl& cl, bool no_cl)
 void
 Proc::next()
 {
-  if (this->paused_) {
-    // do no processing but still let Views do their thing
-    this->notify(Issue::ProcNextDone); // Views react
-    return;
-  }
   this->plot();
 
 #if 1 == CL_ENABLED
@@ -49,16 +43,42 @@ void
 Proc::plot()
 {
   State& state = this->state_;
-  int num = state.num_;
 
   // clear particles' N, L, R
+  int num = state.num_;
   std::vector<unsigned int>& pn = state.pn_;
   std::vector<unsigned int>& pl = state.pl_;
   std::vector<unsigned int>& pr = state.pr_;
+  std::vector<unsigned int>& pan = state.pan_;
+  std::vector<int>& pls = state.pls_;
+  std::vector<int>& prs = state.prs_;
+  std::vector<float>& pld = state.pld_;
+  std::vector<float>& prd = state.prd_;
+  unsigned int n_stride = state.n_stride_;
+  unsigned int istride;
+  unsigned int jstride;
   for (int i = 0; i < num; ++i) {
     pn[i] = 0;
     pl[i] = 0;
     pr[i] = 0;
+    pan[i] = 0;
+    istride = n_stride * i;
+    for (int j = 0; j < n_stride; ++j) {
+      jstride = istride + j;
+      if (0 > pls[jstride]) {
+        break;
+      }
+      pls[jstride] = -1;
+      pld[jstride] = -1.0f;
+    }
+    for (int j = 0; j < n_stride; ++j) {
+      jstride = istride + j;
+      if (0 > prs[jstride]) {
+        break;
+      }
+      prs[jstride] = -1;
+      prd[jstride] = -1.0f;
+    }
   }
 
   // the columns and rows of the grid are flattened to a single list, but each
@@ -125,13 +145,13 @@ void
 Proc::seek()
 {
   State& state = this->state_;
-  this->cl_.seek(this->grid_, this->grid_stride_, state.num_,
-                 state.px_, state.py_, state.pc_, state.ps_,
-                 state.pn_, state.pnd_, state.pl_, state.pr_,
-                 state.gcol_, state.grow_,
+  unsigned int num = state.num_;
+  this->cl_.seek(num, state.width_, state.height_,
+                 state.scope_squared_, state.ascope_squared_,
                  this->grid_cols_, this->grid_rows_,
-                 state.width_, state.height_, state.scope_squared_,
-                 state.n_stride_);
+                 this->grid_stride_, this->grid_, state.gcol_, state.grow_,
+                 state.px_, state.py_, state.pc_, state.ps_,
+                 state.pn_, state.pan_, state.pl_, state.pr_);
 }
 
 
@@ -139,11 +159,10 @@ void
 Proc::move()
 {
   State& state = this->state_;
-  this->cl_.move(state.num_, state.px_, state.py_,
-                 state.pf_, state.pc_, state.ps_,
+  this->cl_.move(state.num_, state.width_, state.height_,
+                 state.alpha_, state.beta_, state.speed_,
                  state.pn_, state.pl_, state.pr_,
-                 state.width_, state.height_,
-                 state.alpha_, state.beta_, state.speed_);
+                 state.px_, state.py_, state.pf_, state.pc_, state.ps_);
 }
 
 #endif /* CL_ENABLED */
@@ -153,6 +172,7 @@ void
 Proc::plain_seek()
 {
   State& state = this->state_;
+  unsigned int num = state.num_;
   std::vector<int>& grid = this->grid_;
   int cols = this->grid_cols_;
   int rows = this->grid_rows_;
@@ -161,15 +181,18 @@ Proc::plain_seek()
   std::vector<int>& grow = state.grow_;
 
   // for each particle index
-  for (int srci = 0; srci < state.num_; ++srci) {
+  for (int srci = 0; srci < num; ++srci) {
     this->plain_seek_vicinity(grid, stride,
                               gcol[srci], grow[srci], cols, rows, srci);
+  }
+  for (int i = 0; i < num; ++i) {
+    state.pn_[i] = state.pl_[i] + state.pr_[i];
   }
 }
 
 
 void
-Proc::plain_seek_vicinity(std::vector<int>& grid, unsigned int stride,
+Proc::plain_seek_vicinity(std::vector<int>& grid, unsigned int gstride,
                           int col, int row, int cols, int rows, int srci)
 {
   // recognise the vicinity (with edge wrapping)
@@ -198,13 +221,15 @@ Proc::plain_seek_vicinity(std::vector<int>& grid, unsigned int stride,
                  /* nw */ c,   rr,  cunder, false, false,  rover,
                  /* n  */ col, rr,  false,  false, false,  rover,
                  /* ne */ cc,  rr,  false,  cover, false,  rover};
+  unsigned int stride;
   int dsti;
 
   // for every unit in the vicinity (neighborhood)
   for (unsigned int v = 0; v < 54; v += 6) {
+    stride = (cols * (vic[v + 1] * gstride)) + (vic[v] * gstride);
     // for each particle index within the unit
-    for (unsigned int p = 0; p < stride; ++p) {
-      dsti = grid[cols * (vic[v + 1] * stride) + (vic[v] * stride) + p];
+    for (unsigned int p = 0; p < gstride; ++p) {
+      dsti = grid[stride + p];
       // avoid grid padding area (meaning no particle left in that unit)
       if (dsti == -1) {
         break;
@@ -226,12 +251,23 @@ Proc::plain_seek_tally(unsigned int srci, unsigned int dsti,
                        bool cunder, bool cover, bool runder, bool rover)
 {
   State& state = this->state_;
+  std::vector<float>& px = state.px_;
+  std::vector<float>& py = state.py_;
+  std::vector<float>& pc = state.pc_;
+  std::vector<float>& ps = state.ps_;
   std::vector<unsigned int>& pn = state.pn_;
-  unsigned int stride = state.n_stride_;
-  float srcx = state.px_[srci];
-  float srcy = state.py_[srci];
-  float dstx = state.px_[dsti];
-  float dsty = state.py_[dsti];
+  std::vector<unsigned int>& pl = state.pl_;
+  std::vector<unsigned int>& pr = state.pr_;
+  std::vector<unsigned int>& pan = state.pn_;
+  std::vector<int>& pls = state.pls_;
+  std::vector<int>& prs = state.prs_;
+  std::vector<float>& pld = state.pld_;
+  std::vector<float>& prd = state.prd_;
+  unsigned int n_stride = state.n_stride_;
+  float srcx = px[srci];
+  float srcy = py[srci];
+  float dstx = px[dsti];
+  float dsty = py[dsti];
   float width = this->state_.width_;
   float height = this->state_.height_;
   float dx = dstx - srcx;
@@ -245,24 +281,50 @@ Proc::plain_seek_tally(unsigned int srci, unsigned int dsti,
     return;
   }
 
-  // add distance to neighbors distance list
-  if (stride > pn[srci]) {
-    state.pnd_[stride * srci + pn[srci]] = dist;
+  ++pn[srci];
+  ++pn[dsti];
+  float srcc = pc[srci];
+  float srcs = ps[srci];
+  float dstc = pc[dsti];
+  float dsts = ps[dsti];
+  unsigned int srcstride = n_stride * srci;
+  unsigned int dststride = n_stride * dsti;
+  unsigned int srcl = pl[srci];
+  unsigned int srcr = pr[srci];
+  unsigned int dstl = pl[dsti];
+  unsigned int dstr = pr[dsti];
+  unsigned int srcli = srcstride + srcl;
+  unsigned int srcri = srcstride + srcr;
+  unsigned int dstli = dststride + dstl;
+  unsigned int dstri = dststride + dstr;
+  if (0.0f > (dx * srcs) - (dy * srcc)) {
+    if (n_stride > srcr) {
+      prs[srcri] = dsti;
+      prd[srcri] = dist;
+    }
+    ++pr[srci];
   }
-  if (stride > pn[dsti]) {
-    state.pnd_[stride * dsti + pn[dsti]] = dist;
+  else {
+    if (n_stride > srcl) {
+      pls[srcli] = dsti;
+      pld[srcli] = dist;
+    }
+    ++pl[srci];
   }
-
-  ++state.pn_[srci];
-  ++state.pn_[dsti];
-  float srcc = state.pc_[srci];
-  float srcs = state.ps_[srci];
-  float dstc = state.pc_[dsti];
-  float dsts = state.ps_[dsti];
-  if (0.0f > (dx * srcs) - (dy * srcc)) { ++state.pr_[srci]; }
-  else                                  { ++state.pl_[srci]; }
-  if (0.0f < (dx * dsts) - (dy * dstc)) { ++state.pr_[dsti]; }
-  else                                  { ++state.pl_[dsti]; }
+  if (0.0f < (dx * dsts) - (dy * dstc)) {
+    if (n_stride > dstr) {
+      prs[dstri] = srci;
+      prd[dstri] = dist;
+    }
+    ++pr[dsti];
+  }
+  else {
+    if (n_stride > dstl) {
+      pls[dstli] = srci;
+      pld[dstli] = dist;
+    }
+    ++pl[dsti];
+  }
 }
 
 

@@ -3,7 +3,7 @@
 #include <signal.h>
 
 
-// global data for sigint handling
+// global instance for sigint handling
 static Headless* hoc;
 
 
@@ -18,6 +18,11 @@ Headless::Headless(Log& log, Control& ctrl, UiState& uistate)
   sigemptyset(&sig.sa_mask);
   sig.sa_flags = 0;
   sigaction(SIGINT, &sig, NULL);
+  if (ctrl.paused_) {
+    ctrl.paused_ = false;
+    this->prompt_base();
+    return;
+  }
   this->tell_usage();
 }
 
@@ -33,7 +38,9 @@ void
 Headless::exec()
 {
   if (-1 == this->ctrl_.stop_) {
-    std::cout << "   Processing for eternity...\r";
+    std::cout << "   Processing for eternity... (tick "
+              << this->ctrl_.tick_ << ")   \r"
+              << std::flush;
   } else {
     // flushing makes ticking appear smooth but slows processing
     std::cout << "   Tick " << this->ctrl_.stop_ << "          \r"
@@ -81,7 +88,9 @@ Headless::report(When when) const
             << "\n  beta:   " << state.beta_
             << " (" << Util::rad_to_deg(state.beta_) << " deg)"
             << "\n  scope:  " << state.scope_
-            << "\n  speed:  " << state.speed_;
+            << "\n  ascope:  " << state.ascope_
+            << "\n  speed:  " << state.speed_
+            << std::flush;
 }
 
 
@@ -89,7 +98,7 @@ void
 Headless::prompt_base() const
 {
   Control& ctrl = this->ctrl_;
-  std::string menu_base = "\n\n(R)ESUME\n(P)RINT params\n(C)ONFIG params\n(A)NALYSE\n(S)AVE state & quit\n(L)OAD state\n(Q)UIT\n> ";
+  std::string menu_base = "\n\nbase menu:\n[R]ESUME\n[P]RINT params\n[C]ONFIG params\n[A]NALYSE\n[I]NSPECT\n[S]AVE state & quit\n[L]OAD state\n[Q]UIT\n> ";
 
   char key;
   while (true) {
@@ -97,7 +106,7 @@ Headless::prompt_base() const
     system("stty raw");
     key = getchar();
     system("stty cooked");
-    if (std::string("AaCcLlPpQqRrSs").find(key) == std::string::npos) {
+    if (std::string("AaCcIiLlPpQqRrSs").find(key) == std::string::npos) {
       continue;
     }
     if ('A' == key || 'a' == key) {
@@ -106,6 +115,10 @@ Headless::prompt_base() const
     }
     if ('C' == key || 'c' == key) {
       this->prompt_config();
+      continue;
+    }
+    if ('I' == key || 'i' == key) {
+      this->prompt_inspect();
       continue;
     }
     if ('P' == key || 'p' == key) {
@@ -149,36 +162,10 @@ Headless::prompt_base() const
 
 
 void
-Headless::prompt_analyse() const
-{
-  Control& ctrl = this->ctrl_;
-  std::string menu_analyse = "\n\nanalyse:\n(B)ACK to base menu\n(C)LUSTER particles\n(D)ENSITY\n(I)NJECT cluster\n> ";
-
-  char key;
-  while (true) {
-    std::cout << menu_analyse << std::flush;
-    system("stty raw");
-    key = getchar();
-    system("stty cooked");
-    if (std::string("BbCcDdIi").find(key) == std::string::npos) {
-      continue;
-    }
-    if ('B' == key || 'b' == key) {
-      return;
-    }
-    if ('C' == key || 'c' == key) {
-      std::cout << "\n" << ctrl.cluster(24.0f, 14) << std::flush;
-      continue;
-    }
-  }
-}
-
-
-void
 Headless::prompt_config() const
 {
   UiState& uistate = this->uistate_;
-  std::string menu_config = "\n\nconfig:\n(B)ACK to base menu";
+  std::string menu_config = "\n\nconfig:\n[B]ACK to base menu";
 
   unsigned int n;
   float f;
@@ -236,6 +223,13 @@ Headless::prompt_config() const
       uistate.deceive();
       continue;
     }
+    if ('A' == key || 'a' == key) {
+      f = this->prompt_param_float("\nascope (float, 1<=x<=1bil)> ",
+                                   0.0f, 1000000000.0f, true, true);
+      uistate.ascope_ = f;
+      uistate.deceive();
+      continue;
+    }
     if ('S' == key || 's' == key) {
       f = this->prompt_param_float("\nspeed (float, 0<x<=1bil)> ",
                                    0.0f, 1000000000.0f, false, true);
@@ -247,18 +241,88 @@ Headless::prompt_config() const
 }
 
 
+void
+Headless::prompt_analyse() const
+{
+  Control& ctrl = this->ctrl_;
+  UiState& uistate = this->uistate_;
+  std::string menu_analyse = "\n\nanalyse:\n[B]ACK to base menu\n[C]LUSTER particles\n[I]NJECT a cluster\n> ";
+
+  char key;
+  while (true) {
+    std::cout << menu_analyse << std::flush;
+    system("stty raw");
+    key = getchar();
+    system("stty cooked");
+    if (std::string("BbCcDdIi").find(key) == std::string::npos) {
+      continue;
+    }
+    if ('B' == key || 'b' == key) {
+      return;
+    }
+    if ('C' == key || 'c' == key) {
+      std::cout << "\n" << ctrl.cluster(uistate.scope_, 14) << std::flush;
+      continue;
+    }
+    if ('I' == key || 'i' == key) {
+      std::cout << "\n" << ctrl.inject(Type::MatureSpore, 0.08f) << std::flush;
+      continue;
+    }
+  }
+}
+
+
+void
+Headless::prompt_inspect() const
+{
+  Control& ctrl = this->ctrl_;
+  UiState& uistate = this->uistate_;
+  Exp& exp = ctrl.get_exp();
+  std::string menu_inspect = "\n\ninspect:\n[B]ACK to base menu\n[P]ARTICLE\nCLUSTER[S]\n[C]LUSTER\n> ";
+
+  char key;
+  while (true) {
+    std::cout << menu_inspect << std::flush;
+    system("stty raw");
+    key = getchar();
+    system("stty cooked");
+    if (std::string("BbCcPpSs").find(key) == std::string::npos) {
+      continue;
+    }
+    if ('B' == key || 'b' == key) {
+      return;
+    }
+    if ('C' == key || 'c' == key) {
+      ctrl.cluster(uistate.scope_, 14);
+      std::cout << "\n" << exp.clusters_.size() << std::flush;
+      continue;
+    }
+    if ('P' == key || 'p' == key) {
+      std::cout << "\n" << ctrl.get_state().px_[0] << std::flush;
+      continue;
+    }
+    if ('S' == key || 's' == key) {
+      ctrl.cluster(uistate.scope_, 14);
+      std::cout << "\n" << exp.clusters_.size() << std::flush;
+      continue;
+    }
+  }
+}
+
+
 std::string
 Headless::tell_config() const
 {
   Stative current = this->uistate_.current();
   std::ostringstream s;
-  s << "\n(n)um,    " << current.num
-    << "\n(w)idth,  " << current.width
-    << "\n(h)eight, " << current.height
-    << "\n(1)alpha, " << current.alpha
-    << "\n(2)beta,  " << current.beta
+  s << "\n[n]um,    " << current.num
+    << "\n[w]idth,  " << current.width
+    << "\n[h]eight, " << current.height
+    << "\n[1]alpha, " << current.alpha
+    << "\n[2]beta,  " << current.beta
     << "\n(v)scope, " << current.scope
-    << "\n(s)peed,  " << current.speed;
+    << "\n[a]scope, " << current.ascope
+    << "\n[s]peed,  " << current.speed;
   return s.str();
 }
 

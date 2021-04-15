@@ -35,7 +35,7 @@ This is a rewrite and extension of an [[https://github.com/blobject/mff/tree/mas
 
 *** Linux
 
-- If OpenCL is desired, install NEO ::
+- If OpenCL is desired on Intel graphics, install NEO ::
 - Refer to https://github.com/intel/compute-runtime.
 - If possible, install the necessary packages via your distribution's package manager.
 - Otherwise:
@@ -49,7 +49,7 @@ This is a rewrite and extension of an [[https://github.com/blobject/mff/tree/mas
 - Build ::
 1. Retrieve this repository from https://github.com/blobject/emergence.
 1. ~cd emergence~
-1. Optionally configure =DPI= and =CL= in CMakeLists.txt.
+1. Optionally configure =DPI= (default =200=) and =CL= (default =on=) in CMakeLists.txt.
 1. ~rm -R build; mkdir build; cd build~
 1. ~cmake ..~
 1. ~make~

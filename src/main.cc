@@ -35,8 +35,9 @@ main(int argc, char* argv[])
   // configuration
   std::string init = opts["inputstate"];
   bool headless = !opts["headless"].empty();
-  bool no_cl = !opts["nocl"].empty();
   bool gui_on = opts["nogui"].empty();
+  bool no_cl = !opts["nocl"].empty();
+  bool pause = !opts["pause"].empty();
   bool three = opts["two"].empty();
 
   /* dependency & observation graph
@@ -49,12 +50,13 @@ main(int argc, char* argv[])
    *         |    |              |             '--> Gui
    *         '-- Ctrl <-- View <---- Headless
    */
+
   // system objects
   auto state = State(log);
   auto cl = Cl(log); // stub object if OpenCL is unavailable
   auto proc = Proc(log, state, cl, no_cl);
-  auto exp = Exp(log, state);
-  auto ctrl = Control(log, state, proc, exp, init);
+  auto exp = Exp(log, state, no_cl);
+  auto ctrl = Control(log, state, proc, exp, init, pause);
   auto uistate = UiState(ctrl);
   std::unique_ptr<View> view = View::init(log, ctrl, uistate,
                                           headless, gui_on, three);
@@ -72,7 +74,7 @@ main(int argc, char* argv[])
 static void
 usage()
 {
-  std::cout << "Usage: " << std::string(ME) << " -(?h|2|c|f FILE|g|p|q|v)"
+  std::cout << "Usage: " << std::string(ME) << " -(?h|2|c|f FILE|g|p|q|v|x)"
             << std::endl;
 }
 
@@ -85,14 +87,15 @@ help()
   std::cout << "\nPrimordial particle system visualiser/processor.\n\n"
             << "Options:\n"
             << "  -?|-h    show this help\n"
+            << "  -v       show version\n"
+            << "  -c       disable OpenCL\n"
             << "  -f FILE  supply an initial state\n"
-            << "  -g       run in headless mode\n"
-            << "  -p       disable OpenCL\n"
-            << "  -v       show version\n\n"
-            << "not applicable to headless mode:\n"
-            << "  -2       run in 2d mode\n"
-            << "  -c       disable GUI and only show canvas\n"
-            << "  -q       suppress log to stdout\n"
+            << "  -p       start paused\n"
+            << "  -x       run in headless mode\n\n"
+            << "only in graphical mode:\n"
+            << "  -2       start in 2d mode\n"
+            << "  -g       disable GUI and only show canvas\n"
+            << "  -q       suppress logging to stdout\n"
             << std::endl;
 }
 
@@ -105,27 +108,29 @@ static std::map<std::string,std::string>
 args(int argc, char* argv[])
 {
   std::map<std::string,std::string> opts = {
-    {"quit", ""},
     {"headless", ""},
     {"inputstate", ""},
     {"nocl", ""},
     {"nogui", ""},
-    {"two", ""},
+    {"pause", ""},
     {"quiet", ""},
-    {"return", ""}
+    {"quit", ""},
+    {"return", ""},
+    {"two", ""}
   };
   int opt;
-  while (-1 != (opt = getopt(argc, argv, "?2cf:ghpqv"))) {
+  while (-1 != (opt = getopt(argc, argv, "?2cf:ghpqvx"))) {
     if ('?' == opt || 'h' == opt) {
       opts["quit"] = "help";
       opts["return"] = "0";
     }
     else if ('2' == opt) { opts["two"]      = "."; }
-    else if ('c' == opt) { opts["nogui"]    = "."; }
-    else if ('g' == opt) { opts["headless"] = "."; }
-    else if ('p' == opt) { opts["nocl"]     = "."; }
+    else if ('c' == opt) { opts["nocl"]     = "."; }
+    else if ('g' == opt) { opts["nogui"]    = "."; }
+    else if ('p' == opt) { opts["pause"]    = "."; }
     else if ('q' == opt) { opts["quiet"]    = "."; }
     else if ('v' == opt) { opts["quit"] = "version"; opts["return"] = "0"; }
+    else if ('x' == opt) { opts["headless"] = "."; }
     else if (':' == opt) { opts["quit"] = "nofile";  opts["return"] = "-1"; }
     else if ('f' == opt) { opts["inputstate"] = optarg; }
     else { opts["quit"] = optopt; opts["return"] = "-1"; }

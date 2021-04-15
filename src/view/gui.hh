@@ -1,7 +1,7 @@
 //===-- view/gui.hh - Gui class definition ---------------------*- C++ -*-===//
 ///
 /// \file
-/// Definition of the Dialog enum and declaration of the Gui class, which is
+/// Definition of the Box enum and declaration of the Gui class, which is
 /// responsible for graphically rendering and managing the graphical user
 /// interface elements.
 /// Gui is owned and called by the Canvas class (Canvas tells Gui to be drawn).
@@ -20,9 +20,9 @@
 #include <imgui/imgui_impl_opengl3.h>
 
 
-// Dialog: Type of dialog.
+// Box: Type of dialog box.
 
-enum class Dialog
+enum class Box
 {
   None = 0,
   Config,
@@ -64,25 +64,28 @@ class Gui
   /// \param draw  whether the message log area should be drawn
   void draw_messages(bool draw);
 
-  /// draw_config(): Render the configuration dialog.
-  /// \param draw  whether the onfiguration dialog should be drawn
-  void draw_config(Dialog dialog);
+  /// draw_config(): Render the configuration box.
+  /// \param draw  whether the onfiguration box should be drawn
+  void draw_config(Box box);
 
-  /// draw_capture(): Render the capture dialog.
-  /// \param dialog  whether the ca'p'ture dialog should be drawn
-  void draw_capture(Dialog dialog);
+  /// draw_capture(): Render the capture box.
+  /// \param box  whether the ca'p'ture box should be drawn
+  void draw_capture(Box box);
 
-  /// draw_captured(): Render the captured dialog.
-  /// \param dialog  whether the capture'd' dialog should be drawn
-  void draw_captured(Dialog dialog);
+  /// draw_captured(): Render the captured box.
+  /// \param box  whether the capture'd' box should be drawn
+  void draw_captured(Box box);
 
-  /// draw_save_load(): Render the save/load dialog.
-  /// \param dialog  whether the 's'ave or the 'l'oad dialog should be drawn
-  void draw_save_load(Dialog dialog);
+  /// draw_save_load(): Render the save/load box.
+  /// \param box  whether the 's'ave or the 'l'oad box should be drawn
+  void draw_save_load(Box box);
 
-  /// draw_quit(): Render the quit confirmation dialog.
-  /// \param dialog  whether the 'q'uit dialog should be drawn
-  void draw_quit(Dialog dialog);
+  /// draw_quit(): Render the quit confirmation box.
+  /// \param box  whether the 'q'uit box should be drawn
+  void draw_quit(Box box);
+
+  /// gen_message_exp_inspect(): Compute inspection message.
+  void gen_message_exp_inspect();
 
   /// backspace(): Move cursor back one space.
   /// \param offset  how many more/less pixels to move back
@@ -94,7 +97,7 @@ class Gui
   }
 
   /// auto_width(): Set next element width.
-  /// \param width  width of dialog box
+  /// \param width  width of box box
   /// \param factor  how much to divide the remaining space by
   void auto_width(int width, int factor = 1);
 
@@ -140,32 +143,41 @@ class Gui
   UiState&     uistate_;
   GLFWwindow*  window_;
   float        scale_;
+  std::string  cwd_;
   ImFont*      font_r;
   ImFont*      font_b;
   ImFont*      font_i;
   ImFont*      font_z;
   int          font_width_;
-  bool         brief_;    // whether brief information should be shown
-  bool         messages_; // whether message log area should be shown
-  Dialog       dialog_;   // which modal dialog should be shown
-  double       ago_;      // last moment when counting of frames began (~1s)
-  unsigned int frames_;   // accumulated number of draws
-  float        fps_;      // calculated frames per second
-  double       x_;        // mouse cursor's x position
-  double       y_;        // mouse cursor's y position
-  bool         three_;    // whether in 3D mode
-  bool         dolly_;    // whether mouse activated camera's dolly movement
-  bool         pivot_;    // whether mouse activated camera's pivot movement
+  bool         brief_;       // whether brief information should be shown
+  bool         messages_;    // whether message log area should be shown
+  Box          box_;         // which dialog box should be shown
+  float        box_opacity_; // opacity of dialog boxes
+  bool         input_focus_; // focus marker for when the dialog box opens
+  double       ago_;         // last moment when counting of frames began (~1s)
+  unsigned int frames_;      // accumulated number of draws
+  float        fps_;         // calculated frames per second
+  double       x_;           // mouse cursor's x position
+  double       y_;           // mouse cursor's y position
+  bool         three_;       // whether in 3D mode
+  bool         dolly_;       // whether mouse activated camera's dolly movement
+  bool         pivot_;       // whether mouse activated camera's pivot movement
   bool         capturing_;      // whether Gui is taking picture of window
   std::string  capture_path_;   // path to taken picture
   bool         bad_capture_;    // whether taking picture failed
+  int          coloring_;       // particle coloring scheme
   float        cluster_radius_; // DBSCAN radius
   unsigned int cluster_minpts_; // DBSCAN minpts
   int          inject_sprite_;  // particle cluster sprite model to be injected
   float        inject_dpe_;     // DPE after injection
-  int          density_threshold_;   // current density mapping threshold
-  std::string  message_exp_cluster_; // cluster-analysis-related message
-  std::string  message_exp_inject_;  // injection-analysis-related message
-  std::string  message_exp_density_; // density-analysis-related message
+  int          inspect_particle_;         // particle index under inspection
+  int          inspect_cluster_;          // cluster index under inspection
+  int          inspect_cluster_particle_; // cluster particle index under insp
+  std::string  message_set_;         // habitat-preset-related message
+  std::string  message_exp_color_;   // coloring-related message
+  std::string  message_exp_cluster_; // clustering-related message
+  std::string  message_exp_inject_;  // injection-related message
+  std::string  message_exp_inspect_; // inspection-related message
+  std::string  message_exp_inspect_default_;
 };
 

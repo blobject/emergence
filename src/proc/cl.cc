@@ -59,26 +59,32 @@ void
 Cl::prep_seek()
 {
   std::string code =
+    "void inc(\n"
+    "  volatile __global int* n\n"
+    ") {\n"
+    "  atomic_inc(n);\n"
+    "}\n"
+    "\n"
     "__kernel void particles_seek(\n"
-    "  float W,\n"
-    "  float H,\n"
-    "  float SCOPE,\n"
+    "  __private float W,\n"
+    "  __private float H,\n"
+    "  __private float SCOPE,\n"
+    "  __private float ASCOPE,\n"
+    "  __private int COLS,\n"
+    "  __private int ROWS,\n"
+    "  __private unsigned int GSTRIDE,\n"
     "  __global const uint* G,\n"
+    "  __global const int* COL,\n"
+    "  __global const int* ROW,\n"
     "  __global const float* PX,\n"
     "  __global const float* PY,\n"
     "  __global const float* PC,\n"
     "  __global const float* PS,\n"
     "  __global unsigned int* PN,\n"
-    "  __global float* PND,\n"
+    "  __global unsigned int* PAN,\n"
     "  __global unsigned int* PL,\n"
-    "  __global unsigned int* PR,\n"
-    "  __global const int* COL,\n"
-    "  __global const int* ROW,\n"
-    "  int COLS,\n"
-    "  int ROWS,\n"
-    "  uint STRIDE,\n"
-    "  uint NSTRIDE)\n"
-    "{\n"
+    "  __global unsigned int* PR\n"
+    ") {\n"
     "  int srci = get_global_id(0);\n"
     "  int cc  = COL[srci];\n"
     "  int rr  = ROW[srci];\n"
@@ -103,31 +109,33 @@ Cl::prep_seek()
     "                 c,   rrr, c_u,   false, false, r_o,\n"
     "                 cc,  rrr, false, false, false, r_o,\n"
     "                 ccc, rrr, false, c_o,   false, r_o};\n"
+    "  unsigned int stride;\n"
     "  int dsti;\n"
     "  float srcx;\n"
     "  float srcy;\n"
-    "  float srcc;\n"
-    "  float srcs;\n"
     "  float dstx;\n"
     "  float dsty;\n"
-    "  float dstc;\n"
-    "  float dsts;\n"
     "  float dx;\n"
     "  float dy;\n"
     "  float dist;\n"
+    "  float srcc;\n"
+    "  float srcs;\n"
+    "  float dstc;\n"
+    "  float dsts;\n"
     "  for (int v = 0; v < 54; v += 6) {\n"
-    "    for (int p = 0; p < STRIDE; ++p) {\n"
-    "      dsti = G[COLS * (vic[v+1] * STRIDE) + (vic[v] * STRIDE) + p];\n"
-    "      if (dsti == -1) {"
+    "    stride = (COLS * (vic[v + 1] * GSTRIDE)) + (vic[v] * GSTRIDE);\n"
+    "    c_u = vic[v + 2];\n"
+    "    c_o = vic[v + 3];\n"
+    "    r_u = vic[v + 4];\n"
+    "    r_o = vic[v + 5];\n"
+    "    for (int p = 0; p < GSTRIDE; ++p) {\n"
+    "      dsti = G[stride + p];\n"
+    "      if (dsti == -1) {\n"
     "        break;\n"
     "      }\n"
-    "      if (srci <= dsti) {"
+    "      if (srci <= dsti) {\n"
     "        continue;\n"
     "      }\n"
-    "      c_u = vic[v + 2];\n"
-    "      c_o = vic[v + 3];\n"
-    "      r_u = vic[v + 4];\n"
-    "      r_o = vic[v + 5];\n"
     "      srcx = PX[srci];\n"
     "      dstx = PX[dsti];\n"
     "      dx = dstx - srcx;\n"
@@ -137,34 +145,80 @@ Cl::prep_seek()
     "      dy = dsty - srcy;\n"
     "      if (r_u) { dy -= H; } else if (r_o) { dy += H; }\n"
     "      dist = (dx * dx) + (dy * dy);\n"
-    "      if (SCOPE < dist) {"
+    "      if (SCOPE < dist) {\n"
     "        continue;\n"
     "      }\n"
-    "      if (NSTRIDE > PN[srci]) {\n"
-    "        PND[NSTRIDE * srci + PN[srci]] = dist;\n"
+    "      if (ASCOPE >= dist) {\n"
+    "        inc(&PAN[srci]);\n"
+    "        inc(&PAN[dsti]);\n"
     "      }\n"
-    "      if (NSTRIDE > PN[dsti]) {\n"
-    "        PND[NSTRIDE * dsti + PN[dsti]] = dist;\n"
-    "      }\n"
-    "      ++PN[srci];\n"
-    "      ++PN[dsti];\n"
+    "      inc(&PN[srci]);\n"
+    "      inc(&PN[dsti]);\n"
     "      srcc = PC[srci];\n"
     "      srcs = PS[srci];\n"
     "      dstc = PC[dsti];\n"
     "      dsts = PS[dsti];\n"
-    "      if (0.0f > (dx * srcs) - (dy * srcc)) { ++PR[srci]; }\n"
-    "      else                                  { ++PL[srci]; }\n"
-    "      if (0.0f < (dx * dsts) - (dy * dstc)) { ++PR[dsti]; }\n"
-    "      else                                  { ++PL[dsti]; }\n"
+    "      if (0.0f > (dx * srcs) - (dy * srcc)) { inc(&PR[srci]); }\n"
+    "      else                                  { inc(&PL[srci]); }\n"
+    "      if (0.0f < (dx * dsts) - (dy * dstc)) { inc(&PR[dsti]); }\n"
+    "      else                                  { inc(&PL[dsti]); }\n"
+    /**
+    // TODO: duplication and misses occur when modifying PLS/PRD/etc. in
+    //       parallel, so passing in alternative neighborhood scope instead.
+    "      dststride = NSTRIDE * dsti;\n"
+    "      srcl = PL[srci];\n"
+    "      srcr = PR[srci];\n"
+    "      dstl = PL[dsti];\n"
+    "      dstr = PR[dsti];\n"
+    "      srcli = srcstride + srcl;\n"
+    "      srcri = srcstride + srcr;\n"
+    "      dstli = dststride + dstl;\n"
+    "      dstri = dststride + dstr;\n"
+    "      if (0.0f > (dx * srcs) - (dy * srcc)) {\n"
+    "        if (NSTRIDE > srcr) {\n"
+    "          PRS[srcri] = dsti;\n"
+    "          PRD[srcri] = dist;\n"
+    "        }\n"
+    "        inc(&PR[srci]);\n"
+    "      }\n"
+    "      else {\n"
+    "        if (NSTRIDE > srcl) {\n"
+    "          PLS[srcli] = dsti;\n"
+    "          PLD[srcli] = dist;\n"
+    "        }\n"
+    "        inc(&PL[srci]);\n"
+    "      }\n"
+    "      if (0.0f < (dx * dsts) - (dy * dstc)) {\n"
+    "        if (NSTRIDE > dstr) {\n"
+    "          PRS[dstri] = srci;\n"
+    "          PRD[dstri] = dist;\n"
+    "        }\n"
+    "        inc(&PR[dsti]);\n"
+    "      }\n"
+    "      else {\n"
+    "        if (NSTRIDE > dstl) {\n"
+    "          PLS[dstli] = srci;\n"
+    "          PLD[dstli] = dist;\n"
+    "        }\n"
+    "        inc(&PL[dsti]);\n"
+    "      }\n"
+    //*/
     "    }\n"
     "  }\n"
     "}\n";
 
-  int compile;
+  Log& log = this->log_;
+  int compile_err;
   try {
+    std::string name = "particles_seek";
     cl::Program program(this->context_, code, CL_TRUE);
-    this->kernel_seek_ = cl::Kernel(program, "particles_seek", &compile);
-    //std::cout << "seek kernel: " << compile << std::endl;
+    this->kernel_seek_ = cl::Kernel(program, name.c_str(), &compile_err);
+    if (compile_err) {
+      log.add(Attn::Ecl, std::to_string(compile_err) + ": failed to compile '"
+              + name + "'.", true);
+    } else {
+      log.add(Attn::O, "OpenCL successfully compiled '" + name + "'.", true);
+    }
   } catch (cl_int err) {
     this->log_.add(Attn::Ecl, std::to_string(err), true);
   }
@@ -172,22 +226,25 @@ Cl::prep_seek()
 
 
 void
-Cl::seek(std::vector<int>& grid, unsigned int grid_stride, unsigned int n,
+Cl::seek(unsigned int n, unsigned int w, unsigned int h,
+         float scope, float ascope, int cols, int rows,
+         unsigned int grid_stride, std::vector<int>& grid,
+         std::vector<int>& gcol, std::vector<int>& grow,
          std::vector<float>& px, std::vector<float>& py,
          std::vector<float>& pc, std::vector<float>& ps,
-         std::vector<unsigned int>& pn, std::vector<float>& pnd,
-         std::vector<unsigned int>& pl, std::vector<unsigned int>& pr,
-         std::vector<int>& gcol, std::vector<int>& grow,
-         int cols, int rows, unsigned int w, unsigned int h, float scope2,
-         unsigned int n_stride)
+         std::vector<unsigned int>& pn, std::vector<unsigned int>& pan,
+         std::vector<unsigned int>& pl, std::vector<unsigned int>& pr)
 {
   const cl_uint float_size = n * sizeof(float);
   const cl_uint int_size = n * sizeof(int);
   const cl_uint uint_size = n * sizeof(unsigned int);
-  const cl_uint pnd_size = n_stride * float_size;
   try {
     cl::Buffer G(this->context_, CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR,
                  cols * rows * grid_stride * sizeof(int), grid.data());
+    cl::Buffer COL(this->context_, CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR,
+                   int_size, gcol.data());
+    cl::Buffer ROW(this->context_, CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR,
+                   int_size, grow.data());
     cl::Buffer PX(this->context_, CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR,
                   float_size, px.data());
     cl::Buffer PY(this->context_, CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR,
@@ -196,40 +253,36 @@ Cl::seek(std::vector<int>& grid, unsigned int grid_stride, unsigned int n,
                   float_size, pc.data());
     cl::Buffer PS(this->context_, CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR,
                   float_size, ps.data());
-    cl::Buffer COL(this->context_, CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR,
-                   int_size, gcol.data());
-    cl::Buffer ROW(this->context_, CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR,
-                   int_size, grow.data());
     cl::Buffer PN(this->context_, CL_MEM_READ_WRITE, uint_size);
-    cl::Buffer PND(this->context_, CL_MEM_READ_WRITE, pnd_size);
+    cl::Buffer PAN(this->context_, CL_MEM_READ_WRITE, uint_size);
     cl::Buffer PL(this->context_, CL_MEM_READ_WRITE, uint_size);
     cl::Buffer PR(this->context_, CL_MEM_READ_WRITE, uint_size);
     this->kernel_seek_.setArg( 0, static_cast<cl_float>(w));
     this->kernel_seek_.setArg( 1, static_cast<cl_float>(h));
-    this->kernel_seek_.setArg( 2, static_cast<cl_float>(scope2));
-    this->kernel_seek_.setArg( 3, G);
-    this->kernel_seek_.setArg( 4, PX);
-    this->kernel_seek_.setArg( 5, PY);
-    this->kernel_seek_.setArg( 6, PC);
-    this->kernel_seek_.setArg( 7, PS);
-    this->kernel_seek_.setArg( 8, PN);
-    this->kernel_seek_.setArg( 9, PND);
-    this->kernel_seek_.setArg(10, PL);
-    this->kernel_seek_.setArg(11, PR);
-    this->kernel_seek_.setArg(12, COL);
-    this->kernel_seek_.setArg(13, ROW);
-    this->kernel_seek_.setArg(14, static_cast<cl_int>(cols));
-    this->kernel_seek_.setArg(15, static_cast<cl_int>(rows));
-    this->kernel_seek_.setArg(16, static_cast<cl_int>(grid_stride));
-    this->kernel_seek_.setArg(17, static_cast<cl_int>(n_stride));
+    this->kernel_seek_.setArg( 2, static_cast<cl_float>(scope));
+    this->kernel_seek_.setArg( 3, static_cast<cl_float>(ascope));
+    this->kernel_seek_.setArg( 4, static_cast<cl_int>(cols));
+    this->kernel_seek_.setArg( 5, static_cast<cl_int>(rows));
+    this->kernel_seek_.setArg( 6, static_cast<cl_int>(grid_stride));
+    this->kernel_seek_.setArg( 7, G);
+    this->kernel_seek_.setArg( 8, COL);
+    this->kernel_seek_.setArg( 9, ROW);
+    this->kernel_seek_.setArg(10, PX);
+    this->kernel_seek_.setArg(11, PY);
+    this->kernel_seek_.setArg(12, PC);
+    this->kernel_seek_.setArg(13, PS);
+    this->kernel_seek_.setArg(14, PN);
+    this->kernel_seek_.setArg(15, PAN);
+    this->kernel_seek_.setArg(16, PL);
+    this->kernel_seek_.setArg(17, PR);
     this->queue_.enqueueWriteBuffer(PN, CL_TRUE, 0, uint_size, pn.data());
-    this->queue_.enqueueWriteBuffer(PND, CL_TRUE, 0, pnd_size, pnd.data());
+    this->queue_.enqueueWriteBuffer(PAN, CL_TRUE, 0, uint_size, pan.data());
     this->queue_.enqueueWriteBuffer(PL, CL_TRUE, 0, uint_size, pl.data());
     this->queue_.enqueueWriteBuffer(PR, CL_TRUE, 0, uint_size, pr.data());
     this->queue_.enqueueNDRangeKernel(this->kernel_seek_,
                                       cl::NullRange, n, cl::NullRange);
     this->queue_.enqueueReadBuffer(PN, CL_TRUE, 0, uint_size, pn.data());
-    this->queue_.enqueueReadBuffer(PND, CL_TRUE, 0, pnd_size, pnd.data());
+    this->queue_.enqueueReadBuffer(PAN, CL_TRUE, 0, uint_size, pan.data());
     this->queue_.enqueueReadBuffer(PL, CL_TRUE, 0, uint_size, pl.data());
     this->queue_.enqueueReadBuffer(PR, CL_TRUE, 0, uint_size, pr.data());
     this->queue_.finish();
@@ -244,23 +297,23 @@ Cl::prep_move()
 {
   std::string code =
     "__kernel void particles_move(\n"
-    "  float W,\n"
-    "  float H,\n"
-    "  float A,\n"
-    "  float B,\n"
-    "  float S,\n"
+    "  __private float TAU,\n"
+    "  __private float W,\n"
+    "  __private float H,\n"
+    "  __private float A,\n"
+    "  __private float B,\n"
+    "  __private float S,\n"
+    "  __global const unsigned int* PN,\n"
+    "  __global const unsigned int* PL,\n"
+    "  __global const unsigned int* PR,\n"
     "  __global float* PX,\n"
     "  __global float* PY,\n"
     "  __global float* PF,\n"
     "  __global float* PC,\n"
-    "  __global float* PS,\n"
-    "  __global const unsigned int* PN,\n"
-    "  __global const unsigned int* PL,\n"
-    "  __global const unsigned int* PR,\n"
-    "  float TAU)\n"
-    "{\n"
+    "  __global float* PS\n"
+    ") {\n"
     "  int i = get_global_id(0);\n"
-    "  int signum = (0 < (int)(PR[i]-PL[i])) - ((int)(PR[i]-PL[i]) < 0);\n"
+    "  int signum = (0 < (int)(PR[i] - PL[i])) - ((int)(PR[i] - PL[i]) < 0);\n"
     "  float f = fmod(PF[i] + A + (B * PN[i] * (float)signum), TAU);\n"
     "  if (f < 0) { f += TAU; }\n"
     "  PF[i] = f;\n"
@@ -273,11 +326,19 @@ Cl::prep_move()
     "  if (y < 0.0f) { y += H; }\n"
     "  PY[i] = y;\n"
     "}\n";
-  int compile;
+
+  Log& log = this->log_;
+  int compile_err;
   try {
+    std::string name = "particles_move";
     cl::Program program(this->context_, code, CL_TRUE);
-    this->kernel_move_ = cl::Kernel(program, "particles_move", &compile);
-    //std::cout << "move kernel: " << compile << std::endl;
+    this->kernel_move_ = cl::Kernel(program, name.c_str(), &compile_err);
+    if (compile_err) {
+      log.add(Attn::Ecl, std::to_string(compile_err) + ": failed to compile '"
+              + name + "'.", true);
+    } else {
+      log.add(Attn::O, "OpenCL successfully compiled '" + name + "'.", true);
+    }
   } catch (cl_int err) {
     this->log_.add(Attn::Ecl, std::to_string(err), true);
   }
@@ -285,41 +346,41 @@ Cl::prep_move()
 
 
 void
-Cl::move(unsigned int n, std::vector<float>& px, std::vector<float>& py,
-         std::vector<float>& pf,
-         std::vector<float>& pc, std::vector<float>& ps,
-         std::vector<unsigned int>& pn,
+Cl::move(unsigned int n, unsigned int w, unsigned int h,
+         float a, float b, float s, std::vector<unsigned int>& pn,
          std::vector<unsigned int>& pl, std::vector<unsigned int>& pr,
-         unsigned int w, unsigned int h, float a, float b, float s)
+         std::vector<float>& px, std::vector<float>& py,
+         std::vector<float>& pf,
+         std::vector<float>& pc, std::vector<float>& ps)
 {
   const cl_uint float_size = n * sizeof(float);
   const cl_uint uint_size = n * sizeof(unsigned int);
   try {
-    cl::Buffer PX(this->context_, CL_MEM_READ_WRITE, float_size);
-    cl::Buffer PY(this->context_, CL_MEM_READ_WRITE, float_size);
-    cl::Buffer PF(this->context_, CL_MEM_READ_WRITE, float_size);
-    cl::Buffer PC(this->context_, CL_MEM_READ_WRITE, float_size);
-    cl::Buffer PS(this->context_, CL_MEM_READ_WRITE, float_size);
     cl::Buffer PN(this->context_, CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR,
                   uint_size, pn.data());
     cl::Buffer PL(this->context_, CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR,
                   uint_size, pl.data());
     cl::Buffer PR(this->context_, CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR,
                   uint_size, pr.data());
-    this->kernel_move_.setArg( 0, static_cast<cl_float>(w));
-    this->kernel_move_.setArg( 1, static_cast<cl_float>(h));
-    this->kernel_move_.setArg( 2, static_cast<cl_float>(a));
-    this->kernel_move_.setArg( 3, static_cast<cl_float>(b));
-    this->kernel_move_.setArg( 4, static_cast<cl_float>(s));
-    this->kernel_move_.setArg( 5, PX);
-    this->kernel_move_.setArg( 6, PY);
-    this->kernel_move_.setArg( 7, PF);
-    this->kernel_move_.setArg( 8, PC);
-    this->kernel_move_.setArg( 9, PS);
-    this->kernel_move_.setArg(10, PN);
-    this->kernel_move_.setArg(11, PL);
-    this->kernel_move_.setArg(12, PR);
-    this->kernel_move_.setArg(13, TAU);
+    cl::Buffer PX(this->context_, CL_MEM_READ_WRITE, float_size);
+    cl::Buffer PY(this->context_, CL_MEM_READ_WRITE, float_size);
+    cl::Buffer PF(this->context_, CL_MEM_READ_WRITE, float_size);
+    cl::Buffer PC(this->context_, CL_MEM_READ_WRITE, float_size);
+    cl::Buffer PS(this->context_, CL_MEM_READ_WRITE, float_size);
+    this->kernel_move_.setArg( 0, TAU);
+    this->kernel_move_.setArg( 1, static_cast<cl_float>(w));
+    this->kernel_move_.setArg( 2, static_cast<cl_float>(h));
+    this->kernel_move_.setArg( 3, static_cast<cl_float>(a));
+    this->kernel_move_.setArg( 4, static_cast<cl_float>(b));
+    this->kernel_move_.setArg( 5, static_cast<cl_float>(s));
+    this->kernel_move_.setArg( 6, PN);
+    this->kernel_move_.setArg( 7, PL);
+    this->kernel_move_.setArg( 8, PR);
+    this->kernel_move_.setArg( 9, PX);
+    this->kernel_move_.setArg(10, PY);
+    this->kernel_move_.setArg(11, PF);
+    this->kernel_move_.setArg(12, PC);
+    this->kernel_move_.setArg(13, PS);
     this->queue_.enqueueWriteBuffer(PX, CL_TRUE, 0, float_size, px.data());
     this->queue_.enqueueWriteBuffer(PY, CL_TRUE, 0, float_size, py.data());
     this->queue_.enqueueWriteBuffer(PF, CL_TRUE, 0, float_size, pf.data());

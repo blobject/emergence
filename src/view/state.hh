@@ -36,17 +36,12 @@ public:
   void deceive(bool respawn = false) const;
 
   /// random(): Randomise true State parameters.
-  /// \param log  Log object
-  void random(Log& log);
-
-  /// coloring(): Apply coloring.
-  /// \param log  Log object
-  /// \param scheme  particle coloring scheme
-  void coloring(Log& log, Coloring scheme);
+  /// \returns  parameter preset message
+  std::string random();
 
   /// pattern(): Apply pattern parameters (ALPHA & BETA) to true State.
-  /// \param log  Log object
-  void pattern(Log& log);
+  /// \returns  parameter preset message
+  std::string pattern();
 
   /// save(): Thin wrapper around Control.Save().
   /// \param path  string of path to the save file
@@ -66,6 +61,7 @@ public:
   float        alpha_; // (degrees)
   float        beta_; // (degrees)
   float        scope_;
+  float        ascope_;
   float        speed_;
   float        prad_;
   Coloring     coloring_;

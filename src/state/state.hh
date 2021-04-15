@@ -62,16 +62,22 @@ class State : public Subject
   /// spawn(): Initialise the particle parameters.
   void spawn();
 
-  /// respawn(): Reinitialise the particle parameters.
-  void respawn();
-
   /// clear(): Clear out the particle parameters.
   void clear();
+
+  /// respawn(): Reinitialise the particle parameters.
+  void respawn();
 
   /// change(): Mutate the system parameters.
   /// \param input  system parameters to change to
   /// \param respawn  whether system should respawn
   void change(Stative& input, bool respawn);
+
+  /// type_name(): Get name of a particle type.
+  ///              Assumes that the Type enum is continuous.
+  /// \param type  particle type
+  /// \returns  name of particle type
+  std::string type_name(Type type);
 
   //// particle
   // (volatile) location & direction
@@ -82,9 +88,13 @@ class State : public Subject
   std::vector<float> ps_;         // sin(PHI) parameter
   // (volatile) vicinity
   std::vector<unsigned int> pn_;  // N(=L+R) parameter
-  std::vector<float>        pnd_; // neighbors distance list
   std::vector<unsigned int> pl_;  // L parameter
   std::vector<unsigned int> pr_;  // R parameter
+  std::vector<unsigned int> pan_; // alternative N parameter (for spores)
+  std::vector<int>          pls_; // L neighbor indices (signed!)
+  std::vector<int>          prs_; // R neighbor indices (signed!)
+  std::vector<float>        pld_; // L neighbor distances
+  std::vector<float>        prd_; // R neighbor distances
   std::vector<Type>         pt_;  // type (nutrient, mature spore, ring, etc.)
   // (volatile) grid
   std::vector<int> gcol_;         // grid column the particle is in
@@ -93,6 +103,7 @@ class State : public Subject
   std::vector<float> xr_;         // red
   std::vector<float> xg_;         // green
   std::vector<float> xb_;         // blue
+  std::vector<float> xa_;         // opacity
 
   // transportable
   int          num_;      // # particles (negative for encoding input error)
@@ -101,15 +112,17 @@ class State : public Subject
   float        alpha_;    // alpha in main formula (radians)
   float        beta_;     // beta in main formula (radians)
   float        scope_;    // vicinity radius
+  float        ascope_;   // alternative vicinity radius
   float        speed_;    // movement multiplier
   float        prad_;     // particle radius
   int          coloring_; // particle color scheme (int)
 
   // derived
   float scope_squared_;
+  float ascope_squared_;
 
   // fixed
-  unsigned int n_stride_; // neighbors list stride
+  unsigned int n_stride_; // neighbor list stride
 
  private:
   Log& log_;

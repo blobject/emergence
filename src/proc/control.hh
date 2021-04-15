@@ -29,9 +29,10 @@ struct Stative
   float        alpha;    // alpha in main formula (radians)
   float        beta;     // beta in main formula (radians)
   float        scope;    // vicinity radius
+  float        ascope;   // alternative vicinity radius (for spores)
   float        speed;    // movement multiplier
   float        prad;     // particle radius
-  int          coloring; // particle color scheme (int)
+  int          coloring; // particle coloring scheme (int)
 };
 
 
@@ -43,8 +44,10 @@ class Control
   /// \param state  State object
   /// \param proc  Proc object
   /// \param init  path to the file containing an initial state
+  /// \param pause  whether system should start paused
+
   Control(Log& log, State& state, Proc& proc, Exp& exp,
-          const std::string& init);
+          const std::string& init, bool pause);
 
   // State ////////////////////////////////////////////////////////////////////
 
@@ -52,22 +55,26 @@ class Control
   void attach_to_state(Observer& observer);
   void detach_from_state(Observer& observer);
 
-  /// get_state(): Return a reference to the State.
-  /// \returns  reference to the state
+  /// get_state(): Return a reference to State.
+  /// \returns  reference to State
   State& get_state() const;
+
+  /// get_exp(): Return a reference to Exp.
+  /// \returns  reference to Exp
+  Exp& get_exp() const;
 
   /// get_num(): Return the number of particles.
   /// \returns  number of particles
   int get_num() const;
 
   /// get_num(): Return the particle color scheme.
-  /// \returns  particle color scheme
+  /// \returns  particle coloring scheme
   Coloring get_coloring() const;
 
   /// change(): Change system parameters.
   /// \param input  input system parameters
   /// \param respawn  whether system should respawn
-  void change(Stative& input, bool respawn) const;
+  void change(Stative& input, bool respawn);
 
   /// load(): Patch in an initialising state.
   /// \param path  path to the file containing an initial state
@@ -86,7 +93,7 @@ class Control
    * - Second line and onwards contain particle data
    * - Namely:
    *
-   * START WIDTH HEIGHT ALPHA BETA SCOPE SPEED PRAD
+   * START WIDTH HEIGHT ALPHA BETA SCOPE ASCOPE SPEED PRAD
    * 0 X0 Y0 PHI0
    * 1 X1 Y1 PHI1
    * ...
@@ -117,7 +124,7 @@ class Control
   void pause(bool yesno);
 
   /// done(): Thin wrapper around Proc::done().
-  void done() const;
+  void done();
 
   /// quit(): Stops the main() loop.
   void quit();
@@ -131,9 +138,15 @@ class Control
   /// reset_exp(): Thin wrapper around Exp::reset().
   void reset_exp();
 
-  /// coloring(): Thin wrapper around Exp::coloring().
+  /// color(): Thin wrapper around Exp::color().
   /// \param scheme  particle coloring scheme
-  void coloring(Coloring scheme);
+  /// \returns  coloring result message
+  std::string color(Coloring scheme);
+
+  /// highlight(): Thin wrapper around Exp::highlight().
+  /// \param particles  list of particle indices to highlight
+  /// \returns  coloring result message
+  std::string highlight(std::vector<unsigned int>& particles);
 
   /// cluster(): Thin wrapper around Exp::cluster().
   /// \param radius  DBSCAN neighborhood radius ("epsilon" in literature)
@@ -149,9 +162,12 @@ class Control
 
   // members //////////////////////////////////////////////////////////////////
 
-  unsigned long tick_; // number of ticks so far
-  long long     stop_; // number of ticks until processing stops
-  bool          quit_; // whether processing ought to stop
+  unsigned long tick_;   // number of ticks so far
+  long long     stop_;   // number of ticks remaining
+  long long     start_;  // initial number of ticks of processing
+  bool          paused_; // whether processing is paused
+  bool          step_;   // whether to process one frame at a time
+  bool          quit_;   // whether processing ought to stop
 
  private:
   Exp&   exp_;

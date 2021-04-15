@@ -12,6 +12,7 @@
 #pragma once
 
 #include "../state/state.hh"
+#include <set>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -35,11 +36,14 @@ enum class Coloring
   Original = 0,
   Dynamic,
   Cluster,
+  Inspect,
   Density10,
   Density15,
   Density20,
   Density25,
-  Density30
+  Density30,
+  Density35,
+  Density40
 };
 
 
@@ -56,29 +60,31 @@ class Exp
   /// constructor: Initialise experiment module.
   /// \param log  Log object
   /// \param state  State object
-  Exp(Log& log, State& state);
+  /// \param no_cl  whether user has specified disabling of OpenCL
+  Exp(Log& log, State& state, bool no_cl);
 
   /// type(): Assign type to particle.
   void type();
 
-  /// type_name(): Get name of a cluster type.
-  ///              Assumes that the Type enum is continuous.
-  /// \param type  particle cluster type
-  /// \returns  name of cluster type
-  std::string type_name(Type type);
-
-  /// coloring(): Compute particle coloring.
-  /// \param scheme  particle coloring scheme
-  void coloring(Coloring scheme);
-
   /// reset_exp(): Clear out all experimentation data structures.
   void reset_exp();
+
+  /// reset_color(): Clear out all coloring-related data structures.
+  void reset_color();
 
   /// reset_cluster(): Clear out clustering-related data structures.
   void reset_cluster();
 
   /// reset_inject(): Clear out injection-related data structures.
   void reset_inject();
+
+  /// color(): Compute coloring of particles.
+  /// \param scheme  particle coloring scheme
+  void color(Coloring scheme);
+
+  /// highlight(): Color specified particles brightly.
+  /// \param particles  list of particle indices to highlight.
+  void highlight(std::vector<unsigned int>& particles);
 
   /// cluster(): Detect particle clusters.
   /// \param radius  DBSCAN neighborhood radius ("epsilon" in literature)
@@ -88,30 +94,36 @@ class Exp
   /// inject(): Inject particle clusters.
   /// \param type  particle cluster type to be injected
   /// \param dpe  DPE after injection
-  void inject(Type type, float dpe);
+  /// \returns  true if injection succeeded
+  bool inject(Type type, float dpe);
 
   std::unordered_map<int,std::vector<int>> neighbor_sets_; // set of nbhds
-  std::vector<int>                     cores_;    // "core" particles
-  std::vector<int>                     vague_;    // "border" or "noise" pts
-  std::vector<std::unordered_set<int>> clusters_; // set of clusters
-  std::unordered_map<Type,SpritePts>   sprites_;  // sprites definition
-  unsigned int cell_clusters_;  // number of clusters that are cells
-  unsigned int spore_clusters_; // number of clusters that are spores
+  std::vector<int>                   cores_;    // "core" particles
+  std::vector<int>                   vague_;    // "border" or "noise" pts
+  std::vector<std::set<int>>         clusters_; // set of clusters
+  std::unordered_map<Type,SpritePts> sprites_;  // sprites definition
+  std::unordered_set<int> cell_clusters_;  // set of cell cluster indices
+  std::unordered_set<int> spore_clusters_; // set of spore cluster indices
   unsigned int sprite_index_;   // cursor to state.p*_
   float        sprite_scale_;   // sprite scaling
   float        sprite_x_;       // sprite x placement
   float        sprite_y_;       // sprite y placement
 
  private:
-  /// alt_neighborhood(): Count neighbors in an alternative radius.
-  ///                     Used for coloring spores.
-  /// \param pnd  neighbors distance list
+  /// plain_alt_neighborhood(): Non-OpenCL version of alternative neighborhood
+  ///                           gathering.
+  ///                           Count neighbors in an alternative radius.
+  ///                           Used for coloring spores.
+  /// \param pld  left neighbor distances
+  /// \param prd  right neighbor distances
   /// \param p  particle index
-  /// \param stride  neighbors list stride
-  /// \param alt_radius_squared  alternative radius squared
-  /// \returns  number of neighbors in alternative radius
-  unsigned int alt_neighborhood(std::vector<float>& pnd, unsigned int p,
-                                unsigned int stride, float alt_radius_squared);
+  /// \param n_stride  neighbor list stride
+  /// \param alt_scope  alternative radius squared
+  /// \returns  number of neighbors within alternative radius
+  unsigned int plain_alt_neighborhood(std::vector<float>& pld,
+                                      std::vector<float>& prd,
+                                      unsigned int p, unsigned int n_stride,
+                                      float alt_scope);
 
   /// palette_sample(): Generate stack (cache) of random colors for clusters.
   /// \returns  set of random colors
@@ -131,14 +143,14 @@ class Exp
   /// dbscan_neighborhood(): TODO: merge with PPS plot & seek
   void dbscan_neighborhood(float radius);
 
-  /// is_cluster_type(): Whether a cluster is of a specific type.
+  /// is_cluster_type(): Whether a particle cluster is of a specific type.
   /// \param target  particle type(s) in bits
   /// \param cluster  particle cluster
   /// \returns  true if cluster is of specified type
-  bool is_cluster_type(TypeBit target, std::unordered_set<int>& cluster);
+  bool is_cluster_type(TypeBit target, std::set<int>& cluster);
 
-  /// cluster_type_count(): Count clusters by type.
-  void cluster_type_count();
+  /// cluster_type(): Assign type to particle cluster.
+  void cluster_type();
 
   /// gen_sprite(): Generate an absolutely-positioned sprite with initially
   ///               randomly headed constituent particles.
@@ -149,7 +161,9 @@ class Exp
 
   Log&   log_;
   State& state_;
-  std::vector<std::vector<float>>    palette_; // cluster color cache
-  unsigned int                       palette_index_;
+  bool                            no_cl_;
+  std::vector<std::vector<float>> palette_; // cluster color cache
+  unsigned int                    palette_index_;
+  std::vector<unsigned int>       inspect_; // particles under inspection
 };
 

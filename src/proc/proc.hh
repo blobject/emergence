@@ -36,12 +36,10 @@ class Proc : public Subject
   inline void
   done()
   {
-    this->paused_ = true;
     this->notify(Issue::ProcDone); // Views react
   }
 
   State& state_;
-  bool   paused_;  // whether processing is paused
   bool   cl_good_; // retain value of Cl::good()
 
  private:
@@ -76,7 +74,7 @@ class Proc : public Subject
   /// \param cols  number of grid columns
   /// \param rows  number of grid rows
   /// \param srci  index of the source particle
-  void plain_seek_vicinity(std::vector<int>& grid, unsigned int stride,
+  void plain_seek_vicinity(std::vector<int>& grid, unsigned int gstride,
                            int col, int row, int cols, int rows, int srci);
 
   /// plain_seek_tally(): For the non-OpenCL version of seek.

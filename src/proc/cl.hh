@@ -37,34 +37,33 @@ class Cl
   void prep_seek();
 
   /// seek: Perform particle seeking.
-  /// \param grid  flat vector representing the grid
-  /// \param grid_stride  stride between each grid unit
   /// \param n  number of particles
+  /// \param w  width of the particle system
+  /// \param h  width of the particle system
+  /// \param scope  vicinity radius squared
+  /// \param ascope  alternative vicinity radius squared
+  /// \param cols  number of grid columns
+  /// \param rows  number of grid rows
+  /// \param grid_stride  stride between each grid unit
+  /// \param grid  flat vector representing the grid
+  /// \param gcol  grid columns vector
+  /// \param grow  grid rows vector
   /// \param px  X particle parameter vector
   /// \param py  Y particle parameter vector
   /// \param pc  cos(PHI) particle parameter vector
   /// \param ps  sin(PHI) particle parameter vector
   /// \param pn  N particle parameter vector
-  /// \param pnd  particle neighbors distance vector
+  /// \param pan  alternative N particle parameter vector
   /// \param pl  L particle parameter vector
   /// \param pr  R particle parameter vector
-  /// \param gcol  grid columns vector
-  /// \param grow  grid rows vector
-  /// \param cols  number of grid columns
-  /// \param rows  number of grid rows
-  /// \param w  width of the particle system
-  /// \param h  width of the particle system
-  /// \param scope2  scope squared
-  /// \param n_stride  stride between each neighborhood
-  void seek(std::vector<int>& grid, unsigned int grid_stride, unsigned int n,
+  void seek(unsigned int n, unsigned int w, unsigned int h, float scope,
+            float ascope, int cols, int rows, unsigned int grid_stride,
+            std::vector<int>& grid,
+            std::vector<int>& gcol, std::vector<int>& grow,
             std::vector<float>& px, std::vector<float>& py,
             std::vector<float>& pc, std::vector<float>& ps,
-            std::vector<unsigned int>& pn, std::vector<float>& pnd,
-            std::vector<unsigned int>& pl, std::vector<unsigned int>& pr,
-            std::vector<int>& gcol, std::vector<int>& grow,
-            int cols, int rows,
-            unsigned int w, unsigned int h, float scope2,
-            unsigned int n_stride);
+            std::vector<unsigned int>& pn, std::vector<unsigned int>& pan,
+            std::vector<unsigned int>& pl, std::vector<unsigned int>& pr);
 
   /// prep_move(): Pre-build the kernel for performing particle moving.
   ///              See Proc::plain_move() for the non-OpenCL variant.
@@ -72,25 +71,25 @@ class Cl
 
   /// move: Perform particle moving.
   /// \param n  number of particles
+  /// \param w  width of the particle system
+  /// \param h  height of the particle system
+  /// \param a  alpha parameter
+  /// \param b  beta parameter
+  /// \param s  speed parameter
+  /// \param pn  N particle parameter vector
+  /// \param pl  L particle parameter vector
+  /// \param pr  R particle parameter vector
   /// \param px  X particle parameter vector
   /// \param py  Y particle parameter vector
   /// \param pf  PHI particle parameter vector
   /// \param pc  cos(PHI) particle parameter vector
   /// \param ps  sin(PHI) particle parameter vector
-  /// \param pn  N particle parameter vector
-  /// \param pl  L particle parameter vector
-  /// \param pr  R particle parameter vector
-  /// \param w  width of the particle system
-  /// \param h  width of the particle system
-  /// \param a  alpha parameter
-  /// \param b  beta parameter
-  /// \param s  speed parameter
-  void move(unsigned int n, std::vector<float>& px, std::vector<float>& py,
-            std::vector<float>& pf,
-            std::vector<float>& pc, std::vector<float>& ps,
-            std::vector<unsigned int>& pn,
+  void move(unsigned int n, unsigned int w, unsigned int h,
+            float a, float b, float s, std::vector<unsigned int>& pn,
             std::vector<unsigned int>& pl, std::vector<unsigned int>& pr,
-            unsigned int w, unsigned int h, float a, float b, float s);
+            std::vector<float>& px, std::vector<float>& py,
+            std::vector<float>& pf,
+            std::vector<float>& pc, std::vector<float>& ps);
 
   /// good(): Whether OpenCL is enabled.
   /// \returns  true if OpenCL is enabled

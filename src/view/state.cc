@@ -12,6 +12,7 @@ UiState::UiState(Control& ctrl)
   this->alpha_    = Util::rad_to_deg(truth.alpha_);
   this->beta_     = Util::rad_to_deg(truth.beta_);
   this->scope_    = truth.scope_;
+  this->ascope_    = truth.ascope_;
   this->speed_    = truth.speed_;
   this->prad_     = truth.prad_;
   this->coloring_ = (Coloring)truth.coloring_;
@@ -22,7 +23,7 @@ UiState::UiState(Control& ctrl)
 Stative
 UiState::current() const
 {
-  // TODO: stop
+  // TODO: stop does does not change
   return {this->stop_,
           this->num_,
           this->width_,
@@ -30,6 +31,7 @@ UiState::current() const
           Util::deg_to_rad(this->alpha_),
           Util::deg_to_rad(this->beta_),
           this->scope_,
+          this->ascope_,
           this->speed_,
           this->prad_,
           static_cast<int>(this->coloring_)};
@@ -50,12 +52,13 @@ UiState::untrue() const
     return -1;
   }
 
-  if (current.stop != ctrl.stop_                      ||
-      !Util::floats_same(current.alpha, truth.alpha_) ||
-      !Util::floats_same(current.beta,  truth.beta_)  ||
-      !Util::floats_same(current.scope, truth.scope_) ||
-      !Util::floats_same(current.speed, truth.speed_) ||
-      !Util::floats_same(current.prad,  truth.prad_))
+  if (current.stop != ctrl.start_                       ||
+      !Util::floats_same(current.alpha,  truth.alpha_)  ||
+      !Util::floats_same(current.beta,   truth.beta_)   ||
+      !Util::floats_same(current.scope,  truth.scope_)  ||
+      !Util::floats_same(current.ascope, truth.ascope_) ||
+      !Util::floats_same(current.speed,  truth.speed_)  ||
+      !Util::floats_same(current.prad,   truth.prad_))
   {
     return 1;
   }
@@ -76,100 +79,87 @@ UiState::deceive(bool respawn /* = false */) const
 }
 
 
-void
-UiState::random(Log& log)
+std::string
+UiState::random()
 {
+  float scale = std::min(this->width_, this->height_) / 100.0f;
   this->alpha_ = Util::dist(-180.0f, 180.0f);
   this->beta_ = Util::dist(-180.0f, 180.0f);
-  this->scope_ = Util::dist(1.0f, 96.0f);
-  this->speed_ = Util::dist(1.0f, 32.0f);
-  log.add(Attn::O,
-          "Random: a=" + std::to_string(this->alpha_)
-          + ", b=" + std::to_string(this->beta_)
-          + ", v=" + std::to_string(this->scope_)
-          + ", s=" + std::to_string(this->speed_));
-  this->deceive();
+  this->scope_ = Util::dist(1.0f, 10.0f * scale);
+  //this->ascope_ = Util::dist(1.0f, 5.0f * scale);
+  this->speed_ = Util::dist(1.0f, scale);
+
+  std::ostringstream message;
+  message << "Preset: random (a=" << std::to_string(this->alpha_)
+          << ", b=" + std::to_string(this->beta_)
+          << ", v=" + std::to_string(this->scope_)
+          << ", s=" + std::to_string(this->speed_) << ").";
+
+  return message.str();
 }
 
 
-void
-UiState::coloring(Log& log, Coloring scheme)
+std::string
+UiState::pattern()
 {
-  std::string message;
-  if      (Coloring::Original  == scheme) { message = "original"; }
-  else if (Coloring::Dynamic   == scheme) { message = "dynamic"; }
-  else if (Coloring::Cluster   == scheme) { message = "clustered"; }
-  else if (Coloring::Density10 == scheme) { message = "density threshold 10"; }
-  else if (Coloring::Density15 == scheme) { message = "density threshold 15"; }
-  else if (Coloring::Density20 == scheme) { message = "density threshold 20"; }
-  else if (Coloring::Density25 == scheme) { message = "density threshold 25"; }
-  else if (Coloring::Density30 == scheme) { message = "density threshold 30"; }
-  this->coloring_ = scheme;
-  this->ctrl_.coloring(scheme);
-  log.add(Attn::O, "Color scheme to " + message + ".");
-  this->deceive();
-}
-
-
-void
-UiState::pattern(Log& log)
-{
-  std::string message;
+  std::string which;
   int pattern = this->pattern_;
   if (0 == pattern) {
     this->alpha_ = 180.0f; this->beta_ = 17.0f;
-    message = "Lifelike structures 1";
+    which = "Lifelike structures 1";
   } else if (1 == pattern) {
     this->alpha_ = 180.0f; this->beta_ = -7.0f;
-    message = "Moving structures";
+    which = "Moving structures";
   } else if (2 == pattern) {
     this->alpha_ = 180.0f; this->beta_ = -15.0f;
-    message = "Clean cow pattern";
+    which = "Clean cow pattern";
   } else if (3 == pattern) {
     this->alpha_ = 90.0f; this->beta_ = -21.0f;
-    message = "Chaos w/ random aggr. 1";
+    which = "Chaos w/ random aggr. 1";
   } else if (4 == pattern) {
     this->alpha_ = 0.0f; this->beta_ = -10.0f;
-    message = "Fingerprint pattern";
+    which = "Fingerprint pattern";
   } else if (5 == pattern) {
     this->alpha_ = 0.0f; this->beta_ = -41.0f;
-    message = "Chaos w/ random aggr. 2";
+    which = "Chaos w/ random aggr. 2";
   } else if (6 == pattern) {
     this->alpha_ = 0.0f; this->beta_ = -25.0f;
-    message = "Untidy cow pattern";
+    which = "Untidy cow pattern";
   } else if (7 == pattern) {
     this->alpha_ = -180.0f; this->beta_ = -48.0f;
-    message = "Chaos w/ random aggr. 3";
+    which = "Chaos w/ random aggr. 3";
   } else if (8 == pattern) {
     this->alpha_ = -180.0f; this->beta_ = 5.0f;
-    message = "Regular pattern";
+    which = "Regular pattern";
   } else if (9 == pattern) {
     this->alpha_ = -159.0f; this->beta_ = 15.0f;
-    message = "Lifelike structures 2";
+    which = "Lifelike structures 2";
   } else if (10 == pattern) {
     this->alpha_ = 0.0f; this->beta_ = 1.0f;
-    message = "Stable cluster pattern";
+    which = "Stable cluster pattern";
   } else if (11 == pattern) {
     this->alpha_ = -180.0f; this->beta_ = 58.0f;
-    message = "Chaotic pattern 1";
+    which = "Chaotic pattern 1";
   } else if (12 == pattern) {
     this->alpha_ = 0.0f; this->beta_ = 40.0f;
-    message = "Chaotic pattern 2";
+    which = "Chaotic pattern 2";
   } else if (13 == pattern) {
     this->alpha_ = 0.0f; this->beta_ = 8.0f;
-    message = "Cells & moving cluster";
+    which = "Cells & moving cluster";
   } else if (14 == pattern) {
     this->alpha_ = 0.0f; this->beta_ = 0.0f;
-    message = "Chaotic pattern 3";
+    which = "Chaotic pattern 3";
   } else if (15 == pattern) {
     this->alpha_ = 45.0f; this->beta_ = 4.0f;
-    message = "Stable rings";
+    which = "Stable rings";
   }
-  log.add(Attn::O,
-          message
-          + ": a=" + std::to_string(this->alpha_)
-          + ", b=" + std::to_string(this->beta_));
-  this->deceive();
+
+  std::ostringstream message;
+  message << "Preset: " << which << " (a="
+          << std::to_string(this->alpha_)
+          << ", b=" << std::to_string(this->beta_) << ").";
+
+  return message.str();
 }
 
 
@@ -183,10 +173,13 @@ UiState::save(const std::string& path)
 bool
 UiState::load(const std::string& path)
 {
-  Stative loaded = this->ctrl_.load(path);
+  Control& ctrl = this->ctrl_;
+  Stative loaded = ctrl.load(path); // truth has changed
+
   if (-1 == loaded.num) {
     return false;
   }
+
   this->stop_     = loaded.stop;
   this->num_      = loaded.num;
   this->width_    = loaded.width;
@@ -194,9 +187,11 @@ UiState::load(const std::string& path)
   this->alpha_    = Util::rad_to_deg(loaded.alpha);
   this->beta_     = Util::rad_to_deg(loaded.beta);
   this->scope_    = loaded.scope;
+  this->ascope_    = loaded.ascope;
   this->speed_    = loaded.speed;
   this->prad_     = loaded.prad;
   this->coloring_ = (Coloring)loaded.coloring;
+
   return true;
 }
 

@@ -55,11 +55,14 @@ class Headless : public View, Observer
   /// prompt_base(): Produce the base prompt.
   void prompt_base() const;
 
+  /// prompt_config(): Produce the config prompt.
+  void prompt_config() const;
+
   /// prompt_analyse(): Produce the analyse prompt.
   void prompt_analyse() const;
 
-  /// prompt_config(): Produce the config prompt.
-  void prompt_config() const;
+  /// prompt_inspect(): Produce the inspect prompt.
+  void prompt_inspect() const;
 
   /// tell_config(): Print current config (state).
   /// \returns  current state

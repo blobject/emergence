@@ -14,9 +14,7 @@ View::init(Log& log, Control& ctrl, UiState& uistate,
     std::unique_ptr<View> view(new Headless(log, ctrl, uistate));
     return view;
   }
-  std::unique_ptr<View> view(new Canvas(log, ctrl, uistate,
-                                        state.width_, state.height_,
-                                        gui_on, three));
+  std::unique_ptr<View> view(new Canvas(log, ctrl, uistate, gui_on, three));
   return view;
 }
 
