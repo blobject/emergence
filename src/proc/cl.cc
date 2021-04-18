@@ -41,16 +41,16 @@ Cl::Cl(Log& log)
   this->max_freq_ = this->device_.getInfo<CL_DEVICE_MAX_CLOCK_FREQUENCY>();
   this->max_gmem_ = this->device_.getInfo<CL_DEVICE_GLOBAL_MEM_SIZE>();
 
+  this->prep_seek();
+  this->prep_move();
+
   log.add(Attn::O,
-          "Found OpenCL\n  device: " + name
+          "Started OpenCL module and found\n  device: " + name
           + "\n  max compute units:\t" + std::to_string(this->max_cu_)
           + "\n  max clock frequency:\t" + std::to_string(this->max_freq_)
           + " MHz\n  max global memory:\t"
           + std::to_string(this->max_gmem_ / 1024 / 1024) + " MB",
           true);
-
-  this->prep_seek();
-  this->prep_move();
 }
 
 
@@ -208,16 +208,14 @@ Cl::prep_seek()
     "}\n";
 
   Log& log = this->log_;
-  int compile_err;
   try {
     std::string name = "particles_seek";
     cl::Program program(this->context_, code, CL_TRUE);
+    int compile_err;
     this->kernel_seek_ = cl::Kernel(program, name.c_str(), &compile_err);
     if (compile_err) {
       log.add(Attn::Ecl, std::to_string(compile_err) + ": failed to compile '"
               + name + "'.", true);
-    } else {
-      log.add(Attn::O, "OpenCL successfully compiled '" + name + "'.", true);
     }
   } catch (cl_int err) {
     this->log_.add(Attn::Ecl, std::to_string(err), true);
@@ -328,16 +326,14 @@ Cl::prep_move()
     "}\n";
 
   Log& log = this->log_;
-  int compile_err;
   try {
     std::string name = "particles_move";
     cl::Program program(this->context_, code, CL_TRUE);
+    int compile_err;
     this->kernel_move_ = cl::Kernel(program, name.c_str(), &compile_err);
     if (compile_err) {
       log.add(Attn::Ecl, std::to_string(compile_err) + ": failed to compile '"
               + name + "'.", true);
-    } else {
-      log.add(Attn::O, "OpenCL successfully compiled '" + name + "'.", true);
     }
   } catch (cl_int err) {
     this->log_.add(Attn::Ecl, std::to_string(err), true);

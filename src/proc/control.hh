@@ -162,7 +162,7 @@ class Control
 
   // members //////////////////////////////////////////////////////////////////
 
-  unsigned long tick_;   // number of ticks so far
+  unsigned long tick_;   // number of ticks (time steps, frames) so far
   long long     stop_;   // number of ticks remaining
   long long     start_;  // initial number of ticks of processing
   bool          paused_; // whether processing is paused
@@ -174,5 +174,7 @@ class Control
   Log&   log_;
   Proc&  proc_;
   State& state_;
+
+  int experiment_; // experiment being performed
 };
 

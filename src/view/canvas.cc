@@ -25,6 +25,9 @@ Canvas::Canvas(Log& log, Control& ctrl, UiState& uistate,
 
   this->levels_ = 50;
   this->level_ = 1;
+  this->trail_ = false;
+  this->trail_count_ = 0;
+  this->trail_end_ = false;
   this->shift_counts_ = 5;
   this->shift_count_ = 0;
 
@@ -54,6 +57,8 @@ Canvas::Canvas(Log& log, Control& ctrl, UiState& uistate,
   this->shader_->bind();
   this->camera_set();
   this->spawn();
+
+  log.add(Attn::O, "Started canvas module.", true);
 }
 
 
@@ -92,9 +97,12 @@ Canvas::preamble(unsigned int window_width, unsigned int window_height)
 
   // gl
   DOGL(glClearColor(0.0f, 0.0f, 0.0f, 1.0f));
-  DOGL(glEnable(GL_DEPTH_TEST));
   DOGL(glEnable(GL_BLEND));
+  DOGL(glBlendEquation(GL_FUNC_ADD));
   DOGL(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
+  // leave off depth test for proper alpha overlapping, and take care of buffer
+  // data ordering ourselves (newest/foremost should be drawn last)
+  //DOGL(glEnable(GL_DEPTH_TEST));
 }
 
 
@@ -142,6 +150,8 @@ Canvas::exec()
   int num = ctrl.get_num();
   if (this->three_) {
     num *= this->level_;
+  } else if (this->trail_) {
+    num *= this->trail_count_ + 1;
   }
 
   this->clear();
@@ -263,6 +273,8 @@ Canvas::respawn()
   this->spawn();
   this->level_ = 1;
   this->shift_count_ = 0;
+  this->trail_count_ = 0;
+  this->trail_end_ = false;
 }
 
 
@@ -280,6 +292,7 @@ void
 Canvas::next2d()
 {
   State& state = this->ctrl_.get_state();
+  unsigned int num = state.num_;
   std::vector<float>& px = state.px_;
   std::vector<float>& py = state.py_;
   std::vector<float>& xr = state.xr_;
@@ -292,19 +305,71 @@ Canvas::next2d()
   VertexBuffer* vb_rgba = this->vertex_buffer_rgba_;
   VertexArray* va = this->vertex_array_;
   GLfloat near = this->neardef_;
+  unsigned int xyzspan = 3 * num;
+  unsigned int rgbaspan = 4 * num;
+  bool end = this->trail_end_;
+  unsigned int trail;
+  unsigned int xyznextstride;
+  unsigned int xyzstride;
+  unsigned int rgbastride;
+  unsigned int xyzi;
+  unsigned int rgbai;
 
-  // insert updated particle positions and colors into the buffer
-  unsigned int xyzi = 0;
-  unsigned int rgbai = 0;
-  for (int i = 0; i < state.num_; ++i) {
-    xyz[xyzi++] = px[i];
-    xyz[xyzi++] = py[i];
-    xyz[xyzi++] = near;
-    rgba[rgbai++] = xr[i];
-    rgba[rgbai++] = xg[i];
-    rgba[rgbai++] = xb[i];
-    rgba[rgbai++] = xa[i];
+  // leave a trail
+  // Important: "newer" data should be situated towards the back of the list,
+  //            so that OpenGL will draw them later and thereby represent depth
+  //            and alpha blend correctly.
+  if (this->trail_) {
+    if (!end) {
+      ++this->trail_count_;
+    }
+    trail = this->trail_count_;
+    if (end) {
+      for (unsigned int t = 0; t < trail; ++t) {
+        xyzi = 0;
+        for (int i = 0; i < num; ++i) {
+          xyzstride = t * xyzspan;
+          xyznextstride = (t + 1) * xyzspan;
+          xyz[xyzstride + xyzi] = xyz[xyznextstride + xyzi]; ++xyzi;
+          xyz[xyzstride + xyzi] = xyz[xyznextstride + xyzi]; ++xyzi;
+          ++xyzi; // z does not change
+          // rgba do not change
+        }
+      }
+    } else {
+      xyz.resize((trail + 1) * xyzspan);
+      rgba.resize((trail + 1) * rgbaspan);
+      rgbastride = (trail - 1) * rgbaspan;
+      rgbai = 0;
+      for (unsigned int i = 0; i < num; ++i) {
+        // xyz do not change
+        rgba[rgbastride + rgbai++] = 0.3f;
+        rgba[rgbastride + rgbai++] = 0.3f;
+        rgba[rgbastride + rgbai++] = 0.3f;
+        rgba[rgbastride + rgbai++] = 0.05f;
+      }
+    }
+    if (150 <= trail) {
+      this->trail_end_ = true;
+    }
   }
+  trail = this->trail_count_;
+
+  // insert updated particle positions and colors (at trail tail)
+  xyzstride = trail * xyzspan;
+  rgbastride = trail * rgbaspan;
+  xyzi = 0;
+  rgbai = 0;
+  for (int i = 0; i < num; ++i) {
+    xyz[xyzstride + xyzi++] = px[i];
+    xyz[xyzstride + xyzi++] = py[i];
+    xyz[xyzstride + xyzi++] = near;
+    rgba[rgbastride + rgbai++] = xr[i];
+    rgba[rgbastride + rgbai++] = xg[i];
+    rgba[rgbastride + rgbai++] = xb[i];
+    rgba[rgbastride + rgbai++] = xa[i];
+  }
+
 
   GLfloat* p_xyz = &xyz[0];
   GLfloat* p_rgba = &rgba[0];
@@ -319,7 +384,7 @@ void
 Canvas::next3d()
 {
   State &state = this->ctrl_.get_state();
-  int num = state.num_;
+  unsigned int num = state.num_;
   std::vector<float>& px = state.px_;
   std::vector<float>& py = state.py_;
   std::vector<float>& xr = state.xr_;
@@ -332,40 +397,78 @@ Canvas::next3d()
   VertexBuffer* vb_rgba = this->vertex_buffer_rgba_;
   VertexArray* va = this->vertex_array_;
   GLfloat near = this->neardef_;
-  bool shift = this->shift_count_ == this->shift_counts_;
+  bool end = (this->levels_ <= this->level_);
+  bool shift = this->shift_counts_ <= this->shift_count_;
   unsigned int xyzspan = 3 * num;
   unsigned int rgbaspan = 4 * num;
-  unsigned int levels = this->levels_;
-  unsigned int level = this->level_;
+  unsigned int xyzstride;
+  unsigned int rgbastride;
+  unsigned int xyznextstride;
+  unsigned int rgbanextstride;
+  unsigned int xyzi;
+  unsigned int rgbai;
+  unsigned int level;
 
+  // shift particle levels
   if (shift) {
-    xyz.resize(std::min(levels, level + 1) * xyzspan);
-    rgba.resize(std::min(levels, level + 1) * rgbaspan);
+    if (!end) {
+      ++this->level_;
+    }
+    level = this->level_;
+    if (end) {
+      for (unsigned int l = 0; l < level; ++l) {
+        xyzstride = l * xyzspan;
+        rgbastride = l * rgbaspan;
+        xyznextstride = (l + 1) * xyzspan;
+        rgbanextstride = (l + 1) * rgbaspan;
+        xyzi = 0;
+        rgbai = 0;
+        for (unsigned int i = 0; i < num; ++i) {
+          xyz[xyzstride + xyzi] = xyz[xyznextstride + xyzi]; ++xyzi;
+          xyz[xyzstride + xyzi] = xyz[xyznextstride + xyzi]; ++xyzi;
+          xyz[xyzstride + xyzi] = xyz[xyznextstride + xyzi] + 1.0f; ++xyzi;
+          rgba[rgbastride + rgbai] = rgba[rgbanextstride + rgbai]; ++rgbai;
+          rgba[rgbastride + rgbai] = rgba[rgbanextstride + rgbai]; ++rgbai;
+          rgba[rgbastride + rgbai] = rgba[rgbanextstride + rgbai]; ++rgbai;
+          rgba[rgbastride + rgbai++] = 0.1f;
+        }
+      }
+    } else {
+      xyz.resize(level * xyzspan);
+      rgba.resize(level * rgbaspan);
+      for (unsigned int l = 0; l < level - 1; ++l) {
+        xyzstride = l * xyzspan;
+        rgbastride = l * rgbaspan;
+        xyzi = 0;
+        rgbai = 0;
+        for (unsigned int i = 0; i < num; ++i) {
+          xyzi += 2;
+          xyz[xyzstride + xyzi++] += 1.0f;
+          rgbai += 3;
+          rgba[rgbastride + rgbai++] = 0.1f;
+        }
+      }
+    }
   }
-
-  // insert updated particle positions into the buffer
-  unsigned int xyzi = 0;
-  unsigned int rgbai = 0;
-  for (int i = 0; i < num; ++i) {
-    // shift particle levels (ie. represent passage of time via z & a)
-    this->shift(shift, level, px[i], 0.0f, xyz, xyzi, xyzspan);
-    this->shift(shift, level, py[i], 0.0f, xyz, xyzi, xyzspan);
-    this->shift(shift, level, near,  1.0f, xyz, xyzi, xyzspan);
-    this->shift(shift, level, xr[i], 0.0f, rgba, rgbai, rgbaspan);
-    this->shift(shift, level, xg[i], 0.0f, rgba, rgbai, rgbaspan);
-    this->shift(shift, level, xb[i], 0.0f, rgba, rgbai, rgbaspan);
-    this->shift(shift, level, xa[i], -1.0f, rgba, rgbai, rgbaspan);
-  }
-
-  // restrict the number of levels
-  if (shift && level < levels) {
-    ++this->level_;
-  }
-
-  // control when the level shifting happens
   ++this->shift_count_;
-  if (this->shift_count_ > this->shift_counts_) {
+  if (this->shift_counts_ < this->shift_count_) {
     this->shift_count_ = 0;
+  }
+
+  // insert updated particle positions and colors into the buffer
+  level = this->level_;
+  xyzstride = (level - 1) * xyzspan;
+  rgbastride = (level - 1) * rgbaspan;
+  xyzi = 0;
+  rgbai = 0;
+  for (unsigned int p = 0; p < num; ++p) {
+    xyz[xyzstride + xyzi++] = px[p];
+    xyz[xyzstride + xyzi++] = py[p];
+    xyz[xyzstride + xyzi++] = near;
+    rgba[rgbastride + rgbai++] = xr[p];
+    rgba[rgbastride + rgbai++] = xg[p];
+    rgba[rgbastride + rgbai++] = xb[p];
+    rgba[rgbastride + rgbai++] = xa[p];
   }
 
   GLfloat* p_xyz = &xyz[0];
@@ -374,28 +477,6 @@ Canvas::next3d()
   vb_rgba->update(p_rgba, rgba.size() * sizeof(float));
   va->add_buffer(0, *vb_xyz, VertexBufferAttribs::gen<GLfloat>(3, 3, 0));
   va->add_buffer(1, *vb_rgba, VertexBufferAttribs::gen<GLfloat>(4, 4, 0));
-}
-
-
-void
-Canvas::shift(bool shift, unsigned int level, GLfloat next, GLfloat d,
-              std::vector<GLfloat>& v, unsigned int& i, unsigned int span)
-{
-  if (!shift) {
-    return;
-  }
-  float shifted;
-  // deeper levels
-  for (unsigned int l = level; l >= 1; --l) {
-    shifted = v[i + ((l - 1) * span)] + d;
-    // encode alpha shift as a negative d
-    if (d < 0) {
-      shifted = 0.25;
-    }
-    v[i + (l * span)] = shifted;
-  }
-  // base level
-  v[i++] = next;
 }
 
 
@@ -504,17 +585,25 @@ Canvas::key_callback_no_gui(
   Canvas* canvas = static_cast<Canvas*>(glfwGetWindowUserPointer(window));
   Control& ctrl = canvas->ctrl_;
 
-  if (action == GLFW_PRESS) {
+  if (GLFW_RELEASE == action) {
+    return;
+  }
+  if (GLFW_PRESS == action) {
     if (mods & GLFW_MOD_CONTROL) {
-      if (key == GLFW_KEY_C || key == GLFW_KEY_Q) {
+      if (GLFW_KEY_C == key || GLFW_KEY_Q == key ) {
         canvas->close();
         return;
       }
     }
-    if (key == GLFW_KEY_SPACE) {
+    if (GLFW_KEY_SPACE == key) {
       ctrl.pause(!ctrl.paused_);
       return;
     }
+  }
+  if (GLFW_KEY_S == key) {
+    ctrl.paused_ = true;
+    ctrl.step_ = true;
+    return;
   }
 }
 

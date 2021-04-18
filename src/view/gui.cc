@@ -45,6 +45,7 @@ Gui::Gui(Log& log, UiState& uistate, Canvas& canvas, GLFWwindow* window,
   this->fps_ = 0.0f;
   this->x_ = 0.0;
   this->y_ = 0.0;
+  this->trail_ = false;
   this->dolly_ = false;
   this->pivot_ = false;
   this->capturing_ = false;
@@ -60,6 +61,8 @@ Gui::Gui(Log& log, UiState& uistate, Canvas& canvas, GLFWwindow* window,
   this->inspect_cluster_particle_ = -1;
   this->message_exp_inspect_default_ = "\n\n(Select an item on the left)";
   this->message_exp_inspect_ = this->message_exp_inspect_default_;
+
+  log.add(Attn::O, "Started gui module.", true);
 }
 
 
@@ -270,7 +273,7 @@ Gui::draw_config(Box box)
   float height = window_height - 2.0f * margin;
   float font_width = this->font_width_;
   float inspect_width =
-    std::min(7 * font_width,
+    std::max(7 * font_width,
              (3 + std::to_string(state.num_).size()) * font_width);
   float inspect_height = 160.0f;
   auto color_status = ImVec4(1.0f, 0.25f, 0.25f, 1.0f);
@@ -327,7 +330,7 @@ Gui::draw_config(Box box)
 
     // truth //////////////////////////////////////////////////////////////////
 
-    ImGui::Dummy(ImVec2(0.0f, 1.0f));
+    ImGui::Dummy(ImVec2(0.0f, 2.0f));
     if (untrue) {
       ImGui::PushFont(this->font_z);
       status = "Parameter modified (Enter to apply";
@@ -347,7 +350,7 @@ Gui::draw_config(Box box)
 
     // graphics ///////////////////////////////////////////////////////////////
 
-    ImGui::Dummy(ImVec2(0.0f, 1.0f));
+    ImGui::Dummy(ImVec2(0.0f, 2.0f));
     ImGui::PushFont(this->font_b);
     ImGui::TextColored(color_title, "Graphics");
     ImGui::PopFont();
@@ -360,13 +363,23 @@ Gui::draw_config(Box box)
     ImGui::SliderFloat("o", &this->box_opacity_, 0.0f, 1.0f);
     ImGui::PopItemWidth();
 
-    // 3d
+    // 3d and trailing
     ImGui::AlignTextToFramePadding();
     ImGui::Text("space ");
     ImGui::SameLine();
     if (ImGui::Checkbox("3D", &this->three_)) {
       canvas.three(this->three_);
     }
+    ImGui::SameLine();
+    ImGui::AlignTextToFramePadding();
+    ImGui::Text("    trail");
+    ImGui::SameLine();
+    ImGui::TextColored(color_dimmer, "(2D only)");
+    ImGui::SameLine();
+    if (ImGui::Checkbox("t", &this->trail_)) {
+      canvas.trail(this->trail_);
+    }
+
 
     // particle radius
     ImGui::AlignTextToFramePadding();
@@ -375,7 +388,7 @@ Gui::draw_config(Box box)
     this->auto_width(width);
     ImGui::InputFloat("r", &uistate.prad_, 0.5f, 64.0f, "%.3f");
     ImGui::PopItemWidth();
-    ImGui::Dummy(ImVec2(0.0f, 1.0f));
+    ImGui::Dummy(ImVec2(0.0f, 2.0f));
 
     // habitat ////////////////////////////////////////////////////////////////
 
@@ -495,7 +508,7 @@ Gui::draw_config(Box box)
 
     // analysis ///////////////////////////////////////////////////////////////
 
-    ImGui::Dummy(ImVec2(0.0f, 1.0f));
+    ImGui::Dummy(ImVec2(0.0f, 2.0f));
     ImGui::PushFont(this->font_b);
     ImGui::TextColored(color_title, "Analysis");
     ImGui::PopFont();
@@ -556,6 +569,10 @@ Gui::draw_config(Box box)
     if (!this->message_exp_color_.empty()) {
       ImGui::TextColored(color_exp, "%s", this->message_exp_color_.c_str());
     }
+    ImGui::TextColored(color_exp,
+                       "magenta=%u, blue=%u, yellow=%u, brown=%u, green=%u",
+                       exp.magentas_, exp.blues_, exp.yellows_, exp.browns_,
+                       exp.greens_);
 
     // clustering
     if (ImGui::Button("Detect clusters")) {
@@ -740,7 +757,7 @@ Gui::draw_config(Box box)
 
     // usage help /////////////////////////////////////////////////////////////
 
-    ImGui::Dummy(ImVec2(0.0f, 1.0f));
+    ImGui::Dummy(ImVec2(0.0f, 2.0f));
     ImGui::PushFont(this->font_b);
     ImGui::TextColored(color_title, "Usage help");
 
@@ -1037,7 +1054,8 @@ Gui::draw_save_load(Box box)
   if (Box::Save != box && Box::Load != box) {
     return;
   }
-  Control& ctrl = this->uistate_.ctrl_;
+  UiState& uistate = this->uistate_;
+  Control& ctrl = uistate.ctrl_;
   Canvas& canvas = this->canvas_;
   int window_width;
   int window_height;
@@ -1048,11 +1066,11 @@ Gui::draw_save_load(Box box)
                    static_cast<int>(window_height * 0.3f));
   std::string title = "Save state to where?";
   std::string button = "SAVE";
-  bool (UiState::*func)(const std::string&) = &UiState::save;
+  bool (UiState::*fn)(const std::string&) = &UiState::save;
   if (Box::Load == box) {
     title = "Load state from where?";
     button = "LOAD";
-    func = &UiState::load;
+    fn = &UiState::load;
   }
   static char path[128];
   auto color_bad = ImVec4(1.0f, 0.25f, 0.25f, 1.0f);
@@ -1101,7 +1119,7 @@ Gui::draw_save_load(Box box)
         bad_input = 'b';
       } else {
         bad_input = ' ';
-        bad_save = !(this->uistate_.*func)(path);
+        bad_save = !(uistate.*fn)(path);
         if (!bad_save) {
           this->box_ = Box::None;
           ctrl.pause(true);

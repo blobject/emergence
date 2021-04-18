@@ -83,11 +83,11 @@ std::string
 UiState::random()
 {
   float scale = std::min(this->width_, this->height_) / 100.0f;
-  this->alpha_ = Util::dist(-180.0f, 180.0f);
-  this->beta_ = Util::dist(-180.0f, 180.0f);
-  this->scope_ = Util::dist(1.0f, 10.0f * scale);
-  //this->ascope_ = Util::dist(1.0f, 5.0f * scale);
-  this->speed_ = Util::dist(1.0f, scale);
+  this->alpha_ = Util::distr(-180.0f, 180.0f);
+  this->beta_ = Util::distr(-180.0f, 180.0f);
+  this->scope_ = Util::distr(1.0f, 10.0f * scale);
+  //this->ascope_ = Util::distr(1.0f, 5.0f * scale);
+  this->speed_ = Util::distr(1.0f, scale);
 
   std::ostringstream message;
   message << "Preset: random (a=" << std::to_string(this->alpha_)

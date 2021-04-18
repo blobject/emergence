@@ -2,19 +2,18 @@
 #include "../util/common.hh"
 #include "../util/util.hh"
 #include <algorithm>
+#include <iomanip>
 
 
 Exp::Exp(Log& log, State& state, bool no_cl)
   : log_(log), state_(state), no_cl_(no_cl)
 {
-  this->log_.add(Attn::O, "Starting experiment module.");
-
   // sprite particle positions begin at 0,0 and are proportional to 100x100
 
   this->sprites_ = {
     {Type::PrematureSpore, gen_sprite({
       0.2864f, 0.294f,  286.124f,
-      0.0f,    .6432f,  0214.083f,
+      0.0f,    0.6432f, 214.083f,
       0.7952f, 0.748f,  327.185f,
       0.3136f, 0.7496f, 55.740f,
       0.1688f, 0.2296f, 184.162f,
@@ -300,6 +299,8 @@ Exp::Exp(Log& log, State& state, bool no_cl)
   };
 
   this->sprite_index_ = 0;
+
+  log.add(Attn::O, "Started experiment module.");
 }
 
 
@@ -311,6 +312,11 @@ Exp::type()
   std::vector<Type>& pt = state.pt_;
   std::vector<unsigned int>& pn = state.pn_;
   float ascope = state.ascope_squared_;
+  this->magentas_ = 0;
+  this->blues_ = 0;
+  this->yellows_ = 0;
+  this->browns_ = 0;
+  this->greens_ = 0;
   unsigned int n;
 
   // cl
@@ -327,7 +333,11 @@ Exp::type()
 #if 1 == CL_ENABLED
 
     if (cl) {
-      if (15 <  n && 15 < pan[p]) { pt[p] = Type::MatureSpore; continue; }
+      if (15 <  n && 15 < pan[p]) {
+        pt[p] = Type::MatureSpore;
+        ++this->magentas_;
+        continue;
+      }
     } else {
 
 #endif
@@ -335,6 +345,7 @@ Exp::type()
       if (15 < n && 15 < plain_alt_neighborhood(pld, prd, p, n_stride, ascope))
       {
         pt[p] = Type::MatureSpore;
+        ++this->magentas_;
         continue;
       }
 
@@ -344,10 +355,23 @@ Exp::type()
 
 #endif
 
-    if (15 <  n && n <= 35)     { pt[p] = Type::CellHull; continue; }
-    if (35 <  n)                { pt[p] = Type::CellCore; continue; }
-    if (13 <= n && n <= 15)     { pt[p] = Type::PrematureSpore; continue;  }
+    if (15 < n && n <= 35) {
+      pt[p] = Type::CellHull;
+      ++this->blues_;
+      continue;
+    }
+    if (35 < n) {
+      pt[p] = Type::CellCore;
+      ++this->yellows_;
+      continue;
+    }
+    if (13 <= n && n <= 15) {
+      pt[p] = Type::PrematureSpore;
+      ++this->browns_;
+      continue;
+    }
     pt[p] = Type::Nutrient;
+    ++this->greens_;
   }
 }
 
@@ -372,6 +396,7 @@ void
 Exp::reset_cluster()
 {
   this->neighbor_sets_.clear();
+  this->nearest_neighbor_dists_.clear();
   this->cores_.clear();
   this->vague_.clear();
   this->clusters_.clear();
@@ -597,9 +622,9 @@ Exp::inject(Type type, float dpe)
   } else if (num > state.num_) {
     // pad with random particles
     for (int i = state.num_; i < num; ++i) {
-      state.px_.push_back(Util::dist(0.0f, w));
-      state.py_.push_back(Util::dist(0.0f, h));
-      state.pf_.push_back(Util::dist(0.0f, TAU));
+      state.px_.push_back(Util::distr(0.0f, w));
+      state.py_.push_back(Util::distr(0.0f, h));
+      state.pf_.push_back(Util::distr(0.0f, TAU));
       state.pc_.push_back(cosf(state.pf_[i]));
       state.ps_.push_back(sinf(state.pf_[i]));
       state.pn_.push_back(0);
@@ -624,8 +649,8 @@ Exp::inject(Type type, float dpe)
   if (num <= this->sprite_index_ + size) {
     this->sprite_index_ = 0;
   }
-  float dist_x = Util::dist(0.0f, w);
-  float dist_y = Util::dist(0.0f, h);
+  float dist_x = Util::distr(0.0f, w);
+  float dist_y = Util::distr(0.0f, h);
   float x;
   float y;
   unsigned int si = 0;
@@ -703,13 +728,29 @@ Exp::palette_sample()
 
   if (index > colors.size()) {
     colors.push_back({
-      Util::dist(0.3f, 1.0f),
-      Util::dist(0.3f, 1.0f),
-      Util::dist(0.3f, 1.0f)
+      Util::distr(0.3f, 1.0f),
+      Util::distr(0.3f, 1.0f),
+      Util::distr(0.3f, 1.0f)
     });
   }
 
   return colors[index - 1];
+}
+
+
+void
+Exp::nearest_neighbor_dists()
+{
+  unsigned int num = this->state_.num_;
+  float dist;
+
+  for (int srci = 0; srci < num; ++srci) {
+    for (int dsti = 0; dsti < num; ++dsti) {
+      if (srci == dsti) {
+        continue;
+      }
+    }
+  }
 }
 
 
@@ -1030,5 +1071,68 @@ Exp::gen_sprite(std::vector<float> xyf, unsigned int num)
   this->sprite_scale_ = scale;
 
   return ps;
+}
+
+
+void
+Exp::brief_pre_exp(unsigned int tick) {
+  if (tick % 100) {
+    return;
+  }
+  std::cout << tick << ": "
+            << this->magentas_ << " mature_spores,"
+            << this->blues_ << " cell_hulls,"
+            << this->yellows_ << " cell_cores"
+            << std::endl;
+}
+
+
+void
+Exp::brief_exp_1a(unsigned int tick) {
+  if (0 == tick || 149 == tick) {
+    this->nearest_neighbor_dists();
+    std::cout << tick << ": " << this->nearest_neighbor_dists_.size()
+              << std::endl;
+  }
+}
+
+
+void
+Exp::brief_exp_1b(unsigned int tick) {
+  if (  0     == tick ||
+       59 == tick ||
+       89 == tick ||
+      179 == tick ||
+      399 == tick ||
+      699 == tick)
+  {
+    this->nearest_neighbor_dists();
+    std::cout << tick << ": " << this->nearest_neighbor_dists_.size()
+              << std::endl;
+  }
+}
+
+
+void
+Exp::brief_exp_2(unsigned int tick) {
+  if (tick % 100) {
+    return;
+  }
+  float radius = 0.75f * this->state_.scope_;
+  unsigned int minpts = 14;
+  this->cluster(radius, minpts);
+  std::cout << std::fixed << std::setprecision(2)
+            << tick << ": "
+            << this->magentas_ << " mature_spores, "
+            << this->blues_ << " cell_hulls, "
+            << this->yellows_ << " cell_cores "
+            << "(dbscan " << radius << "," << minpts << ": "
+            << this->clusters_.size() << " clusters, "
+            << this->cell_clusters_.size() << " cells, "
+            << this->spore_clusters_.size() << " spores, "
+            << this->cores_.size() << " cores, "
+            << this->vague_.size() << " vagues, "
+            << this->state_.num_ << " noise)"
+            << std::endl;
 }
 

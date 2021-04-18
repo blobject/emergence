@@ -5,7 +5,7 @@
 TEST_CASE("State::State")
 {
   Log log = Log(1);
-  State state = State(log);
+  State state = State(log, 0);
   unsigned int num = state.num_;
   REQUIRE(5000 == state.num_);
   REQUIRE(250 == state.width_);
@@ -33,7 +33,7 @@ TEST_CASE("State::State")
 TEST_CASE("State::respawn")
 {
   Log log = Log(1);
-  State state = State(log);
+  State state = State(log, 0);
   unsigned int num = state.num_;
   state.respawn();
   REQUIRE(num == state.px_.size());
@@ -51,7 +51,7 @@ TEST_CASE("State::respawn")
 TEST_CASE("State::clear")
 {
   Log log = Log(1);
-  State state = State(log);
+  State state = State(log, 0);
   state.clear();
   REQUIRE(0 == state.px_.size());
   REQUIRE(0 == state.py_.size());
@@ -70,7 +70,7 @@ TEST_CASE("State::change")
   Log log = Log(2);
   REQUIRE(0 == log.messages_.size());
 
-  State state = State(log);
+  State state = State(log, 0);
   Stative stative = {
     -1,
     state.num_,

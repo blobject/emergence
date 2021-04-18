@@ -159,6 +159,7 @@ class Gui
   float        fps_;         // calculated frames per second
   double       x_;           // mouse cursor's x position
   double       y_;           // mouse cursor's y position
+  bool         trail_;       // whether trailing is enabled
   bool         three_;       // whether in 3D mode
   bool         dolly_;       // whether mouse activated camera's dolly movement
   bool         pivot_;       // whether mouse activated camera's pivot movement

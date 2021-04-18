@@ -97,17 +97,43 @@ class Exp
   /// \returns  true if injection succeeded
   bool inject(Type type, float dpe);
 
+  /// brief_pre_exp(): Print brief info for pre-experiment purposes.
+  ///                  Used for counting color classes and finding their
+  ///                  averages.
+  /// \param tick  current time step
+  void brief_pre_exp(unsigned int tick);
+
+  /// brief_exp_1a(): Print brief info for experiment 1.
+  ///                 t in {0,150}.
+  /// \param tick  current time step
+  void brief_exp_1a(unsigned int tick);
+
+  /// brief_exp_1b(): Print brief info for experiment 1.
+  ///                 t in {60,90,180,400,700}.
+  /// \param tick  current time step
+  void brief_exp_1b(unsigned int tick);
+
+  /// brief_exp_2(): Print brief info for experiment 2.
+  /// \param tick  current tick
+  void brief_exp_2(unsigned int tick);
+
   std::unordered_map<int,std::vector<int>> neighbor_sets_; // set of nbhds
+  std::vector<float> nearest_neighbor_dists_;   // list of nn distances
   std::vector<int>                   cores_;    // "core" particles
   std::vector<int>                   vague_;    // "border" or "noise" pts
   std::vector<std::set<int>>         clusters_; // set of clusters
   std::unordered_map<Type,SpritePts> sprites_;  // sprites definition
   std::unordered_set<int> cell_clusters_;  // set of cell cluster indices
   std::unordered_set<int> spore_clusters_; // set of spore cluster indices
-  unsigned int sprite_index_;   // cursor to state.p*_
-  float        sprite_scale_;   // sprite scaling
-  float        sprite_x_;       // sprite x placement
-  float        sprite_y_;       // sprite y placement
+  unsigned int            magentas_;       // number of mature spore particles
+  unsigned int            blues_;          // number of cell hull particles
+  unsigned int            yellows_;        // number of cell core particles
+  unsigned int            browns_; // number of premature spore particles
+  unsigned int            greens_;         // number of nutrient particles
+  unsigned int            sprite_index_;   // cursor to state.p*_
+  float                   sprite_scale_;   // sprite scaling
+  float                   sprite_x_;       // sprite x placement
+  float                   sprite_y_;       // sprite y placement
 
  private:
   /// plain_alt_neighborhood(): Non-OpenCL version of alternative neighborhood
@@ -128,6 +154,9 @@ class Exp
   /// palette_sample(): Generate stack (cache) of random colors for clusters.
   /// \returns  set of random colors
   std::vector<float> palette_sample();
+
+  /// nearest_neighbor_dists(): Compute nearest neighbor distances.
+  void nearest_neighbor_dists();
 
   /// dbscan_categorise(): Compute neighborhoods of each particle and
   ///                      categorise them as either "core", "noise", or

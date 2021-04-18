@@ -5,6 +5,6 @@
 TEST_CASE("View::View")
 {
   Log log = Log(2);
-  State state = State(log);
+  State state = State(log, 0);
 }
 

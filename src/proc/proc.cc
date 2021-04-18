@@ -14,6 +14,7 @@ Proc::Proc(Log& log, State& state, Cl& cl, bool no_cl)
   if (!this->cl_good_) {
     log.add(Attn::O, "Proceeding without OpenCL parallelisation.", true);
   }
+  log.add(Attn::O, "Started process module.", true);
 }
 
 

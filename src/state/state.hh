@@ -57,7 +57,8 @@ class State : public Subject
   /// constructor: Initialise the system and particles with default
   ///              parameters.
   /// \param log  Log object
-  State(Log& log);
+  /// \param experiment  experiment being performed
+  State(Log& log, int experiment);
 
   /// spawn(): Initialise the particle parameters.
   void spawn();
@@ -122,7 +123,8 @@ class State : public Subject
   float ascope_squared_;
 
   // fixed
-  unsigned int n_stride_; // neighbor list stride
+  unsigned int n_stride_;   // neighbor list stride
+  int          experiment_; // experiment being performed
 
  private:
   Log& log_;

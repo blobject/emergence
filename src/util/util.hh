@@ -76,16 +76,16 @@ class Util
 
   // math /////////////////////////////////////////////////////////////////////
 
-  /// dist(): Pick a number from a uniformly distributed range.
+  /// distr(): Pick a number from a uniformly distributed range.
   /// \param a  start of range
   /// \param b  end of range
   /// \returns  uniformly distributed random number
   template<typename T> static inline T
-  dist(T /* a */, T /* b */) {}
+  distr(T /* a */, T /* b */) {}
 
-  /// int version of dist().
+  /// int version of distr().
   template<> inline int
-  dist<int>(int a, int b)
+  distr<int>(int a, int b)
   {
     static std::random_device rd;
     static std::mt19937 rng(rd());
@@ -93,9 +93,9 @@ class Util
     return distribution(rng);
   }
 
-  /// float version of dist().
+  /// float version of distr().
   template<> inline float
-  dist<float>(float a, float b)
+  distr<float>(float a, float b)
   {
     static std::random_device rd;
     static std::mt19937 rng(rd());

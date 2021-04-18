@@ -64,26 +64,11 @@ class Canvas : public View, Observer
             VertexArray* vertex_array, Shader* shader) const;
 
   /// next2d(): Update OpenGL vertex constructs for the 2D render.
-  ///           Note that the 2D render still happens in a 3D environment.
+  ///           Note: 2D rendering still happens in a 3D environment.
   void next2d();
 
   /// next3d(): Update OpenGL vertex constructs for the 3D render.
   void next3d();
-
-  /// shift(): Convenience function for next3d() that does one shift for a
-  ///          given particle within a given vertex buffer, where "shifting"
-  ///          means drawing a copy of all particles with an incremented z and
-  ///          alpha value, which effectively shows passage of time.
-  /// \param shift  whether shifting ought to happen.
-  /// \param level  current number of levels
-  /// \param next  new value of the particle parameter
-  /// \param d  increment (delta) of the particle parameter
-  /// \param v  vertex buffer being shifted
-  /// \param i  particle index of the vertex buffer
-  /// \param span  offset between levels in the vertex buffer, where the
-  ///              buffer has been flattened to serially include all levels.
-  void shift(bool shift, unsigned int level, GLfloat next, GLfloat d,
-             std::vector<GLfloat>& v, unsigned int& i, unsigned int span);
 
   /// camera_default(): Apply the default MVP matrices.
   void camera_default();
@@ -108,6 +93,18 @@ class Canvas : public View, Observer
   three(bool yesno)
   {
     this->three_ = yesno;
+    this->level_ = 1;
+    this->shift_count_ = 0;
+  }
+
+  /// trail(): Set trailing.
+  /// \param yesno  whether trailing ought to be enabled.
+  inline void
+  trail(bool yesno)
+  {
+    this->trail_ = yesno;
+    this->trail_count_ = 0;
+    this->trail_end_ = false;
   }
 
   /// camera_set(): Apply the current MVP matrices and set the corresponding
@@ -166,6 +163,9 @@ class Canvas : public View, Observer
   GLfloat   height_;          // canvas width
   bool      gui_on_;          // whether GUI is enabled
   bool      three_;           // whether in 3D mode
+  bool      trail_;           // whether trailing is enabled
+  unsigned int trail_count_;  // current trail iteration
+  bool      trail_end_;       // whether maximum trailing has been reached
   unsigned int levels_;       // total number of (z-)levels
   unsigned int level_;        // current number of levels
   unsigned int shift_counts_; // number of iterations until level shift
