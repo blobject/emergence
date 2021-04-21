@@ -14,6 +14,8 @@
 #include "cl.hh"
 #include "../state/state.hh"
 #include "../util/log.hh"
+#include <functional>
+#include <unordered_map>
 
 
 class Cl;
@@ -39,13 +41,46 @@ class Proc : public Subject
     this->notify(Issue::ProcDone); // Views react
   }
 
+  /// plain_seek(): Non-OpenCL version of seek.
+  ///               Entry point of seeking. Also used by Exp.
+  /// \param scope  integer divisor of grid
+  /// \param grid  reference to flat grid
+  /// \param cols  reference to number of columns in grid
+  /// \param rows  reference to number of rows in grid
+  /// \param stride  reference stride (largest grid unit) of grid
+  /// \param tally  pointer to tallying function
+  void plain_seek(unsigned int scope, std::vector<int>& grid,
+                  int& cols, int& rows, unsigned int& stride,
+                  void (Proc::*tally)(int,int,float,float,float));
+
+  /// tally_neighbors(): Update sets of neighbor indices and distances.
+  ///                    Used by Exp.
+  /// \param srci  index of the first ("source") particle
+  /// \param dsti  index of the second ("destination") particle
+  /// \param dx  x difference between src and dst
+  /// \param dy  y difference between src and dst
+  /// \param distsq  squared distance between src and dst
+  void tally_neighbors(int srci, int dsti, float dx, float dy, float distsq);
+
   State& state_;
   bool   cl_good_; // retain value of Cl::good()
+  std::unordered_map<int,std::vector<int>> neighbors_sets_;    // used by Exp
+  std::unordered_map<int,std::vector<float>> neighbors_dists_; // used by Exp
 
  private:
+  /// clear(): Clear out seek data. Namely, reinitialise N, L, R, and related
+  ///          data structures.
+  void clear();
+
   /// plot(): Prepare seek() and move() (for either OpenCL or plain versions).
-  ///         Namely, clear out seek data and (re)generate the grid.
-  void plot();
+  ///         Namely, call clear() and (re)generate the grid.
+  /// \param scope  integer divisor of grid
+  /// \param grid  reference to flat grid
+  /// \param cols  reference to number of columns in grid
+  /// \param rows  reference to number of rows in grid
+  /// \param stride  reference stride (largest grid unit) of grid
+  void plot(unsigned int scope, std::vector<int>& grid, int& cols, int& rows,
+            unsigned int& stride);
 
 #if 1 == CL_ENABLED
 
@@ -59,10 +94,6 @@ class Proc : public Subject
 
 #endif /* CL_ENABLED */
 
-  /// plain_seek(): Non-OpenCL version of seek.
-  ///               Iterate through each particle.
-  void plain_seek();
-
   /// plain_seek_vicinity(): For the non-OpenCL version of seek.
   ///                        Iterate through every other particle in the
   ///                        vicinity, ie. the 3x3 neighboring subset of the
@@ -74,24 +105,36 @@ class Proc : public Subject
   /// \param cols  number of grid columns
   /// \param rows  number of grid rows
   /// \param srci  index of the source particle
+  /// \param tally  pointer to tallying function
   void plain_seek_vicinity(std::vector<int>& grid, unsigned int gstride,
-                           int col, int row, int cols, int rows, int srci);
+                           int col, int row, int cols, int rows, int srci,
+                           void (Proc::*tally)(int,int,float,float,float));
 
   /// plain_seek_tally(): For the non-OpenCL version of seek.
-  ///                     Update N, L, R of the two particles provided
-  ///                     respectively by the two foregoing callers.
   /// \param srci  index of the source particle
   /// \param dsti  index of the destination particle
   /// \param cunder  whether the column is underflowing
   /// \param cover  whether the column is overflowing
   /// \param runder  whether the row is underflowing
   /// \param rover  whether the row is overflowing
+  /// \param tally  pointer to tallying function
   void plain_seek_tally(unsigned int srci, unsigned int dsti,
-                        bool cunder, bool cover, bool runder, bool rover);
+                        bool cunder, bool cover, bool runder, bool rover,
+                        void (Proc::*tally)(int,int,float,float,float));
 
   /// plain_move(): Non-OpenCL version of move.
   ///               Update X, Y, PHI of every particle.
   void plain_move();
+
+  /// tally_neighborhood(): Update N, L, R, and related data structures of the
+  ///                       two particles being compared.
+  /// \param srci  index of the first ("source") particle
+  /// \param dsti  index of the second ("destination") particle
+  /// \param dx  x difference between src and dst
+  /// \param dy  y difference between src and dst
+  /// \param distsq  squared distance between src and dst
+  void tally_neighborhood(int srci, int dsti, float dx, float dy,
+                          float distsq);
 
   Cl&              cl_; // NOTE: if a pointer instead, clCreateBuffer fails
   std::vector<int> grid_;        // flat vector of the vicinity overlay grid

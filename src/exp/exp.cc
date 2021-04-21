@@ -5,8 +5,8 @@
 #include <iomanip>
 
 
-Exp::Exp(Log& log, State& state, bool no_cl)
-  : log_(log), state_(state), no_cl_(no_cl)
+Exp::Exp(Log& log, State& state, Proc& proc, bool no_cl)
+  : log_(log), state_(state), proc_(proc), no_cl_(no_cl)
 {
   // sprite particle positions begin at 0,0 and are proportional to 100x100
 
@@ -395,7 +395,8 @@ Exp::reset_color()
 void
 Exp::reset_cluster()
 {
-  this->neighbor_sets_.clear();
+  this->proc_.neighbors_sets_.clear();
+  this->proc_.neighbors_dists_.clear();
   this->nearest_neighbor_dists_.clear();
   this->cores_.clear();
   this->vague_.clear();
@@ -564,21 +565,6 @@ Exp::cluster(float radius, unsigned int minpts)
   this->dbscan_categorise(radius, minpts);
   this->dbscan_collect();
   this->cluster_type();
-
-  /**
-  // debug
-  auto& px = this->state_.px_;
-  auto& py = this->state_.py_;
-  int i = 0;
-  for (auto cluster : this->clusters_) {
-    ++i;
-    std::cout << "[" << i << "](" << cluster.size() << ") ";
-    for (int p : cluster) {
-      std::cout << px[p] << ":" << py[p] << ", ";
-    }
-    std::cout << std::endl;
-  }
-  //*/
 }
 
 
@@ -741,15 +727,23 @@ Exp::palette_sample()
 void
 Exp::nearest_neighbor_dists()
 {
-  unsigned int num = this->state_.num_;
-  float dist;
+  State& state = this->state_;
+  std::unordered_map<int,std::vector<float>>& nd =
+    this->proc_.neighbors_dists_;
+  float max = static_cast<float>(state_.width_);
+  float nearest;
 
-  for (int srci = 0; srci < num; ++srci) {
-    for (int dsti = 0; dsti < num; ++dsti) {
-      if (srci == dsti) {
-        continue;
+  for (int p = 0; p < state_.num_; ++p) {
+    if (!nd[p].size()) {
+      continue;
+    }
+    nearest = max;
+    for (float dist : nd[p]) {
+      if (nearest > dist) {
+        nearest = dist;
       }
     }
+    this->nearest_neighbor_dists_.push_back(nearest);
   }
 }
 
@@ -757,13 +751,18 @@ Exp::nearest_neighbor_dists()
 void
 Exp::dbscan_categorise(float radius, unsigned int minpts)
 {
-  this->dbscan_neighborhood(radius);
-
-  std::unordered_map<int,std::vector<int>>& ns = this->neighbor_sets_;
+  std::unordered_map<int,std::vector<int>>& ns = this->proc_.neighbors_sets_;
   std::vector<int>& cores = this->cores_;
   std::vector<int>& vague = this->vague_;
+  auto grid = std::vector<int>();
+  int cols;
+  int rows;
+  unsigned int stride;
 
-  std::unordered_map<int,std::vector<int>>::iterator it = ns.begin();
+  this->proc_.plain_seek(radius, grid, cols, rows, stride,
+                         &Proc::tally_neighbors);
+
+  auto it = ns.begin();
   while (it != ns.end()) {
     if (minpts > it->second.size()) {
       vague.push_back(it->first);
@@ -797,7 +796,7 @@ categorise(PTS, RAD, MIN):
 void
 Exp::dbscan_collect()
 {
-  std::unordered_map<int, std::vector<int>>& ns = this->neighbor_sets_;
+  std::unordered_map<int,std::vector<int>>& ns = this->proc_.neighbors_sets_;
   std::vector<int>& cores = this->cores_;
   std::vector<std::set<int>>& clusters = this->clusters_;
   auto visited = std::unordered_set<int>();
@@ -874,140 +873,6 @@ collect(N, CORES):
 }
 
 
-void
-Exp::dbscan_neighborhood(float radius)
-{
-  State& state = this->state_;
-  int num = state.num_;
-  float w = state.width_;
-  float h = state.height_;
-  std::vector<float>& px = state.px_;
-  std::vector<float>& py = state.py_;
-  int cols = 1; if (radius < w) { cols = floor(w / radius); }
-  int rows = 1; if (radius < h) { rows = floor(h / radius); }
-  unsigned int grid_size = cols * rows;
-  auto unflat = std::vector<std::vector<int>>(grid_size); // signed!
-  float unit_w = w / cols;
-  float unit_h = h / rows;
-  std::vector<int> gcol;
-  std::vector<int> grow;
-  std::unordered_map<int,std::vector<int>>& ns = this->neighbor_sets_;
-
-  int col;
-  int row;
-  for (int i = 0; i < num; ++i) {
-    col = floor(px[i] / unit_w); if (col >= cols) { col = cols - 1; }
-    row = floor(py[i] / unit_h); if (row >= rows) { row = rows - 1; }
-    gcol.push_back(col);
-    grow.push_back(row);
-    unflat[cols * row + col].push_back(i);
-  }
-
-  unsigned int stride = 0;
-  unsigned int count = 0;
-  for (unsigned int i = 0; i < grid_size; ++i) {
-    count = unflat[i].size();
-    if (count > stride) {
-      stride = count;
-    }
-  }
-
-  int grid[cols * rows * stride];
-  int grid_index = 0;
-  for (std::vector<int> unit : unflat) {
-    count = 0;
-    for (int p : unit) {
-      grid[grid_index++] = p;
-      ++count;
-    }
-    while (count < stride) {
-      grid[grid_index++] = -1;
-      ++count;
-    }
-  }
-
-  float squared = state.scope_squared_;
-  int c;
-  int cc;
-  int r;
-  int rr;
-  bool cunder;
-  bool cover;
-  bool runder;
-  bool rover;
-  bool cu;
-  bool co;
-  bool ru;
-  bool ro;
-  float srcx;
-  float srcy;
-  float dstx;
-  float dsty;
-  float dx;
-  float dy;
-  int dsti;
-  for (int srci = 0; srci < num; ++srci) {
-    col = gcol[srci];
-    row = grow[srci];
-    c = col - 1;
-    cc = col + 1;
-    r = row - 1;
-    rr = row + 1;
-    cunder = false;
-    cover = false;
-    runder = false;
-    rover = false;
-    if      (col == 0)        { cunder = true; c = cols - 1; }
-    else if (col == cols - 1) { cover  = true; cc = 0; }
-    if      (row == 0)        { runder = true; r = rows - 1; }
-    else if (row == rows - 1) { rover  = true; rr = 0; }
-    int vic[54] = {/* sw */ c,   r,   cunder, false, runder, false,
-                   /* s  */ col, r,   false,  false, runder, false,
-                   /* se */ cc,  r,   false,  cover, runder, false,
-                   /* w  */ c,   row, cunder, false, false,  false,
-                   /* c  */ col, row, false,  false, false,  false,
-                   /* e  */ cc,  row, false,  cover, false,  false,
-                   /* nw */ c,   rr,  cunder, false, false,  rover,
-                   /* n  */ col, rr,  false,  false, false,  rover,
-                   /* ne */ cc,  rr,  false,  cover, false,  rover};
-    // for every unit in the vicinity (grid neighborhood)
-    for (unsigned int v = 0; v < 54; v += 6) {
-      // for each particle index within the unit
-      for (unsigned int p = 0; p < stride; ++p) {
-        dsti = grid[cols * (vic[v + 1] * stride) + (vic[v] * stride) + p];
-        // avoid grid padding area (meaning no particle left in that unit)
-        if (dsti == -1) {
-          break;
-        }
-        // avoid redundant calculations
-        if (srci <= dsti) {
-          continue;
-        }
-
-        cu = vic[v + 2];
-        co = vic[v + 3];
-        ru = vic[v + 4];
-        ro = vic[v + 5];
-        srcx = px[srci];
-        srcy = py[srci];
-        dstx = px[dsti];
-        dsty = py[dsti];
-        dx = dstx - srcx; if (cu) { dx -= w; } else if (co) { dx += w; }
-        dy = dsty - srcy; if (ru) { dy -= h; } else if (ro) { dy += h; }
-
-        // ignore comparisons outside the vicinity scope
-        if ((dx * dx) + (dy * dy) > squared) {
-          continue;
-        }
-
-        ns[srci].push_back(dsti);
-        ns[dsti].push_back(srci);
-      }
-    }
-  }
-}
-
-
 bool
 Exp::is_cluster_type(TypeBit target, std::set<int>& cluster)
 {
@@ -1075,14 +940,14 @@ Exp::gen_sprite(std::vector<float> xyf, unsigned int num)
 
 
 void
-Exp::brief_pre_exp(unsigned int tick) {
-  if (tick % 100) {
+Exp::brief_meta_exp(unsigned int tick) {
+  if (tick % 50) {
     return;
   }
   std::cout << tick << ": "
-            << this->magentas_ << " mature_spores,"
-            << this->blues_ << " cell_hulls,"
-            << this->yellows_ << " cell_cores"
+            << this->magentas_ << " magenta(mature_spore), "
+            << this->blues_ << " blue(cell_hull), "
+            << this->yellows_ << " yellow(cell_core)"
             << std::endl;
 }
 
@@ -1090,25 +955,39 @@ Exp::brief_pre_exp(unsigned int tick) {
 void
 Exp::brief_exp_1a(unsigned int tick) {
   if (0 == tick || 149 == tick) {
+    float radius = 2.0f * this->state_.scope_;
+    unsigned int minpts = 14;
+    this->cluster(radius, minpts);
+    this->nearest_neighbor_dists_.clear();
     this->nearest_neighbor_dists();
-    std::cout << tick << ": " << this->nearest_neighbor_dists_.size()
-              << std::endl;
+    std::cout << tick << ":\n";
+    for (float dist : this->nearest_neighbor_dists_) {
+      std::cout << dist << " ";
+    }
+    std::cout << std::endl;
   }
 }
 
 
 void
 Exp::brief_exp_1b(unsigned int tick) {
-  if (  0     == tick ||
-       59 == tick ||
-       89 == tick ||
-      179 == tick ||
-      399 == tick ||
+  if (  0 == tick ||
+       60 == tick ||
+       90 == tick ||
+      180 == tick ||
+      400 == tick ||
       699 == tick)
   {
+    float radius = 2.0f * this->state_.scope_;
+    unsigned int minpts = 14;
+    this->cluster(radius, minpts);
+    this->nearest_neighbor_dists_.clear();
     this->nearest_neighbor_dists();
-    std::cout << tick << ": " << this->nearest_neighbor_dists_.size()
-              << std::endl;
+    std::cout << tick << ":\n";
+    for (float dist : this->nearest_neighbor_dists_) {
+      std::cout << dist << " ";
+    }
+    std::cout << std::endl;
   }
 }
 

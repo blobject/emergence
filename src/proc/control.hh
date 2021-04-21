@@ -175,6 +175,6 @@ class Control
   Proc&  proc_;
   State& state_;
 
-  int experiment_; // experiment being performed
+  int experiment_; // specific experiment being performed
 };
 

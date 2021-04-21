@@ -11,6 +11,7 @@
 
 #pragma once
 
+#include "../proc/proc.hh"
 #include "../state/state.hh"
 #include <set>
 #include <unordered_map>
@@ -52,6 +53,7 @@ typedef std::vector<SpritePt>                     SpritePts;
 
 
 enum class Type;
+class Proc;
 class State;
 
 class Exp
@@ -60,8 +62,9 @@ class Exp
   /// constructor: Initialise experiment module.
   /// \param log  Log object
   /// \param state  State object
+  /// \param proc  Proc object
   /// \param no_cl  whether user has specified disabling of OpenCL
-  Exp(Log& log, State& state, bool no_cl);
+  Exp(Log& log, State& state, Proc& proc, bool no_cl);
 
   /// type(): Assign type to particle.
   void type();
@@ -97,11 +100,11 @@ class Exp
   /// \returns  true if injection succeeded
   bool inject(Type type, float dpe);
 
-  /// brief_pre_exp(): Print brief info for pre-experiment purposes.
-  ///                  Used for counting color classes and finding their
-  ///                  averages.
+  /// brief_meta_exp(): Print brief info for meta-experiment purposes.
+  ///                   Used for counting color classes and finding their
+  ///                   averages.
   /// \param tick  current time step
-  void brief_pre_exp(unsigned int tick);
+  void brief_meta_exp(unsigned int tick);
 
   /// brief_exp_1a(): Print brief info for experiment 1.
   ///                 t in {0,150}.
@@ -117,7 +120,6 @@ class Exp
   /// \param tick  current tick
   void brief_exp_2(unsigned int tick);
 
-  std::unordered_map<int,std::vector<int>> neighbor_sets_; // set of nbhds
   std::vector<float> nearest_neighbor_dists_;   // list of nn distances
   std::vector<int>                   cores_;    // "core" particles
   std::vector<int>                   vague_;    // "border" or "noise" pts
@@ -169,9 +171,6 @@ class Exp
   ///                   clusters.
   void dbscan_collect();
 
-  /// dbscan_neighborhood(): TODO: merge with PPS plot & seek
-  void dbscan_neighborhood(float radius);
-
   /// is_cluster_type(): Whether a particle cluster is of a specific type.
   /// \param target  particle type(s) in bits
   /// \param cluster  particle cluster
@@ -190,6 +189,7 @@ class Exp
 
   Log&   log_;
   State& state_;
+  Proc&  proc_;
   bool                            no_cl_;
   std::vector<std::vector<float>> palette_; // cluster color cache
   unsigned int                    palette_index_;

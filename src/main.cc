@@ -62,7 +62,7 @@ main(int argc, char* argv[])
   auto state = State(log, experiment);
   auto cl = Cl(log); // stub object if OpenCL is unavailable
   auto proc = Proc(log, state, cl, no_cl);
-  auto exp = Exp(log, state, no_cl);
+  auto exp = Exp(log, state, proc, no_cl);
   auto ctrl = Control(log, state, proc, exp, init, pause);
   auto uistate = UiState(ctrl);
   std::unique_ptr<View> view = View::init(log, ctrl, uistate,
@@ -230,37 +230,37 @@ argue(Log& log, std::map<std::string,std::string>& opts)
 
 /// attempt(): Print message about specified experiment.
 /// \param log  Log object
-/// \param exp  experiment id
+/// \param exp  specific experiment
 static void
 attempt(Log& log, int exp)
 {
-  int exp_class = 10 <= exp ? exp / 10 : exp;
+  int expg = 10 <= exp ? exp / 10 : exp;
   std::string message = "Running experiment ";
-  if      (1 == exp_class) { message += "\"occupancy\": ";
-    if      (10 == exp)      { message += "12 particles."; }
-    else if (11 == exp)      { message += "14 particles."; }
-    else if (12 == exp)      { message += "0.04 dpe."; }
-    else if (13 == exp)      { message += "0.07 dpe."; }
-    else if (14 == exp)      { message += "0.09 dpe."; } }
-  else if (2 == exp_class) { message += "\"stability\"."; }
-  else if (3 == exp_class) { message += "\"heat map\": ";
-    if      (30 == exp)      { message += "nutrients."; }
-    else if (31 == exp)      { message += "premature spore."; }
-    else if (32 == exp)      { message += "mature spore."; }
-    else if (33 == exp)      { message += "ring."; }
-    else if (34 == exp)      { message += "premature cell."; }
-    else if (35 == exp)      { message += "triangle cell."; }
-    else if (36 == exp)      { message += "square cell."; }
-    else if (37 == exp)      { message += "pentagon cell."; } }
-  else if (4 == exp_class) { message += "\"replication\"."; }
-  else if (5 == exp_class) { message += "\"environment + noise\": ";
-    if (50 == exp)           { message += "0.03 dpe."; }
-    if (51 == exp)           { message += "0.035 dpe."; }
-    if (52 == exp)           { message += "0.04 dpe."; }
-    if (53 == exp)           { message += "0.03 dpe + noise."; }
-    if (54 == exp)           { message += "0.035 dpe + noise."; }
-    if (55 == exp)           { message += "0.04 dpe + noise."; } }
-  else if (6 == exp_class) { message += "\"parameter sweep\"."; }
+  if      (1 == expg) { message += "\"occupancy\": ";
+    if      (10 == exp) { message += "12 particles."; }
+    else if (11 == exp) { message += "14 particles."; }
+    else if (12 == exp) { message += "0.04 dpe."; }
+    else if (13 == exp) { message += "0.07 dpe."; }
+    else if (14 == exp) { message += "0.09 dpe."; } }
+  else if (2 == expg) { message += "\"stability\"."; }
+  else if (3 == expg) { message += "\"heat map\": ";
+    if      (30 == exp) { message += "nutrients."; }
+    else if (31 == exp) { message += "premature spore."; }
+    else if (32 == exp) { message += "mature spore."; }
+    else if (33 == exp) { message += "ring."; }
+    else if (34 == exp) { message += "premature cell."; }
+    else if (35 == exp) { message += "triangle cell."; }
+    else if (36 == exp) { message += "square cell."; }
+    else if (37 == exp) { message += "pentagon cell."; } }
+  else if (4 == expg) { message += "\"replication\"."; }
+  else if (5 == expg) { message += "\"environment + noise\": ";
+    if      (50 == exp) { message += "0.03 dpe."; }
+    else if (51 == exp) { message += "0.035 dpe."; }
+    else if (52 == exp) { message += "0.04 dpe."; }
+    else if (53 == exp) { message += "0.03 dpe + noise."; }
+    else if (54 == exp) { message += "0.035 dpe + noise."; }
+    else if (55 == exp) { message += "0.04 dpe + noise."; } }
+  else if (6 == expg) { message += "\"parameter sweep\"."; }
   else if (exp) {
     log.add(Attn::E, "unknown experiment: " + std::to_string(exp));
     return;

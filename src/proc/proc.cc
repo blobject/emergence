@@ -21,7 +21,7 @@ Proc::Proc(Log& log, State& state, Cl& cl, bool no_cl)
 void
 Proc::next()
 {
-  this->plot();
+  this->clear();
 
 #if 1 == CL_ENABLED
 
@@ -34,19 +34,18 @@ Proc::next()
 
 #endif /* CL_ENABLED */
 
-  this->plain_seek();
+  this->plain_seek(this->state_.scope_, this->grid_,
+                   this->grid_cols_, this->grid_rows_, this->grid_stride_,
+                   &Proc::tally_neighborhood);
   this->plain_move();
   this->notify(Issue::ProcNextDone); // Views react
 }
 
 
 void
-Proc::plot()
+Proc::clear()
 {
   State& state = this->state_;
-
-  // clear particles' N, L, R
-  int num = state.num_;
   std::vector<unsigned int>& pn = state.pn_;
   std::vector<unsigned int>& pl = state.pl_;
   std::vector<unsigned int>& pr = state.pr_;
@@ -58,7 +57,8 @@ Proc::plot()
   unsigned int n_stride = state.n_stride_;
   unsigned int istride;
   unsigned int jstride;
-  for (int i = 0; i < num; ++i) {
+
+  for (int i = 0; i < state.num_; ++i) {
     pn[i] = 0;
     pl[i] = 0;
     pr[i] = 0;
@@ -81,39 +81,47 @@ Proc::plot()
       prd[jstride] = -1.0f;
     }
   }
+}
 
-  // the columns and rows of the grid are flattened to a single list, but each
-  // element is itself a list (of particle indices)
+
+void
+Proc::plot(unsigned int scope, std::vector<int>& grid, int& cols, int& rows,
+           unsigned int& stride)
+{
+  State& state = this->state_;
   float width = state.width_;
   float height = state.height_;
-  unsigned int scope = state.scope_;
-  int cols = 1; if (scope < width)  { cols = floor(width  / scope); }
-  int rows = 1; if (scope < height) { rows = floor(height / scope); }
-  unsigned int grid_size = cols * rows;
-  auto grid = std::vector<std::vector<int>>(grid_size); // signed!
-  float unit_width = width / cols;
-  float unit_height = height / rows;
+  // the columns and rows of the grid are semi-flattened to a single list, but
+  // each element is itself a list (of particle indices) -- "semi-" because the
+  // entire thing will be further flattened later
+  cols = 1; if (width  > scope) { cols = floor(width  / scope); }
+  rows = 1; if (height > scope) { rows = floor(height / scope); }
+  unsigned int unflat_size = cols * rows;
+  auto unflat = std::vector<std::vector<int>>(unflat_size);
+  float unit_width = state.width_ / cols;
+  float unit_height = state.height_ / rows;
   std::vector<float>& px = state.px_;
   std::vector<float>& py = state.py_;
   std::vector<int>& gcol = state.gcol_;
   std::vector<int>& grow = state.grow_;
+
   int col;
   int row;
-  for (int i = 0; i < num; ++i) {
+  for (int i = 0; i < state.num_; ++i) {
     // the last column/row may be spatially slightly bigger than the rest,
     // if the grid does not divide neatly into whole numbers
     col = floor(px[i] / unit_width);  if (col >= cols) { col = cols - 1; }
     row = floor(py[i] / unit_height); if (row >= rows) { row = rows - 1; }
     gcol[i] = col;
     grow[i] = row;
-    grid[cols * row + col].push_back(i);
+    unflat[cols * row + col].push_back(i);
   }
 
   // find the size of the largest grid unit
-  unsigned int stride = 0;
+  stride = 0;
   unsigned int count = 0;
-  for (unsigned int i = 0; i < grid_size; ++i) {
-    count = grid[i].size();
+  for (unsigned int i = 0; i < unflat_size; ++i) {
+    count = unflat[i].size();
     if (count > stride) {
       stride = count;
     }
@@ -121,7 +129,7 @@ Proc::plot()
 
   // flatten the grid (a single list of particle indices, padding with -1)
   auto flat = std::vector<int>();
-  for (std::vector<int> unit : grid) {
+  for (std::vector<int> unit : unflat) {
     count = 0;
     for (int p : unit) {
       flat.push_back(p);
@@ -133,10 +141,7 @@ Proc::plot()
     }
   }
 
-  this->grid_ = flat;
-  this->grid_cols_ = cols;
-  this->grid_rows_ = rows;
-  this->grid_stride_ = stride;
+  grid = flat;
 }
 
 
@@ -146,8 +151,9 @@ void
 Proc::seek()
 {
   State& state = this->state_;
-  unsigned int num = state.num_;
-  this->cl_.seek(num, state.width_, state.height_,
+  this->plot(state.scope_, this->grid_,
+             this->grid_cols_, this->grid_rows_, this->grid_stride_);
+  this->cl_.seek(state.num_, state.width_, state.height_,
                  state.scope_squared_, state.ascope_squared_,
                  this->grid_cols_, this->grid_rows_,
                  this->grid_stride_, this->grid_, state.gcol_, state.grow_,
@@ -170,21 +176,21 @@ Proc::move()
 
 
 void
-Proc::plain_seek()
+Proc::plain_seek(unsigned int scope, std::vector<int>& grid,
+                 int& cols, int& rows, unsigned int& stride,
+                 void (Proc::*tally)(int,int,float,float,float))
 {
   State& state = this->state_;
   unsigned int num = state.num_;
-  std::vector<int>& grid = this->grid_;
-  int cols = this->grid_cols_;
-  int rows = this->grid_rows_;
-  int stride = this->grid_stride_;
   std::vector<int>& gcol = state.gcol_;
   std::vector<int>& grow = state.grow_;
 
+  this->plot(scope, grid, cols, rows, stride);
+
   // for each particle index
   for (int srci = 0; srci < num; ++srci) {
-    this->plain_seek_vicinity(grid, stride,
-                              gcol[srci], grow[srci], cols, rows, srci);
+    this->plain_seek_vicinity(grid, stride, gcol[srci], grow[srci],
+                              cols, rows, srci, tally);
   }
   for (int i = 0; i < num; ++i) {
     state.pn_[i] = state.pl_[i] + state.pr_[i];
@@ -194,7 +200,8 @@ Proc::plain_seek()
 
 void
 Proc::plain_seek_vicinity(std::vector<int>& grid, unsigned int gstride,
-                          int col, int row, int cols, int rows, int srci)
+                          int col, int row, int cols, int rows, int srci,
+                          void (Proc::*tally)(int,int,float,float,float))
 {
   // recognise the vicinity (with edge wrapping)
   int c = col - 1;
@@ -240,8 +247,8 @@ Proc::plain_seek_vicinity(std::vector<int>& grid, unsigned int gstride,
         continue;
       }
       this->plain_seek_tally(srci, dsti,
-                             vic[v + 2], vic[v + 3],
-                             vic[v + 4], vic[v + 5]);
+                             vic[v + 2], vic[v + 3], vic[v + 4], vic[v + 5],
+                             tally);
     }
   }
 }
@@ -249,83 +256,30 @@ Proc::plain_seek_vicinity(std::vector<int>& grid, unsigned int gstride,
 
 void
 Proc::plain_seek_tally(unsigned int srci, unsigned int dsti,
-                       bool cunder, bool cover, bool runder, bool rover)
+                       bool cunder, bool cover, bool runder, bool rover,
+                       void (Proc::*tally)(int,int,float,float,float))
 {
   State& state = this->state_;
   std::vector<float>& px = state.px_;
   std::vector<float>& py = state.py_;
-  std::vector<float>& pc = state.pc_;
-  std::vector<float>& ps = state.ps_;
-  std::vector<unsigned int>& pn = state.pn_;
-  std::vector<unsigned int>& pl = state.pl_;
-  std::vector<unsigned int>& pr = state.pr_;
-  std::vector<unsigned int>& pan = state.pn_;
-  std::vector<int>& pls = state.pls_;
-  std::vector<int>& prs = state.prs_;
-  std::vector<float>& pld = state.pld_;
-  std::vector<float>& prd = state.prd_;
-  unsigned int n_stride = state.n_stride_;
   float srcx = px[srci];
   float srcy = py[srci];
   float dstx = px[dsti];
   float dsty = py[dsti];
-  float width = this->state_.width_;
-  float height = this->state_.height_;
+  float width = state.width_;
+  float height = state.height_;
   float dx = dstx - srcx;
   if (cunder) { dx -= width; }  else if (cover) { dx += width; }
   float dy = dsty - srcy;
   if (runder) { dy -= height; } else if (rover) { dy += height; }
-  float dist = (dx * dx) + (dy * dy);
+  float distsq = (dx * dx) + (dy * dy);
 
   // ignore comparisons outside the vicinity scope
-  if (this->state_.scope_squared_ < dist) {
+  if (this->state_.scope_squared_ < distsq) {
     return;
   }
 
-  ++pn[srci];
-  ++pn[dsti];
-  float srcc = pc[srci];
-  float srcs = ps[srci];
-  float dstc = pc[dsti];
-  float dsts = ps[dsti];
-  unsigned int srcstride = n_stride * srci;
-  unsigned int dststride = n_stride * dsti;
-  unsigned int srcl = pl[srci];
-  unsigned int srcr = pr[srci];
-  unsigned int dstl = pl[dsti];
-  unsigned int dstr = pr[dsti];
-  unsigned int srcli = srcstride + srcl;
-  unsigned int srcri = srcstride + srcr;
-  unsigned int dstli = dststride + dstl;
-  unsigned int dstri = dststride + dstr;
-  if (0.0f > (dx * srcs) - (dy * srcc)) {
-    if (n_stride > srcr) {
-      prs[srcri] = dsti;
-      prd[srcri] = dist;
-    }
-    ++pr[srci];
-  }
-  else {
-    if (n_stride > srcl) {
-      pls[srcli] = dsti;
-      pld[srcli] = dist;
-    }
-    ++pl[srci];
-  }
-  if (0.0f < (dx * dsts) - (dy * dstc)) {
-    if (n_stride > dstr) {
-      prs[dstri] = srci;
-      prd[dstri] = dist;
-    }
-    ++pr[dsti];
-  }
-  else {
-    if (n_stride > dstl) {
-      pls[dstli] = srci;
-      pld[dstli] = dist;
-    }
-    ++pl[dsti];
-  }
+  (this->*tally)(srci, dsti, dx, dy, distsq);
 }
 
 
@@ -365,5 +319,83 @@ Proc::plain_move()
     if (y < 0) { y += height; }
     py[i] = y;
   }
+}
+
+
+void
+Proc::tally_neighborhood(int srci, int dsti, float dx, float dy, float distsq)
+{
+  State& state = this->state_;
+  std::vector<float>& pc = state.pc_;
+  std::vector<float>& ps = state.ps_;
+  std::vector<unsigned int>& pn = state.pn_;
+  std::vector<unsigned int>& pl = state.pl_;
+  std::vector<unsigned int>& pr = state.pr_;
+  std::vector<unsigned int>& pan = state.pn_;
+  std::vector<int>& pls = state.pls_;
+  std::vector<int>& prs = state.prs_;
+  std::vector<float>& pld = state.pld_;
+  std::vector<float>& prd = state.prd_;
+  unsigned int n_stride = state.n_stride_;
+
+  float srcc = pc[srci];
+  float srcs = ps[srci];
+  float dstc = pc[dsti];
+  float dsts = ps[dsti];
+  unsigned int srcstride = n_stride * srci;
+  unsigned int dststride = n_stride * dsti;
+  unsigned int srcl = pl[srci];
+  unsigned int srcr = pr[srci];
+  unsigned int dstl = pl[dsti];
+  unsigned int dstr = pr[dsti];
+  unsigned int srcli = srcstride + srcl;
+  unsigned int srcri = srcstride + srcr;
+  unsigned int dstli = dststride + dstl;
+  unsigned int dstri = dststride + dstr;
+
+  ++pn[srci];
+  ++pn[dsti];
+
+  if (0.0f > (dx * srcs) - (dy * srcc)) {
+    if (n_stride > srcr) {
+      prs[srcri] = dsti;
+      prd[srcri] = distsq;
+    }
+    ++pr[srci];
+  } else {
+    if (n_stride > srcl) {
+      pls[srcli] = dsti;
+      pld[srcli] = distsq;
+    }
+    ++pl[srci];
+  }
+  if (0.0f < (dx * dsts) - (dy * dstc)) {
+    if (n_stride > dstr) {
+      prs[dstri] = srci;
+      prd[dstri] = distsq;
+    }
+    ++pr[dsti];
+  } else {
+    if (n_stride > dstl) {
+      pls[dstli] = srci;
+      pld[dstli] = distsq;
+    }
+    ++pl[dsti];
+  }
+}
+
+
+void
+Proc::tally_neighbors(int srci, int dsti, float /* dx */, float /* dy */,
+                      float distsq)
+{
+  std::unordered_map<int,std::vector<int>>& ns = this->neighbors_sets_;
+  std::unordered_map<int,std::vector<float>>& nd = this->neighbors_dists_;
+  float dist = std::sqrt(distsq);
+
+  ns[srci].push_back(dsti);
+  ns[dsti].push_back(srci);
+  nd[srci].push_back(dist);
+  nd[dsti].push_back(dist);
 }
 

@@ -123,8 +123,9 @@ class State : public Subject
   float ascope_squared_;
 
   // fixed
-  unsigned int n_stride_;   // neighbor list stride
-  int          experiment_; // experiment being performed
+  unsigned int n_stride_;         // neighbor list stride
+  int          experiment_group_; // experiment being performed
+  int          experiment_;       // specific experiment being performed
 
  private:
   Log& log_;

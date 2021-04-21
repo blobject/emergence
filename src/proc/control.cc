@@ -18,16 +18,15 @@ Control::Control(Log& log, State& state, Proc& proc, Exp& exp,
     this->load(init_path);
   }
   int experiment = state.experiment_;
-  int experiment_class = 10 <= experiment ? experiment / 10 : experiment;
+  int experiment_group = state.experiment_group_;
   this->experiment_ = experiment;
-  if (1 == experiment_class)      { this->start_ = 150;
+  if      (1 == experiment_group) { this->start_ = 150;
     if (14 == experiment)         { this->start_ = 700; } }
-  else if (2 == experiment_class) { this->start_ = 100000; }
-  else if (3 == experiment_class) { this->start_ = 100; }
-  else if (4 == experiment_class) { this->start_ = 25000; }
-  else if (5 == experiment_class) { this->start_ = 25000; }
-  else if (6 == experiment_class) { this->start_ = -1; }
-  this->stop_ = this->start_;
+  else if (2 == experiment_group) { this->start_ = 100000; }
+  else if (3 == experiment_group) { this->start_ = 100; }
+  else if (4 == experiment_group) { this->start_ = 25000; }
+  else if (5 == experiment_group) { this->start_ = 25000; }
+  else if (6 == experiment_group) { this->start_ = -1; }
   if      (30 == experiment) { this->inject(Type::Nutrient,       0.08f); }
   else if (31 == experiment) { this->inject(Type::PrematureSpore, 0.08f); }
   else if (32 == experiment) { this->inject(Type::MatureSpore,    0.08f); }
@@ -36,6 +35,7 @@ Control::Control(Log& log, State& state, Proc& proc, Exp& exp,
   else if (35 == experiment) { this->inject(Type::TriangleCell,   0.08f); }
   else if (36 == experiment) { this->inject(Type::SquareCell,     0.08f); }
   else if (37 == experiment) { this->inject(Type::PentagonCell,   0.08f); }
+  this->stop_ = this->start_;
 
   log.add(Attn::O, "Started control module.", true);
 }
@@ -260,28 +260,37 @@ void
 Control::next()
 {
   // when stop drops to 0, Proc should exclaim completion
+  Proc& proc = this->proc_;
   long long stop = this->stop_;
+
   if (0 == stop) {
     this->done();
   }
-  Proc& proc = this->proc_;
+
   if (this->paused_ && !this->step_) {
     // TODO: separate concerns
     proc.notify(Issue::ProcNextDone); // Views react
     return;
   }
-  proc.next();
-  unsigned long tick = this->tick_;
+
   Exp& exp = this->exp_;
+  unsigned long tick = this->tick_;
   int experiment = this->experiment_;
+
   exp.type();
+
+  //exp.brief_meta_exp(tick);
+  if (experiment) {
+    if      (10 == experiment ||
+             11 == experiment ||
+             12 == experiment ||
+             13 == experiment) { exp.brief_exp_1a(tick); }
+    else if (14 == experiment) { exp.brief_exp_1b(tick); }
+    else if (2  == experiment) { exp.brief_exp_2(tick); }
+  }
+
+  proc.next();
   this->step_ = false;
-  if      (10 == experiment ||
-           11 == experiment ||
-           12 == experiment ||
-           13 == experiment) { exp.brief_exp_1a(tick); }
-  else if (14 == experiment) { exp.brief_exp_1b(tick); }
-  else if (2  == experiment) { exp.brief_exp_2(tick); }
   this->tick_ = tick + 1;
   if (-1 >= stop) {
     return;

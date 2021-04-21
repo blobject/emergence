@@ -23,8 +23,9 @@ State::State(Log& log, int experiment)
   // fixed
   this->n_stride_ = 100;
 
-  int experiment_class = 10 <= experiment ? experiment / 10 : experiment;
-  if (1 == experiment_class) {
+  int experiment_group = 10 <= experiment ? experiment / 10 : experiment;
+  this->experiment_group_ = experiment_group;
+  if (1 == experiment_group) {
     this->width_  = 250;
     this->height_ = 250;
     this->prad_   = 0.5f;
@@ -33,22 +34,22 @@ State::State(Log& log, int experiment)
     else if (12 == experiment) { this->num_ = 2500; } // 0.04 dpe
     else if (13 == experiment) { this->num_ = 4375; } // 0.07 dpe
     else if (14 == experiment) { this->num_ = 5625; } // 0.09 dpe
-  } else if (2 == experiment_class) {
+  } else if (2 == experiment_group) {
     this->num_    = 5000; // 0.08 dpe
     this->width_  = 250;
     this->height_ = 250;
     this->prad_   = 0.5f;
-  } else if (3 == experiment_class) {
+  } else if (3 == experiment_group) {
     this->num_    = 5000; // 0.08 dpe, needs injection
     this->width_  = 250;
     this->height_ = 250;
     this->prad_   = 0.5f;
-  } else if (4 == experiment_class) {
+  } else if (4 == experiment_group) {
     this->num_    = 25; // 0.010 - 0.1 dpe, needs injection
     this->width_  = 50;
     this->height_ = 50;
     this->prad_   = 0.25f;
-  } else if (5 == experiment_class) {
+  } else if (5 == experiment_group) {
     this->width_  = 50;
     this->height_ = 50;
     this->prad_   = 0.25f;
