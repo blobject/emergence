@@ -8,7 +8,7 @@
 #pragma once
 
 
-#define ME           "emergence"
+#define ME           "Emergence"
 #define VERSION      "0.1"
 #define GLSL_VERSION "#version 330 core"
 #define PI           3.1415926536f

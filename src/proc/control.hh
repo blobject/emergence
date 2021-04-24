@@ -31,6 +31,7 @@ struct Stative
   float        scope;    // vicinity radius
   float        ascope;   // alternative vicinity radius (for spores)
   float        speed;    // movement multiplier
+  float        noise;    // movement noise
   float        prad;     // particle radius
   int          coloring; // particle coloring scheme (int)
 };
@@ -93,7 +94,7 @@ class Control
    * - Second line and onwards contain particle data
    * - Namely:
    *
-   * START WIDTH HEIGHT ALPHA BETA SCOPE ASCOPE SPEED PRAD
+   * START WIDTH HEIGHT ALPHA BETA SCOPE ASCOPE SPEED NOISE PRAD
    * 0 X0 Y0 PHI0
    * 1 X1 Y1 PHI1
    * ...
@@ -115,9 +116,11 @@ class Control
   void attach_to_proc(Observer& observer);
   void detach_from_proc(Observer& observer);
 
-  /// next(): Call Proc::next() while handling paused state and the remaining
-  ///         ticks.
+  /// next(): Handle processing iteration, pausing, ticking, etc.
   void next();
+
+  /// exp_next(): Handle experimentation.
+  void exp_next();
 
   /// pause(): Whether system should perform processing.
   /// \param yesno  whether processing ought to be paused
@@ -156,9 +159,9 @@ class Control
 
   /// inject(): Thin wrapper around Exp::inject().
   /// \param type  particle cluster type to be injected
-  /// \param dpe  DPE after injection
+  /// \param greater  whether the greater scope is to be injected
   /// \returns  analysis result message
-  std::string inject(Type type, float dpe);
+  std::string inject(Type type, bool greater);
 
   // members //////////////////////////////////////////////////////////////////
 
@@ -168,6 +171,7 @@ class Control
   bool          paused_; // whether processing is paused
   bool          step_;   // whether to process one frame at a time
   bool          quit_;   // whether processing ought to stop
+  bool          gui_change_;
 
  private:
   Exp&   exp_;
@@ -175,6 +179,8 @@ class Control
   Proc&  proc_;
   State& state_;
 
-  int experiment_; // specific experiment being performed
+  int experiment_group_; // experiment being performed
+  int experiment_;       // specific experiment being performed
+  float dpe_;
 };
 

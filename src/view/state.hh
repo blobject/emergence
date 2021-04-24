@@ -35,6 +35,9 @@ public:
   /// \param respawn  whether system should respawn
   void deceive(bool respawn = false) const;
 
+  /// receive(): Change UI's state parameters to reflect true State.
+  void receive();
+
   /// random(): Randomise true State parameters.
   /// \returns  parameter preset message
   std::string random();
@@ -63,6 +66,7 @@ public:
   float        scope_;
   float        ascope_;
   float        speed_;
+  float        noise_; // (degrees)
   float        prad_;
   Coloring     coloring_;
   int          pattern_;

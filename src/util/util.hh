@@ -26,36 +26,13 @@ class Util
  public:
   // env //////////////////////////////////////////////////////////////////////
 
-  /// emergence_dir(): Get the directory at which Emergence was spawned.
-  /// \returns  string of directory at which Emergence was spawned
-  inline static std::string
-  emergence_dir()
-  {
-    std::vector<char> buf(1024, 0);
-    std::vector<char>::size_type size = buf.size();
-    bool path_yes = false;
-    bool go = true;
-    while (go) {
-      int res = readlink("/proc/self/exe", &buf[0], size);
-      if (0 > res) {
-        go = false;
-      } else if (size > static_cast<std::vector<char>::size_type>(res)) {
-        path_yes = true;
-        go = false;
-        size = res;
-      } else {
-        size *= 2;
-        buf.resize(size);
-        std::fill(std::begin(buf), std::end(buf), 0);
-      }
-    }
-    if (!path_yes) {
-      std::string empty;
-      return empty;
-    }
-    return std::regex_replace(std::string(&buf[0], size),
-                              std::regex("/[^/]*$"), "");
-  }
+  /// execution_dir(): Get the directory at which program was spawned.
+  /// \returns  string of directory at which program was spawned
+  static std::string execution_dir();
+
+  /// working_dir(): Get the parent process' current working directory.
+  /// \returns  string of current working directory
+  static std::string working_dir();
 
   // io ///////////////////////////////////////////////////////////////////////
 

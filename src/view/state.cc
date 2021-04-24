@@ -12,11 +12,12 @@ UiState::UiState(Control& ctrl)
   this->alpha_    = Util::rad_to_deg(truth.alpha_);
   this->beta_     = Util::rad_to_deg(truth.beta_);
   this->scope_    = truth.scope_;
-  this->ascope_    = truth.ascope_;
+  this->ascope_   = truth.ascope_;
   this->speed_    = truth.speed_;
+  this->noise_    = truth.noise_;
   this->prad_     = truth.prad_;
   this->coloring_ = (Coloring)truth.coloring_;
-  this->pattern_   = 0;
+  this->pattern_  = 0;
 }
 
 
@@ -33,6 +34,7 @@ UiState::current() const
           this->scope_,
           this->ascope_,
           this->speed_,
+          this->noise_,
           this->prad_,
           static_cast<int>(this->coloring_)};
 }
@@ -58,6 +60,7 @@ UiState::untrue() const
       !Util::floats_same(current.scope,  truth.scope_)  ||
       !Util::floats_same(current.ascope, truth.ascope_) ||
       !Util::floats_same(current.speed,  truth.speed_)  ||
+      !Util::floats_same(current.noise,  truth.noise_)  ||
       !Util::floats_same(current.prad,   truth.prad_))
   {
     return 1;
@@ -79,6 +82,27 @@ UiState::deceive(bool respawn /* = false */) const
 }
 
 
+// TODO
+void
+UiState::receive()
+{
+  Control& ctrl = this->ctrl_;
+  State& truth = ctrl.get_state();
+  this->stop_     = ctrl.stop_;
+  this->num_      = truth.num_;
+  this->width_    = truth.width_;
+  this->height_   = truth.height_;
+  this->alpha_    = Util::rad_to_deg(truth.alpha_);
+  this->beta_     = Util::rad_to_deg(truth.beta_);
+  this->scope_    = truth.scope_;
+  this->ascope_   = truth.ascope_;
+  this->speed_    = truth.speed_;
+  this->noise_    = truth.noise_;
+  this->prad_     = truth.prad_;
+  this->coloring_ = (Coloring)truth.coloring_;
+}
+
+
 std::string
 UiState::random()
 {
@@ -87,6 +111,7 @@ UiState::random()
   this->beta_ = Util::distr(-180.0f, 180.0f);
   this->scope_ = Util::distr(1.0f, 10.0f * scale);
   //this->ascope_ = Util::distr(1.0f, 5.0f * scale);
+  //this->noise_ = Util::distr(-90.0f, 90.0f);
   this->speed_ = Util::distr(1.0f, scale);
 
   std::ostringstream message;
@@ -187,8 +212,9 @@ UiState::load(const std::string& path)
   this->alpha_    = Util::rad_to_deg(loaded.alpha);
   this->beta_     = Util::rad_to_deg(loaded.beta);
   this->scope_    = loaded.scope;
-  this->ascope_    = loaded.ascope;
+  this->ascope_   = loaded.ascope;
   this->speed_    = loaded.speed;
+  this->noise_    = loaded.noise;
   this->prad_     = loaded.prad;
   this->coloring_ = (Coloring)loaded.coloring;
 

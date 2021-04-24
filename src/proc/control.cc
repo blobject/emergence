@@ -20,22 +20,39 @@ Control::Control(Log& log, State& state, Proc& proc, Exp& exp,
   int experiment = state.experiment_;
   int experiment_group = state.experiment_group_;
   this->experiment_ = experiment;
-  if      (1 == experiment_group) { this->start_ = 150;
-    if (14 == experiment)         { this->start_ = 700; } }
-  else if (2 == experiment_group) { this->start_ = 100000; }
-  else if (3 == experiment_group) { this->start_ = 100; }
-  else if (4 == experiment_group) { this->start_ = 25000; }
-  else if (5 == experiment_group) { this->start_ = 25000; }
-  else if (6 == experiment_group) { this->start_ = -1; }
-  if      (30 == experiment) { this->inject(Type::Nutrient,       0.08f); }
-  else if (31 == experiment) { this->inject(Type::PrematureSpore, 0.08f); }
-  else if (32 == experiment) { this->inject(Type::MatureSpore,    0.08f); }
-  else if (33 == experiment) { this->inject(Type::Ring,           0.08f); }
-  else if (34 == experiment) { this->inject(Type::PrematureCell,  0.08f); }
-  else if (35 == experiment) { this->inject(Type::TriangleCell,   0.08f); }
-  else if (36 == experiment) { this->inject(Type::SquareCell,     0.08f); }
-  else if (37 == experiment) { this->inject(Type::PentagonCell,   0.08f); }
+  this->experiment_group_ = experiment_group;
+  if (experiment) {
+    if      (1 == experiment_group) { this->start_ = 150;
+      if (14 == experiment)         { this->start_ = 700; } }
+    else if (2 == experiment_group) { this->start_ = 100000; }
+    else if (3 == experiment_group) { this->start_ = 100;
+      if      (30 == experiment) { this->inject(Type::Nutrient,      true); }
+      else if (31 == experiment) { this->inject(Type::PrematureSpore,true); }
+      else if (32 == experiment) { this->inject(Type::MatureSpore,   true); }
+      else if (33 == experiment) { this->inject(Type::Ring,          true); }
+      else if (34 == experiment) { this->inject(Type::PrematureCell, true); }
+      else if (35 == experiment) { this->inject(Type::TriangleCell,  true); }
+      else if (36 == experiment) { this->inject(Type::SquareCell,    true); }
+      else if (37 == experiment) { this->inject(Type::PentagonCell,  true); } }
+    else if (4 == experiment_group) { this->start_ = 25000;
+      // TODO
+      if      (40 == experiment) { this->inject(Type::MatureSpore,  false); }
+      else if (41 == experiment) { this->inject(Type::TriangleCell, false); }
+      //this->gui_change_ = true;
+    }
+    else if (5 == experiment_group) { this->start_ = 25000;
+      if      (50 == experiment) { this->inject(Type::TriangleCell, false); }
+      else if (51 == experiment) { this->inject(Type::TriangleCell, false); }
+      else if (52 == experiment) { this->inject(Type::TriangleCell, false); }
+      // TODO: noise
+      else if (53 == experiment) { this->inject(Type::TriangleCell, false); }
+      else if (54 == experiment) { this->inject(Type::TriangleCell, false); }
+      else if (55 == experiment) { this->inject(Type::TriangleCell, false); } }
+    else if (6 == experiment_group) { this->start_ = 500; }
+    ++this->start_; // tick one more to gather the very last data set
+  }
   this->stop_ = this->start_;
+  this->gui_change_ = false; // TODO
 
   log.add(Attn::O, "Started control module.", true);
 }
@@ -126,7 +143,7 @@ Control::load(const std::string& path)
 
   return {this->stop_, num, state.width_, state.height_,
           state.alpha_, state.beta_, state.scope_, state.ascope_,
-          state.speed_, state.prad_, state.coloring_};
+          state.speed_, state.noise_, state.prad_, state.coloring_};
 }
 
 
@@ -162,6 +179,7 @@ Control::load_file(const std::string& path)
     float scope;
     float ascope;
     float speed;
+    float noise;
     float prad;
     linestream = std::istringstream(line);
     // on read failure, the parameters are left unchanged
@@ -173,6 +191,7 @@ Control::load_file(const std::string& path)
     if (linestream >> scope)  truth.scope_  = scope;
     if (linestream >> ascope) truth.ascope_ = ascope;
     if (linestream >> speed)  truth.speed_  = speed;
+    if (linestream >> noise)  truth.noise_  = Util::deg_to_rad(noise);
     if (linestream >> prad)   truth.prad_   = prad;
   }
   this->stop_ = this->start_;
@@ -185,6 +204,7 @@ Control::load_file(const std::string& path)
   float px;
   float py;
   float pf;
+  float pf_rad;
   unsigned int count = 0;
   truth.clear();
   while (std::getline(stream, line)) {
@@ -197,10 +217,11 @@ Control::load_file(const std::string& path)
     truth.px_.push_back(px);
     if (!(linestream >> py)) { py = Util::distr(0.0f, h); }
     truth.py_.push_back(py);
-    if (!(linestream >> pf)) { pf = Util::distr(0.0f, TAU); }
-    truth.pf_.push_back(pf);
-    truth.pc_.push_back(cosf(pf));
-    truth.ps_.push_back(sinf(pf));
+    if (!(linestream >> pf)) { pf = Util::distr(0.0f, 360.0f); }
+    pf_rad = Util::deg_to_rad(pf);
+    truth.pf_.push_back(pf_rad);
+    truth.pc_.push_back(cosf(pf_rad));
+    truth.ps_.push_back(sinf(pf_rad));
     truth.pn_.push_back(0);
     truth.pl_.push_back(0);
     truth.pr_.push_back(0);
@@ -244,12 +265,13 @@ Control::save_file(const std::string& path)
          << truth.scope_ << ' '
          << truth.ascope_ << ' '
          << truth.speed_ << ' '
+         << Util::rad_to_deg(truth.noise_) << ' '
          << truth.prad_ << '\n';
   for (int i = 0; i < truth.num_; ++i) {
     stream << i << ' '
            << truth.px_[i] << ' '
            << truth.py_[i] << ' '
-           << truth.pf_[i] << '\n';
+           << Util::rad_to_deg(truth.pf_[i]) << '\n';
   }
   stream.close();
   return true;
@@ -273,29 +295,85 @@ Control::next()
     return;
   }
 
-  Exp& exp = this->exp_;
   unsigned long tick = this->tick_;
-  int experiment = this->experiment_;
 
-  exp.type();
-
-  //exp.brief_meta_exp(tick);
-  if (experiment) {
-    if      (10 == experiment ||
-             11 == experiment ||
-             12 == experiment ||
-             13 == experiment) { exp.brief_exp_1a(tick); }
-    else if (14 == experiment) { exp.brief_exp_1b(tick); }
-    else if (2  == experiment) { exp.brief_exp_2(tick); }
-  }
-
+  this->exp_.type();
   proc.next();
+  this->exp_next();
   this->step_ = false;
   this->tick_ = tick + 1;
   if (-1 >= stop) {
     return;
   }
   --this->stop_;
+}
+
+
+void
+Control::exp_next()
+{
+  int experiment = this->experiment_;
+
+  if (!experiment) {
+    return;
+  }
+
+  Exp& exp = this->exp_;
+  unsigned long tick = this->tick_;
+
+  //exp.brief_meta_exp(tick);
+  if (experiment) {
+    int experiment_group = this->experiment_group_;
+    if      (1 == experiment_group) {
+      if      (10 == experiment ||
+               11 == experiment ||
+               12 == experiment ||
+               13 == experiment) { exp.do_exp_1a(tick); }
+      else if (14 == experiment) { exp.do_exp_1b(tick); } }
+    else if (2 == experiment_group) { exp.do_exp_2(tick); }
+    else if (3 == experiment_group) { exp.do_exp_3(tick); }
+    else if (4 == experiment_group) { if (exp.do_exp_4(tick)) { this->pause(true); }
+    /**
+    // TODO
+    else if (4 == experiment_group) {
+      if (exp.do_exp_4(tick)) {
+        if (0.1 < this->dpe_) {
+          return;
+        }
+        State& state = this->state_;
+        this->dpe_ += 0.001f;
+        Stative stative = {
+          25001,
+          static_cast<int>(state.width_ * state.height_ * this->dpe_),
+          state.width_,
+          state.height_,
+          state.alpha_,
+          state.beta_,
+          state.scope_,
+          state.ascope_,
+          state.speed_,
+          state.noise_,
+          state.prad_,
+          state.coloring_
+        };
+        this->change(stative, true);
+        if      (40 == experiment) { this->inject(Type::MatureSpore,  false); }
+        else if (41 == experiment) { this->inject(Type::TriangleCell, false); }
+        this->gui_change_ = true;
+        this->pause(false);
+      }
+    //*/
+    }
+    else if (5 == experiment_group) { exp.do_exp_5(tick); }
+    else if (6 == experiment_group) {
+      // TODO
+      if (exp.do_exp_6(tick)) {
+        State& state = this->state_;
+        state.alpha_ = Util::deg_to_rad(Util::rad_to_deg(state.alpha_) + 3.0f);
+        this->start_ = 501;
+      }
+    }
+  }
 }
 
 
@@ -403,25 +481,24 @@ Control::cluster(float radius, unsigned int minpts)
 }
 
 std::string
-Control::inject(Type type, float dpe)
+Control::inject(Type type, bool greater)
 {
+  State& state = this->state_;
   Exp& exp = this->exp_;
   unsigned int size = exp.sprites_[type].size();
   std::ostringstream message;
 
-  if (!exp.inject(type, dpe)) {
-    message << "Injection failed: insufficient num ("
-            << this->get_num() << " < " << size << ").";
-    return message.str();
-  }
-  this->state_.notify(Issue::StateChanged); // Canvas reacts TODO
-
+  exp.inject(type, greater);
+  state.notify(Issue::StateChanged); // Canvas reacts TODO
 
   message.precision(4);
-  message << "Injected " << this->state_.type_name(type) << ".\n"
+  message << "Injected ";
+  if (greater) {
+    message << "greater ";
+  }
+  message << state.type_name(type) << ".\n"
           << "  # particles: " << size << "\n"
-          << "  placement: index=" << exp.sprite_index_ - size
-          << ", scale=" << exp.sprite_scale_
+          << "  placement: index=" << state.num_ - size
           << ", x=" << exp.sprite_x_ << ", y=" << exp.sprite_y_;
 
   return message.str();

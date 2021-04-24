@@ -74,7 +74,11 @@ Canvas::preamble(unsigned int window_width, unsigned int window_height)
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
   glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-  window = glfwCreateWindow(window_width, window_height, ME, NULL, NULL);
+  char me[32] = ME;
+  if (!this->gui_on_) {
+    strcat(me, " (no gui)");
+  }
+  window = glfwCreateWindow(window_width, window_height, me, NULL, NULL);
   if (!window) {
     this->log_.add(Attn::Egl, "glfwCreateWindow");
     glfwTerminate();
@@ -147,6 +151,7 @@ Canvas::exec()
   //*/
 
   Control& ctrl = this->ctrl_;
+  Gui* gui = this->gui_;
   int num = ctrl.get_num();
   if (this->three_) {
     num *= this->level_;
@@ -158,10 +163,10 @@ Canvas::exec()
   ctrl.color(ctrl.get_coloring());
   this->draw(4, num, this->vertex_array_, this->shader_);
   if (this->gui_on_) {
-    this->gui_->draw();
+    gui->draw();
   }
   // if paused, only particle processing (Proc) gets paused
-  if (!ctrl.paused_ || ctrl.step_) {
+  if (!gui->capturing_ && !ctrl.paused_ || ctrl.step_) {
     if (this->three_) {
       this->next3d();
     } else {

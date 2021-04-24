@@ -2,12 +2,17 @@
 #include <GL/gl.h>
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb/stb_image_write.h>
+#include <string.h>
 #include <vector>
 
 
 bool
-Image::out(const std::string& path, int width, int height)
+Image::out(std::string path, int width, int height,
+           bool dummy /* = false */)
 {
+  if (dummy) {
+    path = "/dev/null";
+  }
   GLsizei chans = 3;
   GLsizei stride = chans * width;
   stride += (stride % 4) ? (4 - stride % 4) : 0;

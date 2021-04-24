@@ -17,6 +17,8 @@ class Image
   /// \param path  path to destination png file
   /// \param width  OpenGL window width
   /// \param height  OpenGL window height
-  static bool out(const std::string& path, int width, int height);
+  /// \param dummy  whether execution is dummy
+  static bool out(std::string path, int width, int height,
+                  bool dummy = false);
 };
 

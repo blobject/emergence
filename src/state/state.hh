@@ -57,7 +57,7 @@ class State : public Subject
   /// constructor: Initialise the system and particles with default
   ///              parameters.
   /// \param log  Log object
-  /// \param experiment  experiment being performed
+  /// \param experiment  specific experiment being performed
   State(Log& log, int experiment);
 
   /// spawn(): Initialise the particle parameters.
@@ -79,6 +79,10 @@ class State : public Subject
   /// \param type  particle type
   /// \returns  name of particle type
   std::string type_name(Type type);
+
+  /// dpe(): Get density of particles in the surrounding environment (DPE).
+  /// \returns  dpe
+  float dpe();
 
   //// particle
   // (volatile) location & direction
@@ -115,6 +119,7 @@ class State : public Subject
   float        scope_;    // vicinity radius
   float        ascope_;   // alternative vicinity radius
   float        speed_;    // movement multiplier
+  float        noise_;    // movement noise (radians)
   float        prad_;     // particle radius
   int          coloring_; // particle color scheme (int)
 
@@ -124,8 +129,8 @@ class State : public Subject
 
   // fixed
   unsigned int n_stride_;         // neighbor list stride
-  int          experiment_group_; // experiment being performed
-  int          experiment_;       // specific experiment being performed
+  int          experiment_group_; // experiment being perfomed
+  int          experiment_;       // specific experiment being perfomed
 
  private:
   Log& log_;

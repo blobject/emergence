@@ -53,6 +53,17 @@ class Proc : public Subject
                   int& cols, int& rows, unsigned int& stride,
                   void (Proc::*tally)(int,int,float,float,float));
 
+  /// tally_neighborhood(): Update N, L, R, and related data structures of the
+  ///                       two particles being compared.
+  ///                       Also used by Exp.
+  /// \param srci  index of the first ("source") particle
+  /// \param dsti  index of the second ("destination") particle
+  /// \param dx  x difference between src and dst
+  /// \param dy  y difference between src and dst
+  /// \param distsq  squared distance between src and dst
+  void tally_neighborhood(int srci, int dsti, float dx, float dy,
+                          float distsq);
+
   /// tally_neighbors(): Update sets of neighbor indices and distances.
   ///                    Used by Exp.
   /// \param srci  index of the first ("source") particle
@@ -98,6 +109,7 @@ class Proc : public Subject
   ///                        Iterate through every other particle in the
   ///                        vicinity, ie. the 3x3 neighboring subset of the
   ///                        grid centered around src.
+  /// \param scopesq  squared grid divisor
   /// \param grid  flat vector representing the grid
   /// \param stride  stride between each grid unit
   /// \param col  grid columns vector
@@ -106,11 +118,13 @@ class Proc : public Subject
   /// \param rows  number of grid rows
   /// \param srci  index of the source particle
   /// \param tally  pointer to tallying function
-  void plain_seek_vicinity(std::vector<int>& grid, unsigned int gstride,
+  void plain_seek_vicinity(unsigned int scopesq, std::vector<int>& grid,
+                           unsigned int gstride,
                            int col, int row, int cols, int rows, int srci,
                            void (Proc::*tally)(int,int,float,float,float));
 
   /// plain_seek_tally(): For the non-OpenCL version of seek.
+  /// \param scopesq  squared grid divisor
   /// \param srci  index of the source particle
   /// \param dsti  index of the destination particle
   /// \param cunder  whether the column is underflowing
@@ -118,23 +132,14 @@ class Proc : public Subject
   /// \param runder  whether the row is underflowing
   /// \param rover  whether the row is overflowing
   /// \param tally  pointer to tallying function
-  void plain_seek_tally(unsigned int srci, unsigned int dsti,
+  void plain_seek_tally(unsigned int scopesq,
+                        unsigned int srci, unsigned int dsti,
                         bool cunder, bool cover, bool runder, bool rover,
                         void (Proc::*tally)(int,int,float,float,float));
 
   /// plain_move(): Non-OpenCL version of move.
   ///               Update X, Y, PHI of every particle.
   void plain_move();
-
-  /// tally_neighborhood(): Update N, L, R, and related data structures of the
-  ///                       two particles being compared.
-  /// \param srci  index of the first ("source") particle
-  /// \param dsti  index of the second ("destination") particle
-  /// \param dx  x difference between src and dst
-  /// \param dy  y difference between src and dst
-  /// \param distsq  squared distance between src and dst
-  void tally_neighborhood(int srci, int dsti, float dx, float dy,
-                          float distsq);
 
   Cl&              cl_; // NOTE: if a pointer instead, clCreateBuffer fails
   std::vector<int> grid_;        // flat vector of the vicinity overlay grid

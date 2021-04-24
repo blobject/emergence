@@ -76,6 +76,7 @@ class Cl
   /// \param a  alpha parameter
   /// \param b  beta parameter
   /// \param s  speed parameter
+  /// \param e  noise parameter
   /// \param pn  N particle parameter vector
   /// \param pl  L particle parameter vector
   /// \param pr  R particle parameter vector
@@ -85,7 +86,8 @@ class Cl
   /// \param pc  cos(PHI) particle parameter vector
   /// \param ps  sin(PHI) particle parameter vector
   void move(unsigned int n, unsigned int w, unsigned int h,
-            float a, float b, float s, std::vector<unsigned int>& pn,
+            float a, float b, float s, float e,
+            std::vector<unsigned int>& pn,
             std::vector<unsigned int>& pl, std::vector<unsigned int>& pr,
             std::vector<float>& px, std::vector<float>& py,
             std::vector<float>& pf,

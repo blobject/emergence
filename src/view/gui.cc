@@ -24,17 +24,25 @@ Gui::Gui(Log& log, UiState& uistate, Canvas& canvas, GLFWwindow* window,
   ImGui_ImplOpenGL3_Init(GLSL_VERSION);
   ImGui::StyleColorsDark();
 
+  // dummy capture (TODO: first capture is always damaged)
+  Image::out("", 0, 0, true);
+
   float font_size = 28.0f / scale;
-  this->cwd_ = Util::emergence_dir() + "/";
-  std::string font = this->cwd_ + "../opt/fonts/LiberationMono-";
-  this->font_r = io.Fonts->AddFontFromFileTTF(
+  this->cwd_ = Util::working_dir() + "/";
+  std::string font = Util::execution_dir() + "/"
+                     + "../opt/fonts/LiberationMono-";
+  this->font_r_ = io.Fonts->AddFontFromFileTTF(
     (font + "Regular.ttf").c_str(), font_size);
-  this->font_b = io.Fonts->AddFontFromFileTTF(
+  this->font_b_ = io.Fonts->AddFontFromFileTTF(
     (font + "Bold.ttf").c_str(), font_size);
-  this->font_i = io.Fonts->AddFontFromFileTTF(
+  this->font_i_ = io.Fonts->AddFontFromFileTTF(
     (font + "Italic.ttf").c_str(), font_size);
-  this->font_z = io.Fonts->AddFontFromFileTTF(
+  this->font_z_ = io.Fonts->AddFontFromFileTTF(
     (font + "BoldItalic.ttf").c_str(), font_size);
+  this->text_color_good_ = ImVec4(0.25f, 0.75f, 0.25f, 1.0f);
+  this->text_color_bad_ = ImVec4(1.0f, 0.25f, 0.25f, 1.0f);
+  this->text_color_dim_ = ImVec4(0.75f, 0.75f, 0.75f, 1.0f);
+  this->text_color_dimmer_ = ImVec4(0.5f, 0.5f, 0.5f, 1.0f);
   this->brief_ = true;
   this->messages_ = false;
   this->box_ = Box::None;
@@ -48,14 +56,13 @@ Gui::Gui(Log& log, UiState& uistate, Canvas& canvas, GLFWwindow* window,
   this->trail_ = false;
   this->dolly_ = false;
   this->pivot_ = false;
-  this->capturing_ = false;
-  this->bad_capture_ = false;
+  this->load_save_ = 0;
+  this->capturing_ = 0;
+  this->capture_ = 0;
   this->coloring_ = 0;
-  this->cluster_radius_ = 0.5f * uistate.scope_;
+  this->cluster_radius_ = uistate.scope_;
   this->cluster_minpts_ = 14; // avg size of premature spore (Schmickl et al.)
-  this->inject_sprite_ = 4; // triangle cell
-  this->inject_dpe_ = static_cast<float>(uistate.num_)
-                      / uistate.width_ / uistate.height_;
+  this->inject_sprite_ = 5; // triangle cell
   this->inspect_particle_ = -1;
   this->inspect_cluster_ = -1;
   this->inspect_cluster_particle_ = -1;
@@ -86,21 +93,36 @@ Gui::draw()
     this->ago_ = now;
   }
 
-  if (this->capturing_) {
-    // TODO: not capturing correctly (tearing, dialog box showing)
+  if (2 == this->capturing_) {
     ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
+    ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-    this->capturing_ = false;
-    int w;
-    int h;
-    glfwGetFramebufferSize(this->window_, &w, &h);
-    if (!Image::out(this->capture_path_, w, h)) {
-      this->bad_capture_ = true;
-      this->box_ = Box::Capture;
-      return;
+    this->capturing_ = 0;
+    int width;
+    int height;
+    glfwGetFramebufferSize(this->window_, &width, &height);
+    if (!Image::out(this->capture_path_, width, height)) {
+      this->capture_ = -1;
+    } else {
+      this->capture_ = 1;
     }
-    this->box_ = Box::Captured;
+    this->box_ = Box::Capture;
     return;
+  }
+
+  if (1 == this->capturing_) {
+    this->capturing_ = 2;
+    this->box_ = Box::None;
+  }
+
+  // TODO
+  UiState& uistate = this->uistate_;
+  Control& ctrl = uistate.ctrl_;
+  if (ctrl.gui_change_) {
+    ctrl.gui_change_ = false;
+    uistate.receive();
   }
 
   ImGui_ImplOpenGL3_NewFrame();
@@ -112,8 +134,7 @@ Gui::draw()
   this->draw_messages(this->messages_);
   this->draw_config(this->box_);
   this->draw_capture(this->box_);
-  this->draw_captured(this->box_);
-  this->draw_save_load(this->box_);
+  this->draw_load_save(this->box_);
   this->draw_quit(this->box_);
   //ImGui::ShowDemoWindow();
 
@@ -132,8 +153,9 @@ Gui::draw_brief(bool draw)
   int width;
   int height;
   glfwGetFramebufferSize(this->window_, &width, &height);
-  auto color = ImVec4(0.75f, 0.75f, 0.75f, 0.75f);
-  auto color_b = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
+  ImFont* font_b = this->font_b_;
+  auto text_normal = ImVec4(0.75f, 0.75f, 0.75f, 0.75f);
+  auto text_bright = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
   const char* status = "running";
   if (ctrl.paused_) {
     status = "paused";
@@ -143,66 +165,67 @@ Gui::draw_brief(bool draw)
   ImGui::SetNextWindowSize(ImVec2(width, height), ImGuiCond_Always);
   ImGui::SetNextWindowBgAlpha(0.0f);
   style.WindowBorderSize = 0.0f;
+
   if (ImGui::Begin("brief", NULL,
                    ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize)) {
 
     // paused
-    ImGui::PushFont(this->font_b);
-    ImGui::TextColored(color_b, "%s", status);
+    ImGui::PushFont(font_b);
+    ImGui::TextColored(text_bright, "%s", status);
     ImGui::PopFont();
     ImGui::SameLine();
-    ImGui::TextColored(color, "(");
+    ImGui::TextColored(text_normal, "(");
     this->backspace();
-    ImGui::PushFont(this->font_i);
-    ImGui::TextColored(color, "Space");
+    ImGui::PushFont(this->font_i_);
+    ImGui::TextColored(text_normal, "Space");
     ImGui::PopFont();
     this->backspace();
-    ImGui::TextColored(color, ")");
+    ImGui::TextColored(text_normal, ")");
 
     // tick
-    ImGui::TextColored(color, "tick");
+    ImGui::TextColored(text_normal, "tick");
     ImGui::SameLine();
-    ImGui::PushFont(this->font_b);
-    ImGui::TextColored(color_b, "%lu", ctrl.tick_);
+    ImGui::PushFont(font_b);
+    ImGui::TextColored(text_bright, "%lu", ctrl.tick_);
     ImGui::PopFont();
     this->backspace(-1);
-    ImGui::TextColored(color, "/%lld", ctrl.start_);
+    ImGui::TextColored(text_normal, "/%lld", ctrl.start_);
 
     // fps
-    ImGui::TextColored(color, "fps");
+    ImGui::TextColored(text_normal, "fps");
     ImGui::SameLine();
-    ImGui::PushFont(this->font_b);
-    ImGui::TextColored(color_b, "%.1f", this->fps_);
+    ImGui::PushFont(font_b);
+    ImGui::TextColored(text_bright, "%.1f", this->fps_);
     ImGui::PopFont();
 
     // mouse
-    ImGui::TextColored(color, "x");
+    ImGui::TextColored(text_normal, "x");
     ImGui::SameLine();
-    ImGui::PushFont(this->font_b);
-    ImGui::TextColored(color_b, "%.0f", this->x_);
+    ImGui::PushFont(font_b);
+    ImGui::TextColored(text_bright, "%.0f", this->x_);
     ImGui::PopFont();
     this->backspace(-1);
-    ImGui::TextColored(color, "/%d, y", width);
+    ImGui::TextColored(text_normal, "/%d, y", width);
     ImGui::SameLine();
-    ImGui::PushFont(this->font_b);
-    ImGui::TextColored(color_b, "%.0f", height - this->y_);
+    ImGui::PushFont(font_b);
+    ImGui::TextColored(text_bright, "%.0f", height - this->y_);
     ImGui::PopFont();
     this->backspace(-1);
-    ImGui::TextColored(color, "/%d", height);
+    ImGui::TextColored(text_normal, "/%d", height);
 
     // opencl
-    ImGui::TextColored(color, "opencl");
+    ImGui::TextColored(text_normal, "opencl");
     ImGui::SameLine();
-    ImGui::PushFont(this->font_b);
-    ImGui::TextColored(color_b, "%s", ctrl.cl_good() ? "on" : "off");
+    ImGui::PushFont(font_b);
+    ImGui::TextColored(text_bright, "%s", ctrl.cl_good() ? "on" : "off");
     ImGui::PopFont();
 
     // more
-    ImGui::PushFont(this->font_i);
-    ImGui::TextColored(color, "Escape");
+    ImGui::PushFont(this->font_i_);
+    ImGui::TextColored(text_normal, "Escape");
     ImGui::PopFont();
     this->backspace(-4);
-    ImGui::TextColored(color, "for more");
+    ImGui::TextColored(text_normal, "for more");
   }
   ImGui::End();
   style.WindowBorderSize = 1.0f;
@@ -220,11 +243,10 @@ Gui::draw_messages(bool draw)
   glfwGetFramebufferSize(this->window_, &window_width, &window_height);
   float width = window_width;
   float height = window_height / 2.0f;
-  auto color_dim = ImVec4(0.5f, 0.5f, 0.5f, 1.0f);
-  auto color_e = ImVec4(1.0f, 0.5f, 0.5f, 1.0f);
-  auto color_ecl = ImVec4(1.0f, 1.0f, 0.5f, 1.0f);
-  auto color_egl = ImVec4(1.0f, 0.5f, 1.0f, 1.0f);
-  ImVec4 color;
+  auto text_error = ImVec4(1.0f, 0.5f, 0.5f, 1.0f);
+  auto text_error_cl = ImVec4(1.0f, 1.0f, 0.5f, 1.0f);
+  auto text_error_gl = ImVec4(1.0f, 0.5f, 1.0f, 1.0f);
+  ImVec4& text_color = text_error;
   std::deque<std::pair<Attn,std::string>>& messages = this->log_.messages_;
   unsigned int count = messages.size();
 
@@ -234,15 +256,16 @@ Gui::draw_messages(bool draw)
   if (ImGui::Begin("messages", NULL,
                    ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize)) {
     for (std::pair<Attn,std::string>& message : messages) {
-      if      (message.first == Attn::E)   { color = color_e; }
-      else if (message.first == Attn::Ecl) { color = color_ecl; }
-      else if (message.first == Attn::Egl) { color = color_egl; }
+      if      (message.first == Attn::E)   { text_color = text_error; }
+      else if (message.first == Attn::Ecl) { text_color = text_error_cl; }
+      else if (message.first == Attn::Egl) { text_color = text_error_gl; }
       if (message.first == Attn::O) {
-        ImGui::TextColored(color_dim, "%d:", count);
+        ImGui::TextColored(this->text_color_dimmer_, "%d:", count);
         ImGui::SameLine();
         ImGui::Text("%s", message.second.c_str());
       } else {
-        ImGui::TextColored(color, "%d: %s", count, message.second.c_str());
+        ImGui::TextColored(text_color, "%d: %s", count,
+                           message.second.c_str());
       }
       --count;
     }
@@ -257,40 +280,13 @@ Gui::draw_config(Box box)
   if (Box::Config != box) {
     return;
   }
-  Log& log = this->log_;
-  UiState& uistate = this->uistate_;
-  Control& ctrl = uistate.ctrl_;
-  Canvas& canvas = this->canvas_;
-  Exp& exp = ctrl.get_exp();
-  State& state = ctrl.get_state();
-  int untrue = uistate.untrue();
-  bool paused = ctrl.paused_;
-  float margin = 4.0f * this->font_width_;
+
   int window_width;
   int window_height;
   glfwGetFramebufferSize(this->window_, &window_width, &window_height);
+  float margin = 4.0f * this->font_width_;
   float width = window_width - 2.0f * margin;
   float height = window_height - 2.0f * margin;
-  float font_width = this->font_width_;
-  float inspect_width =
-    std::max(7 * font_width,
-             (3 + std::to_string(state.num_).size()) * font_width);
-  float inspect_height = 160.0f;
-  auto color_status = ImVec4(1.0f, 0.25f, 0.25f, 1.0f);
-  auto color_title = ImVec4(1.0f, 0.75f, 0.25f, 1.0f);
-  auto color_exp = ImVec4(0.25f, 1.0f, 0.75f, 1.0f);
-  auto color_dim = ImVec4(0.75f, 0.75f, 0.75f, 1.0f);
-  auto color_dimmer = ImVec4(0.5f, 0.5f, 0.5f, 1.0f);
-  const ImS64 negone = -1;
-  const ImU32 zero = 0;
-  const ImU32 max_dim = 100000;
-  const ImU32 max_num = 1000000;
-  const ImS64 max_stop = 2000000000;
-  std::string pause = "Pause";
-  if (paused) {
-    pause = "Resume";
-  }
-  std::string status;
 
   ImGui::SetNextWindowPos(ImVec2(margin, margin), ImGuiCond_Always);
   ImGui::SetNextWindowSize(ImVec2(width, height), ImGuiCond_Always);
@@ -298,382 +294,490 @@ Gui::draw_config(Box box)
   if (ImGui::Begin("config", NULL,
                    ImGuiWindowFlags_HorizontalScrollbar |
                    ImGuiWindowFlags_NoTitleBar |
-                   ImGuiWindowFlags_NoResize)) {
+                   ImGuiWindowFlags_NoResize))
+  {
+    this->draw_config_top();
+    this->draw_config_graphics(width);
+    this->draw_config_habitat(width);
+    this->draw_config_analysis(width);
+    this->draw_config_usage();
+  }
+  ImGui::End();
+}
 
-    // top buttons ////////////////////////////////////////////////////////////
 
-    if (ImGui::Button(pause.c_str())) {
-      ctrl.pause(!paused);
-    }
-    ImGui::SameLine();
-    if (ImGui::Button("Save")) {
-      this->box_ = Box::Save;
-      this->input_focus_ = true;
-      ctrl.pause(true);
-    }
-    ImGui::SameLine();
-    if (ImGui::Button("Load")) {
-      this->box_ = Box::Load;
-      ctrl.pause(true);
-    }
-    ImGui::SameLine();
-    if (ImGui::Button("Take picture")) {
-      this->box_ = Box::Capture;
-      this->input_focus_ = true;
-      ctrl.pause(true);
-    }
-    ImGui::SameLine();
-    if (ImGui::Button("Quit")) {
-      this->box_ = Box::Quit;
-      ctrl.pause(true);
-    }
+void
+Gui::draw_config_top()
+{
+  Control& ctrl = this->uistate_.ctrl_;
+  State& state = ctrl.get_state();
+  bool paused = ctrl.paused_;
+  std::string pause = "Pause";
+  if (paused) {
+    pause = "Resume";
+  }
+  int untrue = this->uistate_.untrue();
+  auto text_status = ImVec4(1.0f, 0.25f, 0.25f, 1.0f);
+  std::string status;
 
-    // truth //////////////////////////////////////////////////////////////////
+  // top buttons
+  if (ImGui::Button(pause.c_str())) {
+    ctrl.pause(!paused);
+  }
+  ImGui::SameLine();
+  if (ImGui::Button("Save")) {
+    this->box_ = Box::Save;
+    this->input_focus_ = true;
+    ctrl.pause(true);
+  }
+  ImGui::SameLine();
+  if (ImGui::Button("Load")) {
+    this->box_ = Box::Load;
+    ctrl.pause(true);
+  }
+  ImGui::SameLine();
+  if (ImGui::Button("Take picture")) {
+    this->box_ = Box::Capture;
+    this->input_focus_ = true;
+    ctrl.pause(true);
+  }
+  ImGui::SameLine();
+  if (ImGui::Button("Quit")) {
+    this->box_ = Box::Quit;
+    ctrl.pause(true);
+  }
 
-    ImGui::Dummy(ImVec2(0.0f, 2.0f));
-    if (untrue) {
-      ImGui::PushFont(this->font_z);
-      status = "Parameter modified (Enter to apply";
-      if (0 > untrue) {
-        status += " & respawn";
-      }
-      status += ")";
-      ImGui::TextColored(color_status, "%s", status.c_str());
-      ImGui::PopFont();
-    } else {
-      ImGui::PushFont(this->font_i);
-      status = "Parameters in sync";
-      ImGui::TextColored(ImVec4(0.5f, 0.5f, 1.0f, 1.f), "%s",
-                         status.c_str());
-      ImGui::PopFont();
+  // truth
+  ImGui::Dummy(ImVec2(0.0f, 3.0f));
+  if (untrue) {
+    ImGui::PushFont(this->font_z_);
+    status = "Parameter modified (Enter to apply";
+    if (0 > untrue) {
+      status += " & respawn";
     }
-
-    // graphics ///////////////////////////////////////////////////////////////
-
-    ImGui::Dummy(ImVec2(0.0f, 2.0f));
-    ImGui::PushFont(this->font_b);
-    ImGui::TextColored(color_title, "Graphics");
+    status += ")";
+    ImGui::TextColored(text_status, "%s", status.c_str());
     ImGui::PopFont();
-
-    // box opacity
-    ImGui::AlignTextToFramePadding();
-    ImGui::Text("box opacity");
-    ImGui::SameLine();
-    this->auto_width(width);
-    ImGui::SliderFloat("o", &this->box_opacity_, 0.0f, 1.0f);
-    ImGui::PopItemWidth();
-
-    // 3d and trailing
-    ImGui::AlignTextToFramePadding();
-    ImGui::Text("space ");
-    ImGui::SameLine();
-    if (ImGui::Checkbox("3D", &this->three_)) {
-      canvas.three(this->three_);
-    }
-    ImGui::SameLine();
-    ImGui::AlignTextToFramePadding();
-    ImGui::Text("    trail");
-    ImGui::SameLine();
-    ImGui::TextColored(color_dimmer, "(2D only)");
-    ImGui::SameLine();
-    if (ImGui::Checkbox("t", &this->trail_)) {
-      canvas.trail(this->trail_);
-    }
-
-
-    // particle radius
-    ImGui::AlignTextToFramePadding();
-    ImGui::Text("p. rad"); ImGui::SameLine();
-    ImGui::SameLine();
-    this->auto_width(width);
-    ImGui::InputFloat("r", &uistate.prad_, 0.5f, 64.0f, "%.3f");
-    ImGui::PopItemWidth();
-    ImGui::Dummy(ImVec2(0.0f, 2.0f));
-
-    // habitat ////////////////////////////////////////////////////////////////
-
-    ImGui::PushFont(this->font_b);
-    ImGui::TextColored(color_title, "Habitat");
+  } else {
+    ImGui::PushFont(this->font_i_);
+    status = "Parameters in sync";
+    ImGui::TextColored(ImVec4(0.5f, 0.5f, 1.0f, 1.f), "%s",
+                       status.c_str());
     ImGui::PopFont();
+  }
+}
 
-    // reset truth
-    if (ImGui::Button("Default habitat & particle radius")) {
-      uistate.prad_ = 1.0f;
-      uistate.num_ = 5000;
-      uistate.width_ = 250;
-      uistate.height_ = 250;
-      uistate.alpha_ = 180.0f;
-      uistate.beta_ = 17.0f;
-      uistate.scope_ = 5.0f;
-      uistate.ascope_ = 1.3f;
-      uistate.speed_ = 0.67f;
-      log.add(Attn::O, "Habitat reset.");
+
+void
+Gui::draw_config_graphics(float width)
+{
+  UiState& uistate = this->uistate_;
+  Canvas& canvas = this->canvas_;
+  ImFont* font_b = this->font_b_;
+  auto text_title = ImVec4(1.0f, 0.75f, 0.25f, 1.0f);
+
+  ImGui::Dummy(ImVec2(0.0f, 1.0f));
+  ImGui::PushFont(this->font_b_);
+  ImGui::TextColored(text_title, "Graphics");
+  ImGui::PopFont();
+  ImGui::Dummy(ImVec2(0.0f, 2.0f));
+
+  // 3d space and 2d trailing
+  ImGui::AlignTextToFramePadding();
+  ImGui::Text("space ");
+  ImGui::SameLine();
+  if (ImGui::Checkbox("3D", &this->three_)) {
+    canvas.three(this->three_);
+  }
+  this->backspace();
+  ImGui::Text("    trail");
+  ImGui::SameLine();
+  ImGui::TextColored(this->text_color_dimmer_, "(2D only)");
+  ImGui::SameLine();
+  if (ImGui::Checkbox("t", &this->trail_)) {
+    canvas.trail(this->trail_);
+  }
+
+  // box opacity
+  ImGui::AlignTextToFramePadding();
+  ImGui::Text("opaque");
+  ImGui::SameLine();
+  this->auto_width(width);
+  ImGui::SliderFloat("o", &this->box_opacity_, 0.0f, 1.0f);
+  ImGui::PopItemWidth();
+
+  // particle radius
+  ImGui::AlignTextToFramePadding();
+  ImGui::Text("p. rad"); ImGui::SameLine();
+  ImGui::SameLine();
+  this->auto_width(width);
+  ImGui::InputFloat("r", &uistate.prad_, 0.1f, 64.0f, "%.3f");
+  ImGui::PopItemWidth();
+}
+
+
+void
+Gui::draw_config_habitat(float width)
+{
+  UiState& uistate = this->uistate_;
+  auto text_title = ImVec4(1.0f, 0.75f, 0.25f, 1.0f);
+  const ImS64 negone = -1;
+  const ImU32 zero = 0;
+  const ImU32 max_dim = 100000;
+  const ImU32 max_num = 1000000;
+  const ImS64 max_stop = 2000000000;
+
+  ImGui::Dummy(ImVec2(0.0f, 5.0f));
+  ImGui::PushFont(this->font_b_);
+  ImGui::TextColored(text_title, "Habitat");
+  ImGui::PopFont();
+  ImGui::Dummy(ImVec2(0.0f, 2.0f));
+
+  // reset truth
+  if (ImGui::Button("Default habitat & particle radius")) {
+    uistate.prad_ = 1.0f;
+    uistate.num_ = 5000;
+    uistate.width_ = 250;
+    uistate.height_ = 250;
+    uistate.alpha_ = 180.0f;
+    uistate.beta_ = 17.0f;
+    uistate.scope_ = 5.0f;
+    uistate.ascope_ = 1.3f;
+    uistate.speed_ = 0.67f;
+    uistate.noise_ = 0.0f;
+    this->log_.add(Attn::O, "Habitat reset.");
+  }
+
+  float avail = ImGui::GetContentRegionAvail().x / 3.5f;
+
+  // stop
+  ImGui::AlignTextToFramePadding();
+  ImGui::Text("stop  ");
+  ImGui::SameLine();
+  this->auto_width(avail, 0.0f);
+  ImGui::InputScalar("!", ImGuiDataType_S64, &uistate.stop_, &negone,
+                     &max_stop);
+  ImGui::PopItemWidth();
+
+  // num
+  this->backspace();
+  ImGui::Text("    num   ");
+  ImGui::SameLine();
+  this->auto_width(avail, 0.0f);
+  ImGui::InputScalar("n", ImGuiDataType_U32, &uistate.num_, &zero, &max_num);
+  ImGui::PopItemWidth();
+
+  // width
+  ImGui::AlignTextToFramePadding();
+  ImGui::Text("width ");
+  ImGui::SameLine();
+  this->auto_width(avail, 0.0f);
+  ImGui::InputScalar("w", ImGuiDataType_U32, &uistate.width_, &zero, &max_dim);
+  ImGui::PopItemWidth();
+
+  // height
+  this->backspace();
+  ImGui::Text("    height");
+  ImGui::SameLine();
+  this->auto_width(avail, 0.0f);
+  ImGui::InputScalar("h", ImGuiDataType_U32, &uistate.height_, &zero,
+                     &max_dim);
+  ImGui::PopItemWidth();
+
+  // alpha
+  ImGui::AlignTextToFramePadding();
+  ImGui::Text("alpha ");
+  ImGui::SameLine();
+  this->auto_width(avail, 0.0f);
+  ImGui::InputFloat("a", &uistate.alpha_, -180.0f, 180.0f, "%.3f");
+  ImGui::PopItemWidth();
+
+  // beta
+  this->backspace();
+  ImGui::Text("    beta  ");
+  ImGui::SameLine();
+  this->auto_width(avail, 0.0f);
+  ImGui::InputFloat("b", &uistate.beta_, -180.0f, 180.0f, "%.3f");
+  ImGui::PopItemWidth();
+
+  // scope
+  ImGui::AlignTextToFramePadding();
+  ImGui::Text("scope ");
+  ImGui::SameLine();
+  this->auto_width(avail, 0.0f);
+  ImGui::InputFloat("v", &uistate.scope_, 1.0f, 256.0f, "%.3f");
+  ImGui::PopItemWidth();
+
+  // ascope
+  this->backspace();
+  ImGui::Text("    ascope");
+  ImGui::SameLine();
+  this->auto_width(avail, 0.0f);
+  ImGui::InputFloat("u", &uistate.ascope_, 1.0f, 256.0f, "%.3f");
+  ImGui::PopItemWidth();
+
+  // speed
+  ImGui::AlignTextToFramePadding();
+  ImGui::Text("speed ");
+  ImGui::SameLine();
+  this->auto_width(avail, 0.0f);
+  ImGui::InputFloat("s", &uistate.speed_, 1.0f, 64.0f, "%.3f");
+  ImGui::PopItemWidth();
+
+  // speed
+  this->backspace();
+  ImGui::Text("    noise ");
+  ImGui::SameLine();
+  this->auto_width(avail, 0.0f);
+  ImGui::InputFloat("e", &uistate.noise_, -90.0f, 90.0f, "%.3f");
+  ImGui::PopItemWidth();
+
+  // preset alpha & beta
+  if (ImGui::Button("Random pattern")) {
+    this->message_set_ = uistate.random();
+  }
+  ImGui::SameLine();
+  this->auto_width(width);
+  if (ImGui::Combo("p", &uistate.pattern_,
+                   "lifelike structures 1\0"
+                   "moving structures\0"
+                   "clean cow pattern\0"
+                   "chaos w/ random aggr. 1\0"
+                   "fingerprint pattern\0"
+                   "chaos w/ random aggr. 2\0"
+                   "untidy cow pattern\0"
+                   "chaos w/ random aggr. 3\0"
+                   "regular pattern\0"
+                   "lifelike structures 2\0"
+                   "stable cluster pattern\0"
+                   "chaotic pattern 1\0"
+                   "chaotic pattern 2\0"
+                   "cells & moving cluster\0"
+                   "chaotic pattern 3\0"
+                   "stable rings\0\0")) {
+    this->message_set_ = uistate.pattern();
+  }
+  ImGui::PopItemWidth();
+}
+
+
+void
+Gui::draw_config_analysis(float width)
+{
+  Log& log = this->log_;
+  UiState& uistate = this->uistate_;
+  Control& ctrl = uistate.ctrl_;
+  State& state = ctrl.get_state();
+  Exp& exp = ctrl.get_exp();
+  float font_width = this->font_width_;
+  float inspect_height = 160.0f;
+  float inspect_width =
+    std::max(7 * font_width,
+             (3 + std::to_string(state.num_).size()) * font_width);
+  auto text_title = ImVec4(1.0f, 0.75f, 0.25f, 1.0f);
+  auto text_exp = ImVec4(0.25f, 1.0f, 0.75f, 1.0f);
+  const ImU32 zero = 0;
+  const ImU32 max_num = 1000000;
+
+  ImGui::Dummy(ImVec2(0.0f, 5.0f));
+  ImGui::PushFont(this->font_b_);
+  ImGui::TextColored(text_title, "Analysis");
+  ImGui::PopFont();
+  ImGui::Dummy(ImVec2(0.0f, 2.0f));
+
+  // reset analysis
+  if (ImGui::Button("Reset experiment module & colors")) {
+    ctrl.reset_exp();
+    this->message_exp_color_ = "";
+    this->message_exp_cluster_ = "";
+    this->message_exp_inject_ = "";
+    this->message_exp_inspect_ = this->message_exp_inspect_default_;
+    this->inspect_particle_ = -1;
+    this->inspect_cluster_ = -1;
+    this->inspect_cluster_particle_ = -1;
+    log.add(Attn::O, "Experiment module & colors reset.");
+    uistate.coloring_ = Coloring::Original;
+    uistate.deceive();
+  }
+
+  // coloring
+  ImGui::TextColored(text_exp,
+                     "magenta=%u, blue=%u, yellow=%u, brown=%u, green=%u",
+                     exp.magentas_, exp.blues_, exp.yellows_, exp.browns_,
+                     exp.greens_);
+  ImGui::AlignTextToFramePadding();
+  ImGui::Text("coloring");
+  ImGui::SameLine();
+  this->auto_width(width);
+  if (ImGui::Combo("d", &this->coloring_,
+                   "original\0"
+                   "dynamic\0"
+                   "density 10\0"
+                   "density 15\0"
+                   "density 20\0"
+                   "density 25\0"
+                   "density 30\0"
+                   "density 35\0"
+                   "density 40\0\0")) {
+    this->message_exp_cluster_ = "";
+    this->message_exp_inject_ = "";
+    this->message_exp_inspect_ = this->message_exp_inspect_default_;
+    this->inspect_particle_ = -1;
+    this->inspect_cluster_ = -1;
+    this->inspect_cluster_particle_ = -1;
+    Coloring scheme = Coloring::Original;
+    int choice = this->coloring_;
+    if      (0 == choice) { scheme = Coloring::Original; }
+    else if (1 == choice) { scheme = Coloring::Dynamic; }
+    else if (2 == choice) { scheme = Coloring::Density10; }
+    else if (3 == choice) { scheme = Coloring::Density15; }
+    else if (4 == choice) { scheme = Coloring::Density20; }
+    else if (5 == choice) { scheme = Coloring::Density25; }
+    else if (6 == choice) { scheme = Coloring::Density30; }
+    else if (7 == choice) { scheme = Coloring::Density35; }
+    else if (8 == choice) { scheme = Coloring::Density40; }
+    this->message_exp_color_ = ctrl.color(scheme);
+    log.add(Attn::O, this->message_exp_color_);
+    uistate.coloring_ = scheme;
+    uistate.deceive();
+  }
+  ImGui::PopItemWidth();
+  if (!this->message_exp_color_.empty()) {
+    ImGui::TextColored(text_exp, "%s", this->message_exp_color_.c_str());
+  }
+
+  // clustering
+  if (ImGui::Button("Detect clusters")) {
+    this->message_exp_color_ = "";
+    this->message_exp_inject_ = "";
+    this->message_exp_inspect_ = this->message_exp_inspect_default_;
+    this->inspect_particle_ = -1;
+    this->inspect_cluster_ = -1;
+    this->inspect_cluster_particle_ = -1;
+    this->message_exp_cluster_ =
+      ctrl.cluster(this->cluster_radius_, this->cluster_minpts_);
+    exp.districts();
+    log.add(Attn::O, this->message_exp_cluster_);
+    ctrl.color(Coloring::Cluster);
+    uistate.coloring_ = Coloring::Cluster;
+    uistate.deceive();
+  }
+  this->auto_width(width, 3.25f);
+  ImGui::SameLine();
+  ImGui::Text("radius");
+  ImGui::SameLine();
+  ImGui::InputFloat(",", &this->cluster_radius_, 1.0f, 10000.0f, "%.3f");
+  ImGui::SameLine();
+  ImGui::Text("minpts");
+  ImGui::SameLine();
+  ImGui::InputScalar(".", ImGuiDataType_U32, &this->cluster_minpts_, &zero,
+                     &max_num);
+  ImGui::PopItemWidth();
+  if (!this->message_exp_cluster_.empty()) {
+    ImGui::TextColored(text_exp, "%s", this->message_exp_cluster_.c_str());
+  }
+
+  // injection
+  if (ImGui::Button("Inject clusters")) {
+    this->message_exp_color_ = "";
+    this->message_exp_cluster_ = "";
+    this->message_exp_inspect_ = this->message_exp_inspect_default_;
+    this->inspect_particle_ = -1;
+    this->inspect_cluster_ = -1;
+    this->inspect_cluster_particle_ = -1;
+    Type type = Type::TriangleCell;
+    int choice = this->inject_sprite_;
+    if (0 == choice) {
+      type = Type::Nutrient;
+    } else if (1 == choice) {
+      type = Type::PrematureSpore;
+    } else if (2 == choice) {
+      type = Type::MatureSpore;
+    } else if (3 == choice) {
+      type = Type::Ring;
+    } else if (4 == choice) {
+      type = Type::PrematureCell;
+    } else if (5 == choice) {
+      type = Type::TriangleCell;
+    } else if (6 == choice) {
+      type = Type::SquareCell;
+    } else if (7 == choice) {
+      type = Type::PentagonCell;
     }
+    this->message_exp_inject_ =
+      ctrl.inject(type, this->inspect_greater_);
+    uistate.num_ += exp.injected_.size();
+    log.add(Attn::O, this->message_exp_inject_);
+  }
+  this->auto_width(width);
+  ImGui::SameLine();
+  ImGui::Text("sprite");
+  ImGui::SameLine();
+  ImGui::Combo(":", &this->inject_sprite_,
+               "nutrient\0"
+               "premature spore\0"
+               "mature spore\0"
+               "ring\0"
+               "premature cell\0"
+               "triangle cell\0"
+               "square cell\0"
+               "pentagon cell\0\0");
+  if (!this->message_exp_inject_.empty()) {
+    ImGui::TextColored(text_exp, "%s", this->message_exp_inject_.c_str());
+  }
 
-    // stop
-    ImGui::AlignTextToFramePadding();
-    ImGui::Text("stop  ");
-    ImGui::SameLine();
-    this->auto_width(width);
-    ImGui::InputScalar("!", ImGuiDataType_S64, &uistate.stop_,
-                       &negone, &max_stop);
-    ImGui::PopItemWidth();
-
-    // num
-    ImGui::AlignTextToFramePadding();
-    ImGui::Text("num   ");
-    ImGui::SameLine();
-    this->auto_width(width);
-    ImGui::InputScalar("n", ImGuiDataType_U32, &uistate.num_, &zero, &max_num);
-    ImGui::PopItemWidth();
-
-    // width
-    ImGui::AlignTextToFramePadding();
-    ImGui::Text("width ");
-    ImGui::SameLine();
-    this->auto_width(width);
-    ImGui::InputScalar("w", ImGuiDataType_U32, &uistate.width_, &zero,
-                       &max_dim);
-    ImGui::PopItemWidth();
-
-    // height
-    ImGui::AlignTextToFramePadding();
-    ImGui::Text("height");
-    ImGui::SameLine();
-    this->auto_width(width);
-    ImGui::InputScalar("h", ImGuiDataType_U32, &uistate.height_, &zero,
-                       &max_dim);
-    ImGui::PopItemWidth();
-
-    // alpha
-    ImGui::AlignTextToFramePadding();
-    ImGui::Text("alpha ");
-    ImGui::SameLine();
-    this->auto_width(width);
-    ImGui::InputFloat("a", &uistate.alpha_, -180.0f, 180.0f, "%.3f");
-    ImGui::PopItemWidth();
-
-    // beta
-    ImGui::AlignTextToFramePadding();
-    ImGui::Text("beta  ");
-    ImGui::SameLine();
-    this->auto_width(width);
-    ImGui::InputFloat("b", &uistate.beta_, -180.0f, 180.0f, "%.3f");
-    ImGui::PopItemWidth();
-
-    // scope
-    ImGui::AlignTextToFramePadding();
-    ImGui::Text("scope ");
-    ImGui::SameLine();
-    this->auto_width(width);
-    ImGui::InputFloat("v", &uistate.scope_, 1.0f, 256.0f, "%.3f");
-    ImGui::PopItemWidth();
-
-    // TODO: ascope
-
-    // speed
-    ImGui::AlignTextToFramePadding();
-    ImGui::Text("speed ");
-    ImGui::SameLine();
-    this->auto_width(width);
-    ImGui::InputFloat("s", &uistate.speed_, 1.0f, 64.0f, "%.3f");
-    ImGui::PopItemWidth();
-
-    // preset alpha & beta
-    if (ImGui::Button("Random pattern")) {
-      this->message_set_ = uistate.random();
-    }
-    ImGui::SameLine();
-    this->auto_width(width);
-    if (ImGui::Combo("p", &uistate.pattern_,
-                     "lifelike structures 1\0"
-                     "moving structures\0"
-                     "clean cow pattern\0"
-                     "chaos w/ random aggr. 1\0"
-                     "fingerprint pattern\0"
-                     "chaos w/ random aggr. 2\0"
-                     "untidy cow pattern\0"
-                     "chaos w/ random aggr. 3\0"
-                     "regular pattern\0"
-                     "lifelike structures 2\0"
-                     "stable cluster pattern\0"
-                     "chaotic pattern 1\0"
-                     "chaotic pattern 2\0"
-                     "cells & moving cluster\0"
-                     "chaotic pattern 3\0"
-                     "stable rings\0\0")) {
-      this->message_set_ = uistate.pattern();
-    }
-    ImGui::PopItemWidth();
-
-    // analysis ///////////////////////////////////////////////////////////////
-
-    ImGui::Dummy(ImVec2(0.0f, 2.0f));
-    ImGui::PushFont(this->font_b);
-    ImGui::TextColored(color_title, "Analysis");
-    ImGui::PopFont();
-
-    // reset analysis
-    if (ImGui::Button("Reset experiment module & colors")) {
-      ctrl.reset_exp();
-      this->message_exp_color_ = "";
-      this->message_exp_cluster_ = "";
-      this->message_exp_inject_ = "";
-      this->message_exp_inspect_ = this->message_exp_inspect_default_;
-      this->inspect_particle_ = -1;
-      this->inspect_cluster_ = -1;
+  // inspection
+  ImGui::AlignTextToFramePadding();
+  ImGui::Text("greater neighborhood");
+  ImGui::SameLine();
+  ImGui::Checkbox("g", &this->inspect_greater_);
+  ImGui::BeginGroup();
+  ImGui::BeginChild(ImGui::GetID((void*)(intptr_t)0),
+                    ImVec2(inspect_width, inspect_height),
+                    true, ImGuiWindowFlags_MenuBar);
+  ImGui::BeginMenuBar();
+  ImGui::Text("part.");
+  ImGui::EndMenuBar();
+  for (int p = 0; p < state.num_; ++p) {
+    if (ImGui::Selectable(std::to_string(p).c_str(),
+                          this->inspect_particle_ == p))
+    {
+      this->inspect_particle_ = p;
+      this->inspect_cluster_= -1;
       this->inspect_cluster_particle_ = -1;
-      log.add(Attn::O, "Experiment module & colors reset.");
-      uistate.coloring_ = Coloring::Original;
+      std::vector<unsigned int> ps;
+      ps.push_back(p);
+      ctrl.highlight(ps);
+      ctrl.color(Coloring::Inspect);
+      uistate.coloring_ = Coloring::Inspect;
       uistate.deceive();
+      this->gen_message_exp_inspect();
     }
-
-    // coloring
-    ImGui::AlignTextToFramePadding();
-    ImGui::Text("Coloring ");
+  }
+  ImGui::EndChild();
+  if (0 < exp.clusters_.size()) {
     ImGui::SameLine();
-    this->auto_width(width);
-    if (ImGui::Combo("d", &this->coloring_,
-                     "original\0"
-                     "dynamic\0"
-                     "density 10\0"
-                     "density 15\0"
-                     "density 20\0"
-                     "density 25\0"
-                     "density 30\0"
-                     "density 35\0"
-                     "density 40\0\0")) {
-      this->message_exp_cluster_ = "";
-      this->message_exp_inject_ = "";
-      this->message_exp_inspect_ = this->message_exp_inspect_default_;
-      this->inspect_particle_ = -1;
-      this->inspect_cluster_ = -1;
-      this->inspect_cluster_particle_ = -1;
-      Coloring scheme = Coloring::Original;
-      int choice = this->coloring_;
-      if      (0 == choice) { scheme = Coloring::Original; }
-      else if (1 == choice) { scheme = Coloring::Dynamic; }
-      else if (2 == choice) { scheme = Coloring::Density10; }
-      else if (3 == choice) { scheme = Coloring::Density15; }
-      else if (4 == choice) { scheme = Coloring::Density20; }
-      else if (5 == choice) { scheme = Coloring::Density25; }
-      else if (6 == choice) { scheme = Coloring::Density30; }
-      else if (7 == choice) { scheme = Coloring::Density35; }
-      else if (8 == choice) { scheme = Coloring::Density40; }
-      this->message_exp_color_ = ctrl.color(scheme);
-      log.add(Attn::O, this->message_exp_color_);
-      uistate.coloring_ = scheme;
-      uistate.deceive();
-    }
-    ImGui::PopItemWidth();
-    if (!this->message_exp_color_.empty()) {
-      ImGui::TextColored(color_exp, "%s", this->message_exp_color_.c_str());
-    }
-    ImGui::TextColored(color_exp,
-                       "magenta=%u, blue=%u, yellow=%u, brown=%u, green=%u",
-                       exp.magentas_, exp.blues_, exp.yellows_, exp.browns_,
-                       exp.greens_);
-
-    // clustering
-    if (ImGui::Button("Detect clusters")) {
-      this->message_exp_color_ = "";
-      this->message_exp_inject_ = "";
-      this->message_exp_inspect_ = this->message_exp_inspect_default_;
-      this->inspect_particle_ = -1;
-      this->inspect_cluster_ = -1;
-      this->inspect_cluster_particle_ = -1;
-      this->message_exp_cluster_ =
-        ctrl.cluster(this->cluster_radius_, this->cluster_minpts_);
-      log.add(Attn::O, this->message_exp_cluster_);
-      ctrl.color(Coloring::Cluster);
-      uistate.coloring_ = Coloring::Cluster;
-      uistate.deceive();
-    }
-    this->auto_width(width, 3);
-    ImGui::SameLine();
-    ImGui::Text("radius");
-    ImGui::SameLine();
-    ImGui::InputFloat(";", &this->cluster_radius_, 1.0f, 10000.0f, "%.3f");
-    ImGui::SameLine();
-    ImGui::Text("minpts");
-    ImGui::SameLine();
-    ImGui::InputScalar(":", ImGuiDataType_U32, &this->cluster_minpts_, &zero, &max_num);
-    ImGui::PopItemWidth();
-    if (!this->message_exp_cluster_.empty()) {
-      ImGui::TextColored(color_exp, "%s", this->message_exp_cluster_.c_str());
-    }
-
-    // injection
-    if (ImGui::Button("Inject clusters")) {
-      this->message_exp_color_ = "";
-      this->message_exp_cluster_ = "";
-      this->message_exp_inspect_ = this->message_exp_inspect_default_;
-      this->inspect_particle_ = -1;
-      this->inspect_cluster_ = -1;
-      this->inspect_cluster_particle_ = -1;
-      Type type = Type::TriangleCell;
-      int choice = this->inject_sprite_;
-      if (0 == choice) {
-        type = Type::PrematureSpore;
-      } else if (1 == choice) {
-        type = Type::MatureSpore;
-      } else if (2 == choice) {
-        type = Type::Ring;
-      } else if (3 == choice) {
-        type = Type::PrematureCell;
-      } else if (4 == choice) {
-        type = Type::TriangleCell;
-      } else if (5 == choice) {
-        type = Type::SquareCell;
-      } else if (6 == choice) {
-        type = Type::PentagonCell;
-      }
-      this->message_exp_inject_ =
-        ctrl.inject(type, this->inject_dpe_);
-      log.add(Attn::O, this->message_exp_inject_);
-      // TODO: sync num and dpe independently
-      unsigned int num = ctrl.get_num();
-      uistate.num_ = num;
-      this->inject_dpe_ = static_cast<float>(num)
-                         / uistate.width_ / uistate.height_;
-    }
-    this->auto_width(width, 3);
-    ImGui::SameLine();
-    ImGui::Text("sprite");
-    ImGui::SameLine();
-    ImGui::Combo(",", &this->inject_sprite_,
-                 "premature spore\0"
-                 "mature spore\0"
-                 "ring\0"
-                 "premature cell\0"
-                 "triangle cell\0"
-                 "square cell\0"
-                 "pentagon cell\0\0");
-    ImGui::SameLine();
-    ImGui::Text("  DPE ");
-    ImGui::SameLine();
-    ImGui::InputFloat(".", &this->inject_dpe_, 0.01f, 10.0f, "%.5f");
-    if (!this->message_exp_inject_.empty()) {
-      ImGui::TextColored(color_exp, "%s", this->message_exp_inject_.c_str());
-    }
-
-    // inspection
-    ImGui::BeginGroup();
-    ImGui::BeginChild(ImGui::GetID((void*)(intptr_t)0),
+    ImGui::BeginChild(ImGui::GetID((void*)(intptr_t)1),
                       ImVec2(inspect_width, inspect_height),
                       true, ImGuiWindowFlags_MenuBar);
     ImGui::BeginMenuBar();
-    ImGui::Text("part.");
+    ImGui::Text("clus.");
     ImGui::EndMenuBar();
-    for (int p = 0; p < state.num_; ++p) {
-      if (ImGui::Selectable(std::to_string(p).c_str(),
-                            this->inspect_particle_ == p))
+    for (int c = 0; c < exp.clusters_.size(); ++c) {
+      if (ImGui::Selectable(std::to_string(c).c_str(),
+                            this->inspect_cluster_ == c))
       {
-        this->inspect_particle_ = p;
-        this->inspect_cluster_= -1;
+        this->inspect_particle_= -1;
+        this->inspect_cluster_ = c;
         this->inspect_cluster_particle_ = -1;
+        std::set<int>& cluster = exp.clusters_[c];
+        if (this->inspect_greater_) {
+          cluster = exp.districts_[c];
+        }
         std::vector<unsigned int> ps;
-        ps.push_back(p);
+        for (int p : cluster) {
+          ps.push_back(p);
+        }
         ctrl.highlight(ps);
         ctrl.color(Coloring::Inspect);
         uistate.coloring_ = Coloring::Inspect;
@@ -682,248 +786,246 @@ Gui::draw_config(Box box)
       }
     }
     ImGui::EndChild();
-    if (0 < exp.clusters_.size()) {
-      ImGui::SameLine();
-      ImGui::BeginChild(ImGui::GetID((void*)(intptr_t)1),
-                        ImVec2(inspect_width, inspect_height),
-                        true, ImGuiWindowFlags_MenuBar);
-      ImGui::BeginMenuBar();
-      ImGui::Text("clus.");
-      ImGui::EndMenuBar();
-      for (int c = 0; c < exp.clusters_.size(); ++c) {
-        if (ImGui::Selectable(std::to_string(c).c_str(),
-                              this->inspect_cluster_ == c))
-        {
-          this->inspect_particle_= -1;
-          this->inspect_cluster_ = c;
-          this->inspect_cluster_particle_ = -1;
-          std::vector<unsigned int> ps;
-          for (int p : exp.clusters_[c]) {
-            ps.push_back(p);
-          }
-          ctrl.highlight(ps);
-          ctrl.color(Coloring::Inspect);
-          uistate.coloring_ = Coloring::Inspect;
-          uistate.deceive();
-          this->gen_message_exp_inspect();
-        }
-      }
-      ImGui::EndChild();
-    }
-    if (0 <= this->inspect_cluster_) {
-      inspect_width =
-        std::max(inspect_width,
-                 (3 + std::to_string(this->inspect_cluster_).size())
-                  * font_width);
-      ImGui::SameLine();
-      ImGui::BeginChild(ImGui::GetID((void*)(intptr_t)2),
-                        ImVec2(inspect_width, inspect_height),
-                        true, ImGuiWindowFlags_MenuBar);
-      ImGui::BeginMenuBar();
-      ImGui::Text("c %d", this->inspect_cluster_);
-      ImGui::EndMenuBar();
-      for (auto p : exp.clusters_[this->inspect_cluster_]) {
-        if (ImGui::Selectable(std::to_string(p).c_str(),
-                              this->inspect_cluster_particle_ == p))
-        {
-          this->inspect_particle_ = -1;
-          // keep cluster index
-          this->inspect_cluster_particle_ = p;
-          std::vector<unsigned int> ps;
-          ps.push_back(p);
-          ctrl.highlight(ps);
-          ctrl.color(Coloring::Inspect);
-          uistate.coloring_ = Coloring::Inspect;
-          uistate.deceive();
-          this->gen_message_exp_inspect();
-        }
-        ++p;
-      }
-      ImGui::EndChild();
-    }
-    ImGui::EndGroup();
-    ImGui::SameLine();
-    ImGui::TextColored(color_exp, "Inspecting:%s",
-                       this->message_exp_inspect_.c_str());
-    /**
-    // exp: for "capturing" clusters for later injection
-    if (ImGui::Button("Print cluster xyfs")) {
-      for (auto p : exp.clusters_[this->inspect_cluster_]) {
-        std::cout << state.px_[p] << " " << state.py_[p] << " "
-                  << Util::rad_to_deg(state.pf_[p]) << std::endl;
-      }
-    }
-    //*/
-
-    // usage help /////////////////////////////////////////////////////////////
-
-    ImGui::Dummy(ImVec2(0.0f, 2.0f));
-    ImGui::PushFont(this->font_b);
-    ImGui::TextColored(color_title, "Usage help");
-
-    // pause
-    ImGui::TextColored(color_dimmer, "pause/resume:");
-    ImGui::PopFont();
-    ImGui::SameLine();
-    ImGui::TextColored(color_dim, "Space");
-
-    // step
-    ImGui::PushFont(this->font_b);
-    ImGui::TextColored(color_dimmer, "step:");
-    ImGui::PopFont();
-    ImGui::SameLine();
-    ImGui::TextColored(color_dim, "S");
-
-    // quit
-    ImGui::PushFont(this->font_b);
-    ImGui::TextColored(color_dimmer, "quit");
-    ImGui::PopFont();
-    this->backspace();
-    ImGui::TextColored(color_dimmer, ": Ctrl+");
-    this->backspace();
-    ImGui::TextColored(color_dim, "C");
-    this->backspace();
-    ImGui::TextColored(color_dimmer, ", Ctrl+");
-    this->backspace();
-    ImGui::TextColored(color_dim, "Q");
-
-    // save
-    ImGui::PushFont(this->font_b);
-    ImGui::TextColored(color_dimmer, "save");
-    ImGui::PopFont();
-    this->backspace();
-    ImGui::TextColored(color_dimmer, ": Ctrl+");
-    this->backspace();
-    ImGui::TextColored(color_dim, "S");
-
-    // load
-    ImGui::PushFont(this->font_b);
-    ImGui::TextColored(color_dimmer, "load");
-    ImGui::PopFont();
-    this->backspace();
-    ImGui::TextColored(color_dimmer, ": Ctrl+");
-    this->backspace();
-    ImGui::TextColored(color_dim, "L");
-    ImGui::PushFont(this->font_b);
-
-    // capture
-    ImGui::TextColored(color_dimmer, "take picture");
-    ImGui::PopFont();
-    this->backspace();
-    ImGui::TextColored(color_dimmer, ": Ctrl+");
-    this->backspace();
-    ImGui::TextColored(color_dim, "P");
-
-    // camera dolly and pivot
-    ImGui::TextColored(color_dim, "               QWE");
-    ImGui::SameLine();
-    ImGui::SetCursorPosX(ImGui::GetCursorPosX() - 2 + 8 * this->font_width_);
-    ImGui::TextColored(color_dim, "UIO");
-    ImGui::PushFont(this->font_b);
-    ImGui::TextColored(color_dimmer, "camera  dolly");
-    ImGui::PopFont();
-    this->backspace();
-    ImGui::TextColored(color_dimmer, ":");
-    ImGui::SameLine();
-    ImGui::TextColored(color_dim, "A D");
-    ImGui::SameLine();
-    ImGui::PushFont(this->font_b);
-    ImGui::TextColored(color_dimmer, " pivot:");
-    ImGui::PopFont();
-    this->backspace(-1);
-    ImGui::TextColored(color_dim, " J L");
-    ImGui::TextColored(color_dim, "               ZXC");
-    ImGui::SameLine();
-    ImGui::SetCursorPosX(ImGui::GetCursorPosX() - 2 + 8 * this->font_width_);
-    ImGui::TextColored(color_dim, "M,.");
-    ImGui::TextColored(color_dimmer, "            mouse");
-    this->backspace();
-    ImGui::TextColored(color_dim, "L");
-    ImGui::SameLine();
-    ImGui::TextColored(color_dimmer, "     mouse");
-    this->backspace();
-    ImGui::TextColored(color_dim, "R");
-
-    // camera zoom
-    ImGui::PushFont(this->font_b);
-    ImGui::TextColored(color_dimmer, "         zoom");
-    ImGui::PopFont();
-    this->backspace();
-    ImGui::TextColored(color_dimmer, ":");
-    ImGui::SameLine();
-    ImGui::TextColored(color_dim, "Minus");
-    this->backspace();
-    ImGui::TextColored(color_dimmer, "(");
-    this->backspace();
-    ImGui::TextColored(color_dim, "-");
-    this->backspace();
-    ImGui::TextColored(color_dimmer, "), ");
-    this->backspace();
-    ImGui::TextColored(color_dim, "Equal");
-    this->backspace();
-    ImGui::TextColored(color_dimmer, "(");
-    this->backspace();
-    ImGui::TextColored(color_dim, "=");
-    this->backspace();
-    ImGui::TextColored(color_dimmer, "), mouse");
-    this->backspace();
-    ImGui::TextColored(color_dim, "wheel");
-
-    // camera reset
-    ImGui::PushFont(this->font_b);
-    ImGui::TextColored(color_dimmer, "        reset");
-    ImGui::PopFont();
-    this->backspace();
-    ImGui::TextColored(color_dimmer, ":");
-    ImGui::SameLine();
-    ImGui::TextColored(color_dim, "Slash");
-    this->backspace();
-    ImGui::TextColored(color_dimmer, "(");
-    this->backspace();
-    ImGui::TextColored(color_dim, "/");
-    this->backspace();
-    ImGui::TextColored(color_dimmer, ")");
-
-    // message box
-    ImGui::PushFont(this->font_b);
-    ImGui::TextColored(color_dimmer, "messages box");
-    ImGui::PopFont();
-    this->backspace();
-    ImGui::TextColored(color_dimmer, ":   ");
-    ImGui::SameLine();
-    ImGui::TextColored(color_dim, "Grave");
-    this->backspace();
-    ImGui::TextColored(color_dimmer, "(");
-    this->backspace();
-    ImGui::TextColored(color_dim, "`");
-    this->backspace();
-    ImGui::TextColored(color_dimmer, ")");
-
-    // brief corner
-    ImGui::PushFont(this->font_b);
-    ImGui::TextColored(color_dimmer, "brief corner");
-    ImGui::PopFont();
-    this->backspace();
-    ImGui::TextColored(color_dimmer, ":   ");
-    ImGui::SameLine();
-    ImGui::TextColored(color_dim, "Apostrophe");
-    this->backspace();
-    ImGui::TextColored(color_dimmer, "(");
-    this->backspace();
-    ImGui::TextColored(color_dim, "'");
-    this->backspace();
-    ImGui::TextColored(color_dimmer, ")");
-
-    // config box
-    ImGui::PushFont(this->font_b);
-    ImGui::TextColored(color_dimmer, "this config box");
-    ImGui::PopFont();
-    this->backspace();
-    ImGui::TextColored(color_dimmer, ":");
-    ImGui::SameLine();
-    ImGui::TextColored(color_dim, "Escape");
   }
-  ImGui::End();
+  if (0 <= this->inspect_cluster_) {
+    inspect_width =
+      std::max(inspect_width,
+               (3 + std::to_string(this->inspect_cluster_).size())
+                * font_width);
+    ImGui::SameLine();
+    ImGui::BeginChild(ImGui::GetID((void*)(intptr_t)2),
+                      ImVec2(inspect_width, inspect_height),
+                      true, ImGuiWindowFlags_MenuBar);
+    ImGui::BeginMenuBar();
+    ImGui::Text("c %d", this->inspect_cluster_);
+    ImGui::EndMenuBar();
+    std::set<int>& cluster = exp.clusters_[this->inspect_cluster_];
+    if (this->inspect_greater_) {
+      cluster = exp.districts_[this->inspect_cluster_];
+    }
+    for (int p : cluster) {
+      if (ImGui::Selectable(std::to_string(p).c_str(),
+                            this->inspect_cluster_particle_ == p))
+      {
+        this->inspect_particle_ = -1;
+        // keep cluster index
+        this->inspect_cluster_particle_ = p;
+        std::vector<unsigned int> ps;
+        ps.push_back(p);
+        ctrl.highlight(ps);
+        ctrl.color(Coloring::Inspect);
+        uistate.coloring_ = Coloring::Inspect;
+        uistate.deceive();
+        this->gen_message_exp_inspect();
+      }
+      ++p;
+    }
+    ImGui::EndChild();
+  }
+  ImGui::EndGroup();
+  ImGui::SameLine();
+  ImGui::TextColored(text_exp, "Inspecting:%s",
+                     this->message_exp_inspect_.c_str());
+}
+
+
+void
+Gui::draw_config_usage()
+{
+  auto text_title = ImVec4(1.0f, 0.75f, 0.25f, 1.0f);
+  ImFont* font_b = this->font_b_;
+  float font_width = this->font_width_;
+  ImVec4& text_dim = this->text_color_dim_;
+  ImVec4& text_dimmer = this->text_color_dimmer_;
+
+  ImGui::Dummy(ImVec2(0.0f, 5.0f));
+  ImGui::PushFont(font_b);
+  ImGui::TextColored(text_title, "Usage help");
+  ImGui::Dummy(ImVec2(0.0f, 2.0f));
+
+  // pause
+  ImGui::TextColored(text_dimmer, "pause/resume");
+  ImGui::PopFont();
+  this->backspace();
+  ImGui::TextColored(text_dimmer, ":");
+  ImGui::SameLine();
+  ImGui::TextColored(text_dim, "Space");
+
+  // step
+  ImGui::PushFont(font_b);
+  ImGui::TextColored(text_dimmer, "step");
+  ImGui::PopFont();
+  this->backspace();
+  ImGui::TextColored(text_dimmer, ":");
+  ImGui::SameLine();
+  ImGui::TextColored(text_dim, "S");
+
+  // quit
+  ImGui::PushFont(font_b);
+  ImGui::TextColored(text_dimmer, "quit");
+  ImGui::PopFont();
+  this->backspace();
+  ImGui::TextColored(text_dimmer, ": Ctrl+");
+  this->backspace();
+  ImGui::TextColored(text_dim, "C");
+  this->backspace();
+  ImGui::TextColored(text_dimmer, ", Ctrl+");
+  this->backspace();
+  ImGui::TextColored(text_dim, "Q");
+
+  // save
+  ImGui::PushFont(font_b);
+  ImGui::TextColored(text_dimmer, "save");
+  ImGui::PopFont();
+  this->backspace();
+  ImGui::TextColored(text_dimmer, ": Ctrl+");
+  this->backspace();
+  ImGui::TextColored(text_dim, "S");
+
+  // load
+  ImGui::PushFont(font_b);
+  ImGui::TextColored(text_dimmer, "load");
+  ImGui::PopFont();
+  this->backspace();
+  ImGui::TextColored(text_dimmer, ": Ctrl+");
+  this->backspace();
+  ImGui::TextColored(text_dim, "L");
+
+  // capture
+  ImGui::PushFont(font_b);
+  ImGui::TextColored(text_dimmer, "take picture");
+  ImGui::PopFont();
+  this->backspace();
+  ImGui::TextColored(text_dimmer, ":    Ctrl+");
+  this->backspace();
+  ImGui::TextColored(text_dim, "P");
+
+  // cluster
+  ImGui::PushFont(font_b);
+  ImGui::TextColored(text_dimmer, "detect clusters");
+  ImGui::PopFont();
+  this->backspace();
+  ImGui::TextColored(text_dimmer, ": Shift+");
+  this->backspace();
+  ImGui::TextColored(text_dim, "D");
+
+  // reset exp
+  ImGui::PushFont(font_b);
+  ImGui::TextColored(text_dimmer, "reset exp");
+  ImGui::PopFont();
+  this->backspace();
+  ImGui::TextColored(text_dimmer, ":       Shift+");
+  this->backspace();
+  ImGui::TextColored(text_dim, "R");
+
+  // camera dolly and pivot
+  ImGui::TextColored(text_dim, "               QWE");
+  ImGui::SameLine();
+  ImGui::SetCursorPosX(ImGui::GetCursorPosX() - 2 + 8 * font_width);
+  ImGui::TextColored(text_dim, "UIO");
+  ImGui::PushFont(font_b);
+  ImGui::TextColored(text_dimmer, "camera  dolly");
+  ImGui::PopFont();
+  this->backspace();
+  ImGui::TextColored(text_dimmer, ":");
+  ImGui::SameLine();
+  ImGui::TextColored(text_dim, "A D");
+  ImGui::SameLine();
+  ImGui::PushFont(font_b);
+  ImGui::TextColored(text_dimmer, " pivot:");
+  ImGui::PopFont();
+  this->backspace(-1);
+  ImGui::TextColored(text_dim, " J L");
+  ImGui::TextColored(text_dim, "               ZXC");
+  ImGui::SameLine();
+  ImGui::SetCursorPosX(ImGui::GetCursorPosX() - 2 + 8 * font_width);
+  ImGui::TextColored(text_dim, "M,.");
+  ImGui::TextColored(text_dimmer, "            mouse");
+  this->backspace();
+  ImGui::TextColored(text_dim, "L");
+  ImGui::SameLine();
+  ImGui::TextColored(text_dimmer, "     mouse");
+  this->backspace();
+  ImGui::TextColored(text_dim, "R");
+
+  // camera zoom
+  ImGui::PushFont(font_b);
+  ImGui::TextColored(text_dimmer, "         zoom");
+  ImGui::PopFont();
+  this->backspace();
+  ImGui::TextColored(text_dimmer, ":");
+  ImGui::SameLine();
+  ImGui::TextColored(text_dim, "Minus");
+  this->backspace();
+  ImGui::TextColored(text_dimmer, "(");
+  this->backspace();
+  ImGui::TextColored(text_dim, "-");
+  this->backspace();
+  ImGui::TextColored(text_dimmer, "), ");
+  this->backspace();
+  ImGui::TextColored(text_dim, "Equal");
+  this->backspace();
+  ImGui::TextColored(text_dimmer, "(");
+  this->backspace();
+  ImGui::TextColored(text_dim, "=");
+  this->backspace();
+  ImGui::TextColored(text_dimmer, "), mouse");
+  this->backspace();
+  ImGui::TextColored(text_dim, "wheel");
+
+  // camera reset
+  ImGui::PushFont(font_b);
+  ImGui::TextColored(text_dimmer, "        reset");
+  ImGui::PopFont();
+  this->backspace();
+  ImGui::TextColored(text_dimmer, ":");
+  ImGui::SameLine();
+  ImGui::TextColored(text_dim, "Slash");
+  this->backspace();
+  ImGui::TextColored(text_dimmer, "(");
+  this->backspace();
+  ImGui::TextColored(text_dim, "/");
+  this->backspace();
+  ImGui::TextColored(text_dimmer, ")");
+
+  // message box
+  ImGui::PushFont(font_b);
+  ImGui::TextColored(text_dimmer, "messages box");
+  ImGui::PopFont();
+  this->backspace();
+  ImGui::TextColored(text_dimmer, ":   ");
+  ImGui::SameLine();
+  ImGui::TextColored(text_dim, "Grave");
+  this->backspace();
+  ImGui::TextColored(text_dimmer, "(");
+  this->backspace();
+  ImGui::TextColored(text_dim, "`");
+  this->backspace();
+  ImGui::TextColored(text_dimmer, ")");
+
+  // brief corner
+  ImGui::PushFont(font_b);
+  ImGui::TextColored(text_dimmer, "brief corner");
+  ImGui::PopFont();
+  this->backspace();
+  ImGui::TextColored(text_dimmer, ":   ");
+  ImGui::SameLine();
+  ImGui::TextColored(text_dim, "Apostrophe");
+  this->backspace();
+  ImGui::TextColored(text_dimmer, "(");
+  this->backspace();
+  ImGui::TextColored(text_dim, "'");
+  this->backspace();
+  ImGui::TextColored(text_dimmer, ")");
+
+  // config box
+  ImGui::PushFont(font_b);
+  ImGui::TextColored(text_dimmer, "this config box");
+  ImGui::PopFont();
+  this->backspace();
+  ImGui::TextColored(text_dimmer, ":");
+  ImGui::SameLine();
+  ImGui::TextColored(text_dim, "Escape");
 }
 
 
@@ -940,9 +1042,7 @@ Gui::draw_capture(Box box)
                    static_cast<int>(window_width * 0.75f));
   int h = std::max(static_cast<int>(250.0f / this->scale_),
                    static_cast<int>(window_height * 0.3f));
-  static char path[128];
-  auto color_bad = ImVec4(1.0f, 0.25f, 0.25f, 1.0f);
-  auto color_dim = ImVec4(0.5f, 0.5f, 0.5f, 1.0f);
+  static char path[256];
   static char bad_input = ' ';
   std::string allowed = "[/ A-Za-z0-9!@#%()\\[\\],.=+_-]+";
 
@@ -953,41 +1053,45 @@ Gui::draw_capture(Box box)
                    ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse)) {
     ImGui::Text("");
     ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 20);
-    ImGui::Text("cwd:");
-    ImGui::SameLine();
-    ImGui::Text("%s", this->cwd_.c_str());
+    ImGui::Text("cwd: %s", this->cwd_.c_str());
     ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 20);
     ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 20);
     if (this->input_focus_) {
       ImGui::SetKeyboardFocusHere(0);
       this->input_focus_ = false;
     }
-    ImGui::InputTextWithHint(this->capture_path_.c_str(), "/path/to/file",
-                             path, IM_ARRAYSIZE(path));
+    ImGui::InputTextWithHint("bp", "/path/to/file", path, IM_ARRAYSIZE(path));
     ImGui::PopItemWidth();
-    if (this->bad_capture_) {
-      ImGui::TextColored(color_bad, "  Capture failed!");
+    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 20);
+    if (0 < this->capture_) {
+      // TODO: time
+      ImGui::TextColored(this->text_color_good_, "Capture succeeded");
+    } else if (0 > this->capture_) {
+      ImGui::TextColored(this->text_color_bad_, "Capture failed!");
     } else if (bad_input == 'e') {
-      ImGui::TextColored(color_bad, "  Path left empty");
+      ImGui::TextColored(this->text_color_bad_, "Path left empty");
     } else if (bad_input == 'b') {
-      ImGui::TextColored(color_bad, "%s", allowed.c_str());
+      ImGui::TextColored(this->text_color_bad_, "%s", allowed.c_str());
     } else {
       ImGui::Text("");
     }
     ImGui::Text("");
     ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 20);
-    ImGui::PushFont(this->font_b);
+    ImGui::PushFont(this->font_b_);
     if (ImGui::Button("CAPTURE",
                       ImVec2(ImGui::GetContentRegionAvail().x * 0.5f - 10, 0)))
     {
       if (std::string(path).empty()) {
         bad_input = 'e';
+        this->capture_ = 0;
       } else if (!std::regex_match(path, std::regex(allowed))) {
         bad_input = 'b';
+        this->capture_ = 0;
       } else {
         bad_input = ' ';
-        this->capturing_ = true;
+        this->capturing_ = 1;
         this->capture_path_ = std::string(path);
+        this->box_ = Box::None;
       }
     }
     ImGui::PopFont();
@@ -997,61 +1101,23 @@ Gui::draw_capture(Box box)
                                        - 20, 0))) {
       bad_input = ' ';
       //this->capture_path_.clear();
-      this->bad_capture_ = false;
+      this->capture_ = 0;
       this->box_ = Box::None;
     }
     ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 20);
-    ImGui::TextColored(color_bad, "Warning:");
+    ImGui::TextColored(this->text_color_bad_, "Warning:");
     ImGui::SameLine();
-    ImGui::TextColored(color_dim, "existing file will be overwritten");
+    ImGui::TextColored(this->text_color_dimmer_,
+                       "existing file will be overwritten");
   }
   ImGui::End();
 }
 
 
 void
-Gui::draw_captured(Box box)
+Gui::draw_load_save(Box box)
 {
-  if (Box::Captured != box) {
-    return;
-  }
-  int window_width;
-  int window_height;
-  glfwGetFramebufferSize(this->window_, &window_width, &window_height);
-  int w = std::max(static_cast<int>(400.0f / this->scale_),
-                   static_cast<int>(window_width * 0.75f));
-  int h = std::max(static_cast<int>(250.0f / this->scale_),
-                   static_cast<int>(window_height * 0.3f));
-
-  ImGui::SetNextWindowPos(ImVec2((window_width - w) / 2,
-                                 (window_height - h) / 3));
-  ImGui::SetNextWindowSize(ImVec2(w, h));
-  if (ImGui::Begin("Picture saved", NULL,
-                   ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse)) {
-    ImGui::Text("");
-    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 20);
-    ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 20);
-    ImGui::Text("Successfully saved picture to: %s",
-                this->capture_path_.c_str());
-    ImGui::PopItemWidth();
-    ImGui::Text("");
-    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 20);
-    ImGui::PushFont(this->font_b);
-    if (ImGui::Button("OK",
-                      ImVec2(ImGui::GetContentRegionAvail().x * 0.5f - 10, 0)))
-    {
-      //this->capture_path_.clear();
-      this->box_ = Box::None;
-    }
-    ImGui::PopFont();
-  }
-  ImGui::End();
-}
-
-void
-Gui::draw_save_load(Box box)
-{
-  if (Box::Save != box && Box::Load != box) {
+  if (Box::Load != box && Box::Save != box) {
     return;
   }
   UiState& uistate = this->uistate_;
@@ -1064,19 +1130,19 @@ Gui::draw_save_load(Box box)
                    static_cast<int>(window_width * 0.75f));
   int h = std::max(static_cast<int>(250.0f / this->scale_),
                    static_cast<int>(window_height * 0.3f));
+  ImVec4& text_bad = this->text_color_bad_;
+  std::string what = "Save";
   std::string title = "Save state to where?";
   std::string button = "SAVE";
   bool (UiState::*fn)(const std::string&) = &UiState::save;
   if (Box::Load == box) {
+    what = "Load";
     title = "Load state from where?";
     button = "LOAD";
     fn = &UiState::load;
   }
-  static char path[128];
-  auto color_bad = ImVec4(1.0f, 0.25f, 0.25f, 1.0f);
-  auto color_dim = ImVec4(0.5f, 0.5f, 0.5f, 1.0f);
+  static char path[256];
   static char bad_input = ' ';
-  static bool bad_save = false;
   std::string allowed = "[/ A-Za-z0-9!@#%()\\[\\],.=+_-]+";
 
   ImGui::SetNextWindowPos(ImVec2((window_width - w) / 2,
@@ -1086,43 +1152,48 @@ Gui::draw_save_load(Box box)
                    ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse)) {
     ImGui::Text("");
     ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 20);
-    ImGui::Text("cwd:");
-    ImGui::SameLine();
-    ImGui::Text("%s", this->cwd_.c_str());
+    ImGui::Text("cwd: %s", this->cwd_.c_str());
     ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 20);
     ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 20);
     if (this->input_focus_) {
       ImGui::SetKeyboardFocusHere(0);
       this->input_focus_ = false;
     }
-    ImGui::InputTextWithHint("", "/path/to/file", path,
-                             IM_ARRAYSIZE(path));
+    ImGui::InputTextWithHint("bls", "/path/to/file", path, IM_ARRAYSIZE(path));
     ImGui::PopItemWidth();
-    if (bad_save) {
-      ImGui::TextColored(color_bad, "  Load/Save failed!");
+    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 20);
+    if (0 < this->load_save_) {
+      what += " succeeded";
+      ImGui::TextColored(this->text_color_good_, "%s", what.c_str());
+    } else if (0 > this->load_save_) {
+      what += " failed!";
+      ImGui::TextColored(text_bad, "%s", what.c_str());
     } else if (bad_input == 'e') {
-      ImGui::TextColored(color_bad, "  Path left empty");
+      ImGui::TextColored(text_bad, "Path left empty");
     } else if (bad_input == 'b') {
-      ImGui::TextColored(color_bad, "%s", allowed.c_str());
+      ImGui::TextColored(text_bad, "%s", allowed.c_str());
     } else {
       ImGui::Text("");
     }
     ImGui::Text("");
     ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 20);
-    ImGui::PushFont(this->font_b);
+    ImGui::PushFont(this->font_b_);
     if (ImGui::Button(button.c_str(),
                       ImVec2(ImGui::GetContentRegionAvail().x * 0.5f - 10,
                              0))) {
       if (std::string(path).empty()) {
         bad_input = 'e';
+        this->load_save_ = 0;
       } else if (!std::regex_match(path, std::regex(allowed))) {
         bad_input = 'b';
+        this->load_save_ = 0;
       } else {
         bad_input = ' ';
-        bad_save = !(uistate.*fn)(path);
-        if (!bad_save) {
-          this->box_ = Box::None;
+        if ((uistate.*fn)(path)) {
+          this->load_save_ = 1;
           ctrl.pause(true);
+        } else {
+          this->load_save_ = -1;
         }
       }
     }
@@ -1132,17 +1203,18 @@ Gui::draw_save_load(Box box)
     if (ImGui::Button("Cancel", ImVec2(ImGui::GetContentRegionAvail().x
                                        - 20, 0))) {
       bad_input = ' ';
-      bad_save = false;
+      this->load_save_ = 0;
       this->box_ = Box::None;
-      ctrl.pause(true);
     }
     ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 20);
-    ImGui::TextColored(color_bad, "Warning:");
+    ImGui::TextColored(text_bad, "Warning:");
     ImGui::SameLine();
     if (Box::Load == box) {
-      ImGui::TextColored(color_dim, "system will be changed immediately");
+      ImGui::TextColored(this->text_color_dimmer_,
+                         "system will be changed immediately");
     } else {
-      ImGui::TextColored(color_dim, "existing file will be overwritten");
+      ImGui::TextColored(this->text_color_dimmer_,
+                         "existing file will be overwritten");
     }
   }
   ImGui::End();
@@ -1156,6 +1228,7 @@ Gui::draw_quit(Box box)
     return;
   }
   Canvas& canvas = this->canvas_;
+  UiState& uistate = this->uistate_;
   int window_width;
   int window_height;
   glfwGetFramebufferSize(this->window_, &window_width, &window_height);
@@ -1163,7 +1236,7 @@ Gui::draw_quit(Box box)
                    static_cast<int>(window_width * 0.75f));
   int h = std::max(static_cast<int>(460.0f / this->scale_),
                    static_cast<int>(window_width * 0.5f));
-  static char path[128];
+  static char path[256];
   auto color_bad = ImVec4(1.0f, 0.25f, 0.25f, 1.0f);
   auto color_dim = ImVec4(0.5f, 0.5f, 0.5f, 1.0f);
   static char bad_input = ' ';
@@ -1177,21 +1250,20 @@ Gui::draw_quit(Box box)
                    ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse)) {
     ImGui::Text("");
     ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 20);
-    ImGui::Text("cwd:");
-    ImGui::SameLine();
-    ImGui::Text("%s", this->cwd_.c_str());
+    ImGui::Text("cwd: %s", this->cwd_.c_str());
     ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 20);
     ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 20);
     if (this->input_focus_) {
       ImGui::SetKeyboardFocusHere(0);
       this->input_focus_ = false;
     }
-    ImGui::InputTextWithHint("", "/path/to/file", path, IM_ARRAYSIZE(path));
+    ImGui::InputTextWithHint("bq", "/path/to/file", path, IM_ARRAYSIZE(path));
     ImGui::PopItemWidth();
+    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 20);
     if (bad_save) {
-      ImGui::TextColored(color_bad, "  Save failed!");
+      ImGui::TextColored(color_bad, "Save failed!");
     } else if (bad_input == 'e') {
-      ImGui::TextColored(color_bad, "  Path left empty");
+      ImGui::TextColored(color_bad, "Path left empty");
     } else if (bad_input == 'b') {
       ImGui::TextColored(color_bad, "%s", allowed.c_str());
     } else {
@@ -1199,7 +1271,7 @@ Gui::draw_quit(Box box)
     }
     ImGui::Text("");
     ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 40);
-    ImGui::PushFont(this->font_b);
+    ImGui::PushFont(this->font_b_);
     if (ImGui::Button("Save and QUIT",
                       ImVec2(ImGui::GetContentRegionAvail().x - 40, 0))) {
       if (std::string(path).empty()) {
@@ -1207,7 +1279,7 @@ Gui::draw_quit(Box box)
       } else if (!std::regex_match(path, std::regex(allowed))) {
         bad_input = 'b';
       } else {
-        bad_save = !this->uistate_.save(path);
+        bad_save = !uistate.save(path);
         if (!bad_save) {
           canvas.close();
         }
@@ -1227,7 +1299,7 @@ Gui::draw_quit(Box box)
         bad_input = ' ';
         bad_save = false;
         this->box_ = Box::None;
-        this->uistate_.ctrl_.pause(true);
+        uistate.ctrl_.pause(true);
       }
       ImGui::Text("");
       ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 20);
@@ -1334,13 +1406,15 @@ Gui::gen_message_exp_inspect()
 
 
 void
-Gui::auto_width(int width, int factor /* = 1 */)
+Gui::auto_width(int width, float factor /* = 1.0f */)
 {
   float w;
-  if (1 == factor) {
+  if (0.0f == factor) {
+    w = static_cast<float>(width);
+  } else if (1.0f == factor) {
     w = -0.25f * width;
   } else {
-    w = ImGui::GetContentRegionAvail().x / (factor + 1);
+    w = ImGui::GetContentRegionAvail().x / (factor + 1.0f);
   }
   ImGui::PushItemWidth(w);
 }
@@ -1352,8 +1426,10 @@ Gui::key_callback(GLFWwindow* window, int key, int /* scancode */, int action,
 {
   Canvas* canvas = static_cast<Canvas*>(glfwGetWindowUserPointer(window));
   Gui* gui = canvas->gui_;
+  Log& log = gui->log_;
   UiState& uistate = gui->uistate_;
   Control& ctrl = uistate.ctrl_;
+  Box box = gui->box_;
 
   if (GLFW_RELEASE == action) {
     return;
@@ -1362,13 +1438,11 @@ Gui::key_callback(GLFWwindow* window, int key, int /* scancode */, int action,
   if (GLFW_PRESS == action) {
     if (mods & GLFW_MOD_CONTROL) {
       // quit
-      if (Box::Quit == gui->box_) {
-        if (GLFW_KEY_C == key || GLFW_KEY_Q == key) {
+      if (GLFW_KEY_C == key || GLFW_KEY_Q == key) {
+        if (Box::Quit == box) {
           canvas->close();
           return;
         }
-      }
-      if (GLFW_KEY_C == key || GLFW_KEY_Q == key) {
         gui->box_ = Box::Quit;
         gui->input_focus_ = true;
         ctrl.pause(true);
@@ -1395,20 +1469,62 @@ Gui::key_callback(GLFWwindow* window, int key, int /* scancode */, int action,
         ctrl.pause(true);
         return;
       }
+      return;
+    }
+    if (mods & GLFW_MOD_SHIFT) {
+      if (Box::Quit == box || Box::Load == box || Box::Save == box) {
+        return;
+      }
+      // cluster
+      if (GLFW_KEY_D == key) {
+        gui->message_exp_color_ = "";
+        gui->message_exp_inject_ = "";
+        gui->message_exp_inspect_ = gui->message_exp_inspect_default_;
+        gui->inspect_particle_ = -1;
+        gui->inspect_cluster_ = -1;
+        gui->inspect_cluster_particle_ = -1;
+        gui->message_exp_cluster_ =
+          ctrl.cluster(gui->cluster_radius_, gui->cluster_minpts_);
+        ctrl.get_exp().districts();
+        log.add(Attn::O, gui->message_exp_cluster_);
+        ctrl.color(Coloring::Cluster);
+        uistate.coloring_ = Coloring::Cluster;
+        uistate.deceive();
+        return;
+      }
+      // reset exp
+      if (GLFW_KEY_R == key) {
+        ctrl.reset_exp();
+        gui->message_exp_color_ = "";
+        gui->message_exp_cluster_ = "";
+        gui->message_exp_inject_ = "";
+        gui->message_exp_inspect_ = gui->message_exp_inspect_default_;
+        gui->inspect_particle_ = -1;
+        gui->inspect_cluster_ = -1;
+        gui->inspect_cluster_particle_ = -1;
+        log.add(Attn::O, "Experiment module & colors reset.");
+        uistate.coloring_ = Coloring::Original;
+        uistate.deceive();
+        return;
+      }
+      return;
     }
     // close box
     if (GLFW_KEY_ESCAPE == key) {
-      if (Box::None == gui->box_) {
+      if (Box::None == box) {
         gui->box_ = Box::Config;
         return;
       }
+      gui->load_save_ = 0;
+      gui->capture_ = 0;
       gui->box_ = Box::None;
       return;
     }
-    // deceive
-    if (Box::None != gui->box_ && Box::Config != gui->box_) {
+    // the following only work with config box or no box
+    if (Box::None != box && Box::Config != box) {
       return;
     }
+    // deceive
     if (GLFW_KEY_ENTER == key) {
       ctrl.reset_exp();
       gui->message_exp_color_ = "";
@@ -1419,11 +1535,9 @@ Gui::key_callback(GLFWwindow* window, int key, int /* scancode */, int action,
       gui->inspect_cluster_ = -1;
       gui->inspect_cluster_particle_ = -1;
       if (!gui->message_set_.empty()) {
-        gui->log_.add(Attn::O, gui->message_set_);
+        log.add(Attn::O, gui->message_set_);
         gui->message_set_ = "";
       }
-      gui->inject_dpe_ = static_cast<float>(uistate.num_)
-                         / uistate.width_ / uistate.height_;
       uistate.deceive();
       canvas->camera_default();
       return;
@@ -1439,16 +1553,32 @@ Gui::key_callback(GLFWwindow* window, int key, int /* scancode */, int action,
     if (GLFW_KEY_APOSTROPHE == key) { gui->brief_ = !gui->brief_; return; }
     // reset camera
     if (GLFW_KEY_SLASH == key) { canvas->camera_default(); return; }
+
+    // TODO: DELETE ME
+    /**/
+    if (GLFW_KEY_P == key) {
+      int w;
+      int h;
+      glfwGetFramebufferSize(gui->window_, &w, &h);
+      static unsigned int capture_count = 0;
+      Image::out("/home/b/got/cap" + std::to_string(capture_count++) + ".png",
+                 w, h);
+    }
+    //*/
+    // END DELETE ME
+
   }
 
   // iterate through inspection
   Exp& exp = ctrl.get_exp();
   unsigned int num = ctrl.get_num();
-  if (GLFW_KEY_DOWN == key ||
-      Box::Config != gui->box_ && GLFW_KEY_RIGHT == key)
+  if (GLFW_KEY_DOWN == key || Box::Config != box && GLFW_KEY_RIGHT == key)
   {
     if (0 <= gui->inspect_cluster_particle_) {
       std::set<int>& cluster = exp.clusters_[gui->inspect_cluster_];
+      if (gui->inspect_greater_) {
+        cluster = exp.districts_[gui->inspect_cluster_];
+      }
       auto i = cluster.find(gui->inspect_cluster_particle_);
       if (cluster.end() == ++i) {
         gui->inspect_cluster_particle_ = *cluster.begin();
@@ -1468,8 +1598,12 @@ Gui::key_callback(GLFWwindow* window, int key, int /* scancode */, int action,
       if (exp.clusters_.size() <= ++gui->inspect_cluster_) {
         gui->inspect_cluster_ -= exp.clusters_.size();
       }
+      std::set<int>& cluster = exp.clusters_[gui->inspect_cluster_];
+      if (gui->inspect_greater_) {
+        cluster = exp.districts_[gui->inspect_cluster_];
+      }
       std::vector<unsigned int> ps;
-      for (int p : exp.clusters_[gui->inspect_cluster_]) {
+      for (int p : cluster) {
         ps.push_back(p);
       }
       ctrl.highlight(ps);
@@ -1492,12 +1626,32 @@ Gui::key_callback(GLFWwindow* window, int key, int /* scancode */, int action,
       gui->gen_message_exp_inspect();
       return;
     }
+    if (0 < exp.clusters_.size()) {
+      gui->inspect_cluster_ = 0;
+      std::set<int>& cluster = exp.clusters_[0];
+      if (gui->inspect_greater_) {
+        cluster = exp.districts_[0];
+      }
+      std::vector<unsigned int> ps;
+      for (int p : cluster) {
+        ps.push_back(p);
+      }
+      ctrl.highlight(ps);
+      ctrl.color(Coloring::Inspect);
+      uistate.coloring_ = Coloring::Inspect;
+      uistate.deceive();
+      gui->gen_message_exp_inspect();
+      return;
+    }
+    return;
   }
-  if (GLFW_KEY_UP == key ||
-      Box::Config != gui->box_ && GLFW_KEY_LEFT == key)
+  if (GLFW_KEY_UP == key || Box::Config != box && GLFW_KEY_LEFT == key)
   {
     if (0 <= gui->inspect_cluster_particle_) {
       std::set<int>& cluster = exp.clusters_[gui->inspect_cluster_];
+      if (gui->inspect_greater_) {
+        cluster = exp.districts_[gui->inspect_cluster_];
+      }
       std::set<int>::reverse_iterator i;
       for (i = cluster.rbegin(); i != cluster.rend(); ++i) {
         if (gui->inspect_cluster_particle_ == *i) {
@@ -1522,8 +1676,12 @@ Gui::key_callback(GLFWwindow* window, int key, int /* scancode */, int action,
       if (0 > --gui->inspect_cluster_) {
         gui->inspect_cluster_ += exp.clusters_.size();
       }
+      std::set<int>& cluster = exp.clusters_[gui->inspect_cluster_];
+      if (gui->inspect_greater_) {
+        cluster = exp.districts_[gui->inspect_cluster_];
+      }
       std::vector<unsigned int> ps;
-      for (int p : exp.clusters_[gui->inspect_cluster_]) {
+      for (int p : cluster) {
         ps.push_back(p);
       }
       ctrl.highlight(ps);
@@ -1546,6 +1704,23 @@ Gui::key_callback(GLFWwindow* window, int key, int /* scancode */, int action,
       gui->gen_message_exp_inspect();
       return;
     }
+    if (0 < exp.clusters_.size()) {
+      gui->inspect_cluster_ = exp.clusters_.size() - 1;
+      std::set<int>& cluster = exp.clusters_[gui->inspect_cluster_];
+      if (gui->inspect_greater_) {
+        cluster = exp.districts_[gui->inspect_cluster_];
+      }
+      std::vector<unsigned int> ps;
+      for (int p : cluster) {
+        ps.push_back(p);
+      }
+      ctrl.highlight(ps);
+      ctrl.color(Coloring::Inspect);
+      uistate.coloring_ = Coloring::Inspect;
+      uistate.deceive();
+      gui->gen_message_exp_inspect();
+      return;
+    }
     return;
   }
 
@@ -1553,7 +1728,7 @@ Gui::key_callback(GLFWwindow* window, int key, int /* scancode */, int action,
   if (GLFW_KEY_S == key) { ctrl.paused_ = true; ctrl.step_ = true; return; }
 
   // the following for canvas only
-  if (Box::None != gui->box_) {
+  if (Box::None != box) {
     return;
   }
 

@@ -27,7 +27,6 @@ enum class Box
   None = 0,
   Config,
   Capture,
-  Captured,
   Save,
   Load,
   Quit
@@ -56,6 +55,9 @@ class Gui
   /// draw(): Render the window and the UI.
   void draw();
 
+  int capturing_; // workaround to close render boxes during capture
+
+ private:
   /// draw_brief(): Render the brief status information.
   /// \param draw  whether the brief information should be drawn
   void draw_brief(bool draw);
@@ -68,17 +70,21 @@ class Gui
   /// \param draw  whether the onfiguration box should be drawn
   void draw_config(Box box);
 
+  /// draw_config_top(): Render configuration box in parts.
+  /// \param width  (some) width of configuration box
+  void draw_config_top();
+  void draw_config_graphics(float width);
+  void draw_config_habitat(float width);
+  void draw_config_analysis(float width);
+  void draw_config_usage();
+
   /// draw_capture(): Render the capture box.
   /// \param box  whether the ca'p'ture box should be drawn
   void draw_capture(Box box);
 
-  /// draw_captured(): Render the captured box.
-  /// \param box  whether the capture'd' box should be drawn
-  void draw_captured(Box box);
-
-  /// draw_save_load(): Render the save/load box.
+  /// draw_load_save(): Render the load/save box.
   /// \param box  whether the 's'ave or the 'l'oad box should be drawn
-  void draw_save_load(Box box);
+  void draw_load_save(Box box);
 
   /// draw_quit(): Render the quit confirmation box.
   /// \param box  whether the 'q'uit box should be drawn
@@ -99,7 +105,7 @@ class Gui
   /// auto_width(): Set next element width.
   /// \param width  width of box box
   /// \param factor  how much to divide the remaining space by
-  void auto_width(int width, int factor = 1);
+  void auto_width(int width, float factor = 1.0f);
 
   /// key_callback(): User key input bindings.
   /// \param window  pointer to the window object
@@ -136,19 +142,21 @@ class Gui
   /// \param h  new window height
   static void resize_callback(GLFWwindow* window, int w, int h);
 
-  Canvas& canvas_;
-
- private:
   Log&         log_;
   UiState&     uistate_;
   GLFWwindow*  window_;
+  Canvas&      canvas_;
   float        scale_;
   std::string  cwd_;
-  ImFont*      font_r;
-  ImFont*      font_b;
-  ImFont*      font_i;
-  ImFont*      font_z;
+  ImFont*      font_r_;
+  ImFont*      font_b_;
+  ImFont*      font_i_;
+  ImFont*      font_z_;
   int          font_width_;
+  ImVec4       text_color_good_;
+  ImVec4       text_color_bad_;
+  ImVec4       text_color_dim_;
+  ImVec4       text_color_dimmer_;
   bool         brief_;       // whether brief information should be shown
   bool         messages_;    // whether message log area should be shown
   Box          box_;         // which dialog box should be shown
@@ -163,14 +171,15 @@ class Gui
   bool         three_;       // whether in 3D mode
   bool         dolly_;       // whether mouse activated camera's dolly movement
   bool         pivot_;       // whether mouse activated camera's pivot movement
-  bool         capturing_;      // whether Gui is taking picture of window
+  int          load_save_;      // load/save status (0=none,1=good,-1=bad)
   std::string  capture_path_;   // path to taken picture
-  bool         bad_capture_;    // whether taking picture failed
+  int          capture_;        // picture taking status (0=none,1=good,-1=bad)
   int          coloring_;       // particle coloring scheme
   float        cluster_radius_; // DBSCAN radius
   unsigned int cluster_minpts_; // DBSCAN minpts
   int          inject_sprite_;  // particle cluster sprite model to be injected
   float        inject_dpe_;     // DPE after injection
+  bool         inspect_greater_; // whether clusters include greater nbhds
   int          inspect_particle_;         // particle index under inspection
   int          inspect_cluster_;          // cluster index under inspection
   int          inspect_cluster_particle_; // cluster particle index under insp

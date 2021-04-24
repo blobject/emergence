@@ -89,6 +89,7 @@ Proc::plot(unsigned int scope, std::vector<int>& grid, int& cols, int& rows,
            unsigned int& stride)
 {
   State& state = this->state_;
+  unsigned int num = state.num_;
   float width = state.width_;
   float height = state.height_;
   // the columns and rows of the grid are semi-flattened to a single list, but
@@ -104,10 +105,12 @@ Proc::plot(unsigned int scope, std::vector<int>& grid, int& cols, int& rows,
   std::vector<float>& py = state.py_;
   std::vector<int>& gcol = state.gcol_;
   std::vector<int>& grow = state.grow_;
+  gcol.resize(num);
+  grow.resize(num);
 
   int col;
   int row;
-  for (int i = 0; i < state.num_; ++i) {
+  for (int i = 0; i < num; ++i) {
     // the last column/row may be spatially slightly bigger than the rest,
     // if the grid does not divide neatly into whole numbers
     col = floor(px[i] / unit_width);  if (col >= cols) { col = cols - 1; }
@@ -167,7 +170,7 @@ Proc::move()
 {
   State& state = this->state_;
   this->cl_.move(state.num_, state.width_, state.height_,
-                 state.alpha_, state.beta_, state.speed_,
+                 state.alpha_, state.beta_, state.speed_, state.noise_,
                  state.pn_, state.pl_, state.pr_,
                  state.px_, state.py_, state.pf_, state.pc_, state.ps_);
 }
@@ -184,12 +187,13 @@ Proc::plain_seek(unsigned int scope, std::vector<int>& grid,
   unsigned int num = state.num_;
   std::vector<int>& gcol = state.gcol_;
   std::vector<int>& grow = state.grow_;
+  unsigned int scopesq = scope * scope;
 
   this->plot(scope, grid, cols, rows, stride);
 
   // for each particle index
   for (int srci = 0; srci < num; ++srci) {
-    this->plain_seek_vicinity(grid, stride, gcol[srci], grow[srci],
+    this->plain_seek_vicinity(scopesq, grid, stride, gcol[srci], grow[srci],
                               cols, rows, srci, tally);
   }
   for (int i = 0; i < num; ++i) {
@@ -199,7 +203,8 @@ Proc::plain_seek(unsigned int scope, std::vector<int>& grid,
 
 
 void
-Proc::plain_seek_vicinity(std::vector<int>& grid, unsigned int gstride,
+Proc::plain_seek_vicinity(unsigned int scopesq, std::vector<int>& grid,
+                          unsigned int gstride,
                           int col, int row, int cols, int rows, int srci,
                           void (Proc::*tally)(int,int,float,float,float))
 {
@@ -246,7 +251,7 @@ Proc::plain_seek_vicinity(std::vector<int>& grid, unsigned int gstride,
       if (srci <= dsti) {
         continue;
       }
-      this->plain_seek_tally(srci, dsti,
+      this->plain_seek_tally(scopesq, srci, dsti,
                              vic[v + 2], vic[v + 3], vic[v + 4], vic[v + 5],
                              tally);
     }
@@ -255,7 +260,8 @@ Proc::plain_seek_vicinity(std::vector<int>& grid, unsigned int gstride,
 
 
 void
-Proc::plain_seek_tally(unsigned int srci, unsigned int dsti,
+Proc::plain_seek_tally(unsigned int scopesq,
+                       unsigned int srci, unsigned int dsti,
                        bool cunder, bool cover, bool runder, bool rover,
                        void (Proc::*tally)(int,int,float,float,float))
 {
@@ -275,7 +281,7 @@ Proc::plain_seek_tally(unsigned int srci, unsigned int dsti,
   float distsq = (dx * dx) + (dy * dy);
 
   // ignore comparisons outside the vicinity scope
-  if (this->state_.scope_squared_ < distsq) {
+  if (scopesq < distsq) {
     return;
   }
 
@@ -292,6 +298,7 @@ Proc::plain_move()
   float alpha = state.alpha_;
   float beta = state.beta_;
   float speed = state.speed_;
+  float noise = state.noise_;
   std::vector<float>& px = state.px_;
   std::vector<float>& py = state.py_;
   std::vector<float>& pf = state.pf_;
@@ -307,7 +314,8 @@ Proc::plain_move()
   for (int i = 0; i < state.num_; ++i) {
     f = fmod(pf[i] + alpha
              + (beta * pn[i]
-                * Util::signum(static_cast<int>(pr[i] - pl[i]))), TAU);
+                * Util::signum(static_cast<int>(pr[i] - pl[i]))), TAU)
+             + noise;
     if (f < 0) { f += TAU; }
     pf[i] = f;
     pc[i] = cosf(f);

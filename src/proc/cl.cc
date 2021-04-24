@@ -301,6 +301,7 @@ Cl::prep_move()
     "  __private float A,\n"
     "  __private float B,\n"
     "  __private float S,\n"
+    "  __private float E,\n"
     "  __global const unsigned int* PN,\n"
     "  __global const unsigned int* PL,\n"
     "  __global const unsigned int* PR,\n"
@@ -312,7 +313,7 @@ Cl::prep_move()
     ") {\n"
     "  int i = get_global_id(0);\n"
     "  int signum = (0 < (int)(PR[i] - PL[i])) - ((int)(PR[i] - PL[i]) < 0);\n"
-    "  float f = fmod(PF[i] + A + (B * PN[i] * (float)signum), TAU);\n"
+    "  float f = fmod(PF[i] + A + (B * PN[i] * (float)signum) + E, TAU);\n"
     "  if (f < 0) { f += TAU; }\n"
     "  PF[i] = f;\n"
     "  PC[i] = native_cos(f);\n"
@@ -343,7 +344,8 @@ Cl::prep_move()
 
 void
 Cl::move(unsigned int n, unsigned int w, unsigned int h,
-         float a, float b, float s, std::vector<unsigned int>& pn,
+         float a, float b, float s, float e,
+         std::vector<unsigned int>& pn,
          std::vector<unsigned int>& pl, std::vector<unsigned int>& pr,
          std::vector<float>& px, std::vector<float>& py,
          std::vector<float>& pf,
@@ -369,14 +371,15 @@ Cl::move(unsigned int n, unsigned int w, unsigned int h,
     this->kernel_move_.setArg( 3, static_cast<cl_float>(a));
     this->kernel_move_.setArg( 4, static_cast<cl_float>(b));
     this->kernel_move_.setArg( 5, static_cast<cl_float>(s));
-    this->kernel_move_.setArg( 6, PN);
-    this->kernel_move_.setArg( 7, PL);
-    this->kernel_move_.setArg( 8, PR);
-    this->kernel_move_.setArg( 9, PX);
-    this->kernel_move_.setArg(10, PY);
-    this->kernel_move_.setArg(11, PF);
-    this->kernel_move_.setArg(12, PC);
-    this->kernel_move_.setArg(13, PS);
+    this->kernel_move_.setArg( 6, static_cast<cl_float>(e));
+    this->kernel_move_.setArg( 7, PN);
+    this->kernel_move_.setArg( 8, PL);
+    this->kernel_move_.setArg( 9, PR);
+    this->kernel_move_.setArg(10, PX);
+    this->kernel_move_.setArg(11, PY);
+    this->kernel_move_.setArg(12, PF);
+    this->kernel_move_.setArg(13, PC);
+    this->kernel_move_.setArg(14, PS);
     this->queue_.enqueueWriteBuffer(PX, CL_TRUE, 0, float_size, px.data());
     this->queue_.enqueueWriteBuffer(PY, CL_TRUE, 0, float_size, py.data());
     this->queue_.enqueueWriteBuffer(PF, CL_TRUE, 0, float_size, pf.data());

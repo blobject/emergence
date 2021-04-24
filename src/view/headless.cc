@@ -265,7 +265,7 @@ Headless::prompt_analyse() const
       continue;
     }
     if ('I' == key || 'i' == key) {
-      std::cout << "\n" << ctrl.inject(Type::MatureSpore, 0.08f) << std::flush;
+      std::cout << "\n" << ctrl.inject(Type::MatureSpore, false) << std::flush;
       continue;
     }
   }

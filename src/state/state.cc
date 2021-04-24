@@ -15,6 +15,7 @@ State::State(Log& log, int experiment)
   this->scope_    = 5.0f;
   this->ascope_   = 1.3f;
   this->speed_    = 0.67f;
+  this->noise_    = 0.0f;
   this->prad_     = 1.0f;
   this->coloring_ = 0;
   // derived
@@ -40,14 +41,15 @@ State::State(Log& log, int experiment)
     this->height_ = 250;
     this->prad_   = 0.5f;
   } else if (3 == experiment_group) {
-    this->num_    = 5000; // 0.08 dpe, needs injection
+    this->num_    = 0; // variable dpe, inj
     this->width_  = 250;
     this->height_ = 250;
     this->prad_   = 0.5f;
   } else if (4 == experiment_group) {
-    this->num_    = 25; // 0.010 - 0.1 dpe, needs injection
     this->width_  = 50;
     this->height_ = 50;
+    this->num_    = static_cast<unsigned int>(this->width_ * this->height_
+                                              * 0.06f); // variable dpe, inj
     this->prad_   = 0.25f;
   } else if (5 == experiment_group) {
     this->width_  = 50;
@@ -63,7 +65,7 @@ State::State(Log& log, int experiment)
     this->num_    = 1200; // 0.12 dpe, param sweep
     this->width_  = 100;
     this->height_ = 100;
-    this->prad_   = 0.3f;
+    this->prad_   = 0.5f;
   } else if (experiment) {
     log.add(Attn::E, "state will ignore unknown experiment " +
             std::to_string(experiment), true);
@@ -86,7 +88,7 @@ State::spawn()
 
   if (10 == experiment || 11 == experiment) {
     float center = w / 2.0f;
-    float spread = 2.5f / 2.0f;
+    float spread = 2.5f;
     float min = center - spread;
     float max = center + spread;
     for (int i = 0; i < num; ++i) {
@@ -167,6 +169,7 @@ State::change(Stative& input, bool respawn)
   this->scope_    = input.scope;
   this->ascope_   = input.ascope;
   this->speed_    = input.speed;
+  this->noise_    = input.noise;
   this->prad_     = input.prad;
   this->coloring_ = input.coloring;
   this->scope_squared_ = input.scope * input.scope;
@@ -188,5 +191,12 @@ std::string
 State::type_name(Type type)
 {
   return TypeNames[static_cast<int>(type)];
+}
+
+
+float
+State::dpe()
+{
+  return static_cast<float>(this->num_) / this->width_ / this->height_;
 }
 

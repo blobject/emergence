@@ -66,6 +66,11 @@ class Exp
   /// \param no_cl  whether user has specified disabling of OpenCL
   Exp(Log& log, State& state, Proc& proc, bool no_cl);
 
+  /// init_experiment(): Modify State according to experiment being performed.
+  /// \param experiment_group  experiment being performed
+  /// \param experiment  specific experiment being performed
+  void init_experiment(int experiment_group, int experiment);
+
   /// type(): Assign type to particle.
   void type();
 
@@ -94,48 +99,51 @@ class Exp
   /// \param minpts  DBSCAN minimum number of neighbors to be considered "core"
   void cluster(float radius, unsigned int minpts);
 
+  /// districts(): Detect greater (expanded) neighborhoods of clusters.
+  void districts();
+
   /// inject(): Inject particle clusters.
   /// \param type  particle cluster type to be injected
-  /// \param dpe  DPE after injection
-  /// \returns  true if injection succeeded
-  bool inject(Type type, float dpe);
+  /// \param greater  whether the greater scope is to be injected
+  void inject(Type type, bool greater);
 
-  /// brief_meta_exp(): Print brief info for meta-experiment purposes.
-  ///                   Used for counting color classes and finding their
-  ///                   averages.
+  /// do_meta_exp(): Perform and report on meta-experiments.
+  ///                Used for counting color classes and finding averages.
   /// \param tick  current time step
-  void brief_meta_exp(unsigned int tick);
+  void do_meta_exp(unsigned int tick);
 
-  /// brief_exp_1a(): Print brief info for experiment 1.
-  ///                 t in {0,150}.
+  /// do_exp_*(): Perform and report on a experiment variation.
   /// \param tick  current time step
-  void brief_exp_1a(unsigned int tick);
+  /// \returns  (some) true if system should halt, change, etc.
+  void do_exp_1a(unsigned int tick); // occupancy, t in {0,150}
+  void do_exp_1b(unsigned int tick); // occupancy, t in {60,90,180,400,700}
+  void do_exp_2(unsigned int tick);  // stability
+  void do_exp_3(unsigned int tick);  // heat map
+  bool do_exp_4(unsigned int tick);  // replication
+  void do_exp_5(unsigned int tick);  // env, dpe in {0.03,0.035,0.04}, noise
+  bool do_exp_6(unsigned int tick);  // param sweep, alpha & beta
 
-  /// brief_exp_1b(): Print brief info for experiment 1.
-  ///                 t in {60,90,180,400,700}.
-  /// \param tick  current time step
-  void brief_exp_1b(unsigned int tick);
-
-  /// brief_exp_2(): Print brief info for experiment 2.
-  /// \param tick  current tick
-  void brief_exp_2(unsigned int tick);
-
-  std::vector<float> nearest_neighbor_dists_;   // list of nn distances
-  std::vector<int>                   cores_;    // "core" particles
-  std::vector<int>                   vague_;    // "border" or "noise" pts
-  std::vector<std::set<int>>         clusters_; // set of clusters
-  std::unordered_map<Type,SpritePts> sprites_;  // sprites definition
-  std::unordered_set<int> cell_clusters_;  // set of cell cluster indices
-  std::unordered_set<int> spore_clusters_; // set of spore cluster indices
-  unsigned int            magentas_;       // number of mature spore particles
-  unsigned int            blues_;          // number of cell hull particles
-  unsigned int            yellows_;        // number of cell core particles
-  unsigned int            browns_; // number of premature spore particles
-  unsigned int            greens_;         // number of nutrient particles
-  unsigned int            sprite_index_;   // cursor to state.p*_
-  float                   sprite_scale_;   // sprite scaling
-  float                   sprite_x_;       // sprite x placement
-  float                   sprite_y_;       // sprite y placement
+  // meta, nearest neighbors, color change, etc.
+  unsigned int magentas_; // number of mature spore particles
+  unsigned int blues_;    // number of cell hull particles
+  unsigned int yellows_;  // number of cell core particles
+  unsigned int browns_;   // number of premature spore particles
+  unsigned int greens_;   // number of nutrient particles
+  std::vector<float>             nearest_neighbor_dists_; // nn distances
+  std::vector<std::vector<Type>> type_history_;           // type changes
+  // clustering
+  std::vector<int>           cores_;          // "core" particles
+  std::vector<int>           vague_;          // "border" or "noise" pts
+  std::vector<std::set<int>> clusters_;       // set of clusters
+  std::unordered_set<int>    cell_clusters_;  // set of cell cluster indices
+  std::unordered_set<int>    spore_clusters_; // set of spore cluster indices
+  std::vector<std::set<int>> districts_;      // set of greater clusters
+  // injection
+  std::unordered_map<Type,SpritePts> sprites_;         // sprites definition
+  std::unordered_map<Type,SpritePts> greater_sprites_; // greater sprites def
+  float                              sprite_x_;        // sprite x placement
+  float                              sprite_y_;        // sprite y placement
+  std::vector<unsigned int>          injected_;        // injected particles
 
  private:
   /// plain_alt_neighborhood(): Non-OpenCL version of alternative neighborhood
@@ -160,6 +168,9 @@ class Exp
   /// nearest_neighbor_dists(): Compute nearest neighbor distances.
   void nearest_neighbor_dists();
 
+  /// record_types(): Record type changes for every particle.
+  void record_types();
+
   /// dbscan_categorise(): Compute neighborhoods of each particle and
   ///                      categorise them as either "core", "noise", or
   ///                      "vague", depending on their neighborhood size.
@@ -180,19 +191,33 @@ class Exp
   /// cluster_type(): Assign type to particle cluster.
   void cluster_type();
 
-  /// gen_sprite(): Generate an absolutely-positioned sprite with initially
-  ///               randomly headed constituent particles.
-  /// \param xy  flat list of x,y positions
+  /// gen_sprite(): Generate an absolutely-positioned typical sprite that was
+  ///               "captured" from prior runs.
+  /// \param xyf  flat list of x,y positions and f heading
   /// \param num  number of particles in the cluster
   /// \returns  sprite definition that is a list of 5-float tuples
-  SpritePts gen_sprite(std::vector<float> xy, unsigned int num);
+  SpritePts gen_sprite(std::vector<float> xyf, unsigned int num);
+
+  /// gen_greater_sprite(): Generate an absolutely-positioned typical sprite
+  ///                       that was "captured" from prior runs, along with
+  ///                       all other particles within the sprite's scope.
+  /// \param type  sprite (cluster) type
+  /// \param xyf  flat list of x,y positions and f heading
+  /// \param num  number of particles in the cluster
+  /// \returns  sprite definition that is a list of 5-float tuples
+  SpritePts gen_greater_sprite(Type type, std::vector<float> xyf,
+                               unsigned int num);
+
+  /// dhi(): Compute the density-homogeneity index.
+  /// \returns  dhi
+  float dhi();
 
   Log&   log_;
   State& state_;
   Proc&  proc_;
   bool                            no_cl_;
-  std::vector<std::vector<float>> palette_; // cluster color cache
+  std::vector<std::vector<float>> palette_;  // cluster color cache
   unsigned int                    palette_index_;
-  std::vector<unsigned int>       inspect_; // particles under inspection
+  std::vector<unsigned int>       inspect_;  // particles under inspection
 };
 

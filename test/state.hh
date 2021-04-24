@@ -15,6 +15,7 @@ TEST_CASE("State::State")
   REQUIRE(5.0f == state.scope_);
   REQUIRE(1.3f == state.ascope_);
   REQUIRE(0.67f == state.speed_);
+  REQUIRE(0.0f == state.noise_);
   REQUIRE(1.0f == state.prad_);
   REQUIRE(5.0f * 5.0f == state.scope_squared_);
   REQUIRE(1.3f * 1.3f == state.ascope_squared_);
@@ -81,6 +82,7 @@ TEST_CASE("State::change")
     state.scope_,
     state.ascope_,
     state.speed_,
+    state.noise_,
     state.prad_,
     state.coloring_
   };
@@ -102,6 +104,7 @@ TEST_CASE("State::change")
     state.scope_,
     state.ascope_,
     state.speed_,
+    state.noise_,
     state.prad_,
     state.coloring_
   };

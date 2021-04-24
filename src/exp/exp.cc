@@ -8,297 +8,371 @@
 Exp::Exp(Log& log, State& state, Proc& proc, bool no_cl)
   : log_(log), state_(state), proc_(proc), no_cl_(no_cl)
 {
-  // sprite particle positions begin at 0,0 and are proportional to 100x100
+  this->magentas_ = 0;
+  this->blues_ = 0;
+  this->yellows_ = 0;
+  this->browns_ = 0;
+  this->greens_ = 0;
 
+  for (int p = 0; p < state.num_; ++p) {
+    this->type_history_.push_back({});
+  }
+
+  // sprite particle positions begin at 0,0
   this->sprites_ = {
+    {Type::Nutrient, gen_sprite({
+      4.359f,  0.738f, 344.321f,
+      0.0f,    4.791f, 154.132f,
+      3.257f,  0.063f, 265.379f,
+      2.836f,  6.01f,   37.821f,
+      3.135f, 11.049f, 250.919f,
+      8.233f,  7.329f, 201.614f,
+      8.176f, 11.246f,  77.288f,
+      5.587f, 11.373f,  30.078f,
+      9.855f,  2.987f, 284.68f,
+      9.56f,   4.878f, 273.469f,
+      8.217f,  0.0f,   283.714f,
+      7.159f,  5.38f,   12.862f,
+      3.502f,  8.48f,   81.85f
+    }, 13 * 3)},
     {Type::PrematureSpore, gen_sprite({
-      0.2864f, 0.294f,  286.124f,
-      0.0f,    0.6432f, 214.083f,
-      0.7952f, 0.748f,  327.185f,
-      0.3136f, 0.7496f, 55.740f,
-      0.1688f, 0.2296f, 184.162f,
-      0.3064f, 0.7136f, 356.312f,
-      0.084f,  0.8044f, 17.696f,
-      0.4132f, 0.4516f, 299.425f,
-      0.2548f, 0.6476f, 95.066f,
-      0.572f,  0.3096f, 14.083f,
-      0.3952f, 0.5232f, 273.748f,
-      0.0136f, 0.3156f, 122.464f,
-      0.288f,  0.0f,    212.428f,
-      0.5036f, 0.8844f, 106.633f
+      4.455f, 4.518f, 206.494f,
+      4.546f, 4.645f, 258.446f,
+      4.339f, 4.140f, 172.188f,
+      4.393f, 6.307f, 161.167f,
+      5.346f, 5.576f, 197.525f,
+      5.135f, 5.419f, 297.001f,
+      5.577f, 5.449f,   8.7f,
+      5.161f, 4.683f, 318.013f,
+      5.264f, 5.665f,  48.591f,
+      5.306f, 6.364f, 130.817f,
+      5.772f, 5.870f, 120.316f,
+      4.747f, 5.558f, 287.242f,
+      4.930f, 5.749f, 155.978f,
+      5.043f, 5.490f, 276.631f
     }, 14 * 3)},
     {Type::MatureSpore, gen_sprite({
-      0.3756f, 0.4424f, 48.342f,
-      0.3968f, 0.1548f, 298.690f,
-      0.0828f, 0.5528f, 145.103f,
-      0.5512f, 0.2352f, 13.437f,
-      0.2340f, 0.7052f, 89.112f,
-      0.4712f, 0.0f,    295.822f,
-      0.2148f, 0.3696f, 185.900f,
-      0.4960f, 0.0184f, 325.073f,
-      0.4648f, 0.4132f, 81.238f,
-      0.2004f, 0.462f,  123.122f,
-      0.4980f, 0.2216f, 320.208f,
-      0.4828f, 0.2052f, 315.608f,
-      0.3528f, 0.2784f, 277.999f,
-      0.1932f, 0.3048f, 211.425f,
-      0.3064f, 0.5700f, 73.971f,
-      0.024f,  0.4072f, 176.521f,
-      0.1844f, 0.4988f, 125.196f,
-      0.0f,    0.4776f, 156.439f,
-      0.0128f, 0.2516f, 180.004f,
-      0.0564f, 0.4696f, 140.666f
+      4.780f, 4.711f, 241.281f,
+      7.179f, 4.232f, 162.044f,
+      5.401f, 4.686f, 338.362f,
+      5.127f, 5.021f,  18.795f,
+      4.92f,  4.796f, 235.574f,
+      6.569f, 5.673f,   0.659f,
+      5.148f, 4.331f, 296.431f,
+      5.112f, 5.1f,    48.975f,
+      4.106f, 5.097f, 245.829f,
+      5.081f, 4.49f,  281.333f,
+      2.359f, 4.623f,  95.421f,
+      4.517f, 4.963f, 174.283f,
+      4.63f,  5.059f, 189.564f,
+      4.602f, 4.992f, 125.523f,
+      5.147f, 4.641f,  58.026f,
+      4.572f, 4.474f,  95.979f,
+      4.66f,  5.065f, 106.081f,
+      5.228f, 5.064f,  40.971f,
+      4.584f, 4.816f, 210.378f,
+      5.161f, 4.953f,  43.443f
     }, 20 * 3)},
     {Type::Ring, gen_sprite({
-      0.8616f, 2.4852f, 187.124f,
-      0.9364f, 2.1872f, 295.084f,
-      1.1144f, 2.3704f, 48.185f,
-      1.3416f, 0.1396f, 277.740f,
-      0.128f,  2.304f,  148.162f,
-      0.1312f, 0.7476f, 187.312f,
-      1.4324f, 2.2732f, 260.696f,
-      1.7496f, 0.632f,  140.424f,
-      1.51f,   0.4844f, 90.066f,
-      1.3988f, 0.5688f, 57.083f,
-      1.1936f, 0.1912f, 258.748f,
-      0.962f,  2.352f,  34.464f,
-      0.2892f, 0.4616f, 207.428f,
-      1.1616f, 0.0556f, 175.633f,
-      0.9872f, 2.5596f, 76.234f,
-      0.7172f, 0.3944f, 315.242f,
-      1.596f,  2.2468f, 51.356f,
-      0.3932f, 0.37f,   187.478f,
-      1.5f,    2.2724f, 89.188f,
-      1.4912f, 2.4156f, 45.103f,
-      2.0688f, 0.774f,  162.208f,
-      0.89f,   2.4908f, 146.829f,
-      2.3872f, 1.6848f, 216.278f,
-      1.3f,    0.0f,    196.410f,
-      1.7736f, 0.3048f, 329.741f,
-      1.0824f, 2.2236f, 308.877f,
-      0.0f,    0.9f,    355.273f,
-      1.6296f, 0.3424f, 61.454f,
-      1.3f,    2.1736f, 267.142f,
-      1.1248f, 2.5524f, 171.674f
-    }, 30 * 3)},
+       5.718f, 9.034f, 100.464f,
+       5.531f, 8.625f, 158.659f,
+       8.604f, 4.218f, 307.679f,
+       9.693f, 4.94f,  320.587f,
+       5.818f, 4.362f, 350.117f,
+       5.963f, 8.181f,   9.227f,
+       9.074f, 8.340f, 113.41f,
+       7.522f, 9.008f, 249.45f,
+       5.03f,  8.242f, 129.577f,
+       5.513f, 7.982f,  14.729f,
+       9.979f, 5.23f,  240.502f,
+       5.826f, 8.715f, 322.513f,
+       6.148f, 9.325f, 150.277f,
+       5.327f, 9.552f,  44.875f,
+       8.879f, 4.839f, 330.891f,
+      10.289f, 6.389f, 262.653f,
+      10.511f, 2.992f,  71.739f,
+       6.67f,  3.705f, 197.424f,
+       9.624f, 4.482f, 247.012f,
+       6.493f, 9.217f,  53.889f,
+       4.497f, 6.470f,  81.982f,
+       9.411f, 4.502f,  99.715f,
+       7.396f, 3.807f,  79.095f,
+       9.484f, 8.846f, 141.48f,
+       7.476f, 4.118f, 163.734f,
+       9.801f, 5.381f, 349.456f,
+       9.409f, 4.692f, 252.148f,
+       5.951f, 8.907f, 345.539f
+    }, 28 * 3)},
     {Type::PrematureCell, gen_sprite({
-      0.822f,  2.7192f, 102.124f,
-      2.4928f, 2.65f,   206.083f,
-      1.3168f, 2.8736f, 261.184f,
-      0.978f,  0.358f,  69.739f,
-      1.6984f, 1.6004f, 164.161f,
-      0.4396f, 1.1308f, 50.696f,
-      1.4416f, 2.04f,   160.424f,
-      2.45f,   0.9364f, 128.084f,
-      0.5108f, 0.4748f, 252.749f,
-      2.5216f, 1.2596f, 120.464f,
-      0.3468f, 2.0844f, 147.428f,
-      2.4288f, 0.9592f, 108.633f,
-      1.6188f, 1.7132f, 353.125f,
-      2.1644f, 2.992f,  105.214f,
-      1.3872f, 2.8528f, 301.837f,
-      0.296f,  1.7536f, 189.642f,
-      1.0328f, 2.6848f, 339.455f,
-      1.6924f, 1.522f,  287.878f,
-      2.644f,  1.2196f, 108.058f,
-      1.1028f, 2.7944f, 70.158f,
-      2.4032f, 0.9156f, 266.730f,
-      0.6324f, 2.0196f, 331.309f,
-      2.438f,  2.5532f, 269.233f,
-      0.4808f, 1.4496f, 45.459f,
-      2.7044f, 1.4776f, 137.393f,
-      2.4716f, 0.656f,  93.875f,
-      1.5116f, 0.1576f, 86.379f,
-      0.4088f, 1.68f,   5.545f,
-      1.2392f, 0.1572f, 327.751f,
-      0.4668f, 1.71f,   8.065f,
-      2.6248f, 1.5836f, 138.623f,
-      2.36f,   2.75f,   234.053f,
-      2.568f,  1.1848f, 205.344f,
-      0.0f,    1.4316f, 30.125f,
-      2.8484f, 1.0512f, 331.035f,
-      0.3788f, 0.9836f, 152.064f,
-      2.7384f, 1.7812f, 260.862f,
-      1.0116f, 0.0f,    320.082f
-    }, 38 * 3)},
+       8.422f, 11.203f,  29.511f,
+       7.488f, 11.257f,   7.71f,
+       7.233f,  5.716f,  87.112f,
+       8.382f, 12.115f, 314.466f,
+       6.566f, 10.926f,  86.821f,
+       4.674f,  8.687f, 343.834f,
+       7.208f,  5.505f, 194.493f,
+       9.291f,  6.279f,  82.318f,
+       4.668f,  6.992f, 254.827f,
+       9.29f,  10.53f,  301.463f,
+       8.416f, 10.689f, 139.467f,
+       3.908f,  8.548f, 122.547f,
+       8.665f,  5.071f, 299.232f,
+       8.521f,  5.044f, 279.886f,
+       7.91f,  11.028f, 323.963f,
+      11.735f, 10.203f, 119.482f,
+       7.107f,  8.723f, 206.464f,
+       8.685f, 11.137f,  26.133f,
+      11.406f,  9.155f, 169.808f,
+       5.138f,  8.193f,  22.101f,
+      10.018f,  5.905f,  73.29f,
+       8.740f, 10.513f, 242.368f,
+       6.212f, 10.533f,  41.548f,
+       9.367f,  6.054f,  68.705f,
+       4.519f,  8.145f, 303.368f,
+       7.818f, 11.667f, 325.635f,
+       9.03f,  10.48f,  347.324f,
+       8.119f,  5.586f, 131.24f,
+      12.334f,  7.778f,  14.031f,
+       8.119f,  7.054f, 213.896f,
+       8.506f, 10.328f, 230.758f,
+       8.713f,  5.834f, 144.364f,
+       7.902f,  4.816f, 226.65f,
+       9.352f,  6.224f,  62.921f,
+       9.313f,  7.699f,  39.898f,
+       4.145f,  7.107f, 233.579f,
+       8.25f,   5.723f,  41.849f
+    }, 37 * 3)},
     {Type::TriangleCell, gen_sprite({
-      1.4532f, 2.83f,   0.516f,
-      0.0f,    1.464f,  185.466f,
-      3.2788f, 2.5924f, 14.954f,
-      1.7836f, 2.9948f, 10.084f,
-      1.5716f, 3.1608f, 93.85f,
-      1.1048f, 0.5356f, 355.234f,
-      0.386f,  2.638f,  133.442f,
-      0.7872f, 0.7324f, 60.218f,
-      2.982f,  0.9692f, 315.241f,
-      2.5432f, 2.9588f, 34.492f,
-      3.0352f, 2.1508f, 90.069f,
-      1.0672f, 2.6896f, 331.227f,
-      0.642f,  2.4468f, 308.996f,
-      1.7084f, 1.7504f, 150.401f,
-      0.2692f, 2.5036f, 174.981f,
-      1.8036f, 3.364f,  127.082f,
-      3.052f,  1.0724f, 341.426f,
-      2.4028f, 0.0f,    278.286f,
-      0.9252f, 2.8636f, 121.066f,
-      0.8348f, 2.448f,  349.447f,
-      2.758f,  0.4008f, 270.608f,
-      1.5164f, 1.7144f, 165.184f,
-      1.6676f, 1.8684f, 45.607f,
-      1.4772f, 0.458f,  347.785f,
-      1.7236f, 0.1068f, 244.939f,
-      0.0244f, 0.9264f, 213.885f,
-      2.7228f, 2.2672f, 193.488f,
-      0.1664f, 2.3816f, 30.367f,
-      3.116f,  1.7104f, 84.282f,
-      2.1956f, 0.206f,  28.476f,
-      2.752f,  0.8244f, 133.385f,
-      0.194f,  1.0212f, 229.126f,
-      3.0268f, 1.5008f, 23.606f,
-      2.77f,   1.418f,  171.83f,
-      2.174f,  0.2152f, 309.684f,
-      1.2928f, 2.8012f, 208.041f,
-      0.8148f, 0.4888f, 184.779f,
-      0.4036f, 0.824f,  234.282f,
-      2.928f,  1.3548f, 240.642f,
-      1.636f,  1.3484f, 250.784f
+       5.602f,  9.543f,   0.187f,
+       4.968f,  7.791f, 228.55f,
+      10.046f,  6.213f,  99.356f,
+       5.756f, 10.857f, 273.178f,
+      11.15f,  10.417f,  65.005f,
+       5.263f,  5.837f, 188.492f,
+       5.604f,  7.721f, 267.927f,
+      10.589f,  6.334f, 344.47f,
+       9.736f, 11.414f, 300.701f,
+       5.461f,  8.439f, 354.935f,
+       5.382f,  6.237f,  85.689f,
+       8.724f,  5.379f, 138.772f,
+       5.567f,  9.587f,  62.457f,
+      10.504f,  7.232f, 145.526f,
+       7.144f,  4.771f, 179.598f,
+      11.214f,  8.915f, 215.737f,
+       5.382f, 10.193f,  56.882f,
+      10.524f,  6.888f, 100.884f,
+      10.27f,  10.805f, 230.819f,
+       9.597f, 11.873f, 358.337f,
+      11.038f,  6.696f, 320.339f,
+      11.779f,  8.261f,  92.849f,
+       5.455f,  7.872f,  24.363f,
+       5.572f,  8.586f,   3.77f,
+       5.86f,   9.064f, 237.752f,
+       6.241f, 13.114f,  28.941f,
+      10.314f,  6.257f, 258.324f,
+      10.154f,  5.964f,  94.866f,
+       9.108f, 11.259f, 350.323f,
+       8.236f,  8.952f, 108.303f,
+      12.175f,  7.817f, 322.619f,
+       7.853f,  4.386f, 239.988f,
+       8.828f, 12.593f,  56.948f,
+      10.458f, 10.331f, 187.717f,
+      11.302f,  9.907f,  60.789f,
+       8.263f, 11.659f, 215.626f,
+       5.092f, 10.467f, 275.896f,
+       8.852f,  5.344f, 233.867f,
+       5.116f,  6.35f,  162.865f,
+       5.553f, 11.086f, 155.227f
     }, 40 * 3)},
-    {Type::TriangleCell, gen_sprite({
-      2.6984f, 4.078f,  247.125f,
-      2.962f,  1.4632f, 238.082f,
-      1.2532f, 2.9716f, 333.185f,
-      2.8352f, 0.8268f, 341.738f,
-      3.8352f, 3.0548f, 0.162f,
-      0.7692f, 0.6936f, 226.311f,
-      4.266f,  1.11f,   57.695f,
-      3.6012f, 3.0536f, 268.426f,
-      1.5632f, 1.636f,  246.065f,
-      0.0668f, 1.4884f, 168.748f,
-      4.156f,  1.166f,  343.463f,
-      2.442f,  0.0f,    237.429f,
-      0.0f,    2.5024f, 223.632f,
-      1.2016f, 0.2632f, 128.125f,
-      1.838f,  3.8044f, 204.213f,
-      1.3412f, 3.2164f, 104.352f,
-      3.5328f, 0.956f,  10.636f,
-      0.22f,   1.378f,  220.214f,
-      2.8472f, 0.1468f, 221.936f,
-      1.7508f, 0.1548f, 187.838f,
-      2.6772f, 0.116f,  334.643f,
-      3.5264f, 2.0096f, 223.639f,
-      0.8892f, 1.31f,   33.455f,
-      1.3644f, 3.0836f, 314.850f,
-      0.9496f, 0.7036f, 221.471f,
-      1.7256f, 3.9136f, 84.753f,
-      4.0116f, 3.0484f, 7.876f,
-      3.7336f, 3.2644f, 99.757f,
-      2.7296f, 0.2624f, 187.059f,
-      1.9748f, 1.2112f, 218.345f,
-      1.8884f, 2.8988f, 44.159f,
-      3.1212f, 0.944f,  224.730f,
-      3.264f,  1.0728f, 96.363f,
-      1.2264f, 3.2588f, 161.694f,
-      1.036f,  0.7092f, 218.308f,
-      1.8116f, 3.9484f, 109.068f,
-      3.2052f, 3.3496f, 214.232f,
-      0.3688f, 2.7092f, 231.172f,
-      0.8788f, 1.05f,   131.459f,
-      3.2148f, 3.4364f, 71.392f,
-      1.0504f, 3.0032f, 210.875f,
-      1.422f,  0.7868f, 27.377f,
-      2.2736f, 4.1912f, 236.895f,
-      4.4296f, 1.634f,  162.545f,
-      2.0584f, 2.7852f, 349.234f,
-      4.4328f, 1.644f,  180.751f,
-      0.5672f, 1.1748f, 177.064f,
-      3.9368f, 3.0208f, 8.623f,
-      3.472f,  3.194f,  280.385f,
-      3.242f,  0.5908f, 269.272f,
-      4.2748f, 0.9156f, 18.052f,
-      0.982f,  0.992f,  186.343f,
-      3.7876f, 2.7644f, 321.125f,
-      4.5436f, 2.6188f, 27.035f,
-      0.3876f, 2.6396f, 45.065f,
-      4.5264f, 2.3212f, 100.754f,
-      3.392f,  3.4752f, 292.861f,
-      3.166f,  1.7056f, 309.752f,
-      0.9008f, 0.8304f, 273.082f,
-      1.1932f, 3.056f,  338.375f
-    }, 60 * 3)},
+    {Type::SquareCell, gen_sprite({
+       7.549f, 11.705f,  70.718f,
+      10.653f,  7.448f, 225.429f,
+      10.5f,    3.588f,  60.474f,
+       6.041f,  4.357f, 272.794f,
+       6.324f, 11.38f,  117.107f,
+       5.867f,  7.783f, 123.225f,
+      13.55f,   6.105f, 251.425f,
+       9.925f, 10.017f,   2.765f,
+      11.362f,  4.349f,  71.79f,
+      11.646f,  9.863f,  56.154f,
+       6.418f, 11.326f,  16.648f,
+      10.636f, 12.128f,  47.968f,
+       5.2f,    5.841f, 310.261f,
+      11.092f,  3.06f,  269.926f,
+       4.367f,  7.48f,  162.12f,
+      13.255f,  7.749f, 295.076f,
+      11.569f,  4.735f, 153.024f,
+      11.425f,  3.778f, 289.297f,
+       5.489f,  4.971f, 106.381f,
+      13.657f,  6.911f, 235.954f,
+       8.934f,  3.09f,  101.557f,
+      10.902f,  9.3f,   192.614f,
+      11.251f, 10.005f,  75.275f,
+      12.04f,   5.213f, 184.188f,
+       4.948f,  9.777f, 108.529f,
+       5.878f,  3.992f, 297.855f,
+       7.708f,  3.442f, 351.794f,
+      11.431f,  4.957f, 155.618f,
+       4.186f,  7.843f, 162.75f,
+      10.677f, 10.254f,  43.245f,
+      11.31f,   4.306f, 127.177f,
+       9.537f,  6.438f,  57.839f,
+       6.009f,  4.703f,  74.308f,
+       9.097f, 11.379f,  84.583f,
+       5.669f,  4.802f, 130.817f,
+       6.182f,  7.446f, 210.814f,
+      13.177f,  5.341f, 340.059f,
+       5.911f,  4.094f, 344.028f,
+       9.907f, 10.358f,  37.5f,
+      10.965f,  3.877f, 200.981f,
+       5.223f,  9.528f, 163.26f,
+       7.269f,  2.646f, 250.674f,
+       6.175f,  9.959f, 328.576f,
+       6.64f,   2.759f, 221.908f,
+      11.725f,  9.853f,  43.051f,
+      11.186f,  9.808f, 172.481f,
+       4.552f,  6.815f, 236.416f,
+       5.572f,  9.653f, 156.415f,
+       8.313f,  2.695f, 119.206f,
+       5.294f,  7.862f, 125.097f
+    }, 50 * 3)},
     {Type::PentagonCell, gen_sprite({
-      1.7989f, 3.8219f, 177.803f,
-      0.1499f, 0.7716f, 291.991f,
-      2.2213f, 3.3414f, 325.542f,
-      0.981f,  0.7541f, 143.343f,
-      0.5295f, 2.903f,  296.777f,
-      3.9997f, 1.0573f, 280.155f,
-      0.9086f, 3.5979f, 165.413f,
-      2.6673f, 0.0452f, 163.035f,
-      0.3288f, 2.3692f, 34.826f,
-      0.3921f, 2.7499f, 299.219f,
-      0.8205f, 1.7633f, 309.215f,
-      1.5393f, 0.522f,  102.974f,
-      4.7801f, 3.0543f, 150.049f,
-      0.6324f, 3.4314f, 312.194f,
-      3.2205f, 0.0f,    151.37f,
-      0.0f,    2.2458f, 193.951f,
-      0.7883f, 3.9779f, 74.3767f,
-      0.9308f, 0.9845f, 88.454f,
-      4.2745f, 1.2488f, 274.492f,
-      3.7773f, 3.703f,  104.889f,
-      4.5261f, 1.9871f, 349.692f,
-      2.0369f, 3.5057f, 178.78f,
-      3.0573f, 3.989f,  28.2423f,
-      4.1085f, 1.3504f, 124.645f,
-      2.1273f, 1.1918f, 203.023f,
-      2.0353f, 0.5466f, 100.377f,
-      4.3877f, 1.3726f, 299.715f,
-      1.4597f, 0.534f,  120.814f,
-      1.7429f, 3.9121f, 335.511f,
-      3.2593f, 4.24f,   142.513f,
-      4.3833f, 1.5508f, 156.496f,
-      3.8617f, 1.7982f, 303.564f,
-      1.8701f, 3.9085f, 73.2385f,
-      2.0629f, 0.3492f, 129.633f,
-      3.8301f, 3.6288f, 257.273f,
-      3.7181f, 1.1025f, 125.117f,
-      0.692f,  2.589f,  337.344f,
-      3.8785f, 3.7668f, 92.1357f,
-      0.0903f, 2.348f,  213.266f,
-      2.1877f, 3.872f,  256.09f,
-      0.1407f, 2.8387f, 190.997f,
-      4.0393f, 1.3159f, 154.397f,
-      4.1745f, 3.6342f, 34.2524f,
-      2.7485f, 2.3562f, 54.0567f,
-      2.1897f, 2.0942f, 227.375f,
-      0.3435f, 2.0516f, 54.1957f,
-      3.9845f, 3.8348f, 23.6461f,
-      3.5413f, 0.487f,  46.7108f,
-      0.4122f, 2.651f,  325.745f,
-      4.4049f, 3.3572f, 16.937f,
-      1.9817f, 0.3721f, 107.526f,
-      3.9805f, 3.4946f, 275.841f,
-      2.4749f, 2.0687f, 29.9617f,
-      0.5112f, 0.8258f, 34.881f,
-      1.5569f, 3.7072f, 346.838f,
-      1.5113f, 0.6524f, 73.6977f,
-      0.3139f, 1.1176f, 214.387f,
-      4.2005f, 3.5708f, 81.3016f,
-      4.9589f, 2.3758f, 297.52f,
-      1.4169f, 1.8736f, 170.339f,
-      1.21f,   0.6984f, 87.1549f,
-      4.3585f, 3.1502f, 178.306f,
-      4.0097f, 3.6533f, 0.876778f,
-      4.9013f, 2.1788f, 127.617f,
-      3.7909f, 1.247f,  132.64f,
-      0.3802f, 1.7957f, 288.839f,
-      2.2209f, 1.9383f, 227.456f,
-      1.7237f, 3.5908f, 277.55f,
-      4.4189f, 2.8839f, 356.809f
-    }, 69 * 3)}
+       8.539f, 12.659f, 106.297f,
+      14.451f, 11.479f,  27.024f,
+       5.889f,  8.069f, 310.496f,
+       7.564f,  9.784f,  10.583f,
+       6.015f,  9.808f, 197.002f,
+      14.018f, 12.43f,   40.563f,
+       7.869f,  3.853f,  26.837f,
+       4.494f, 10.184f, 258.003f,
+       9.813f, 12.062f, 257.274f,
+      11.552f,  8.021f, 346.974f,
+       9.409f, 12.697f, 190.785f,
+       5.63f,   7.46f,  292.993f,
+      10.569f,  4.884f, 320.811f,
+       9.549f, 12.329f, 199.586f,
+      11.129f,  4.322f, 350.245f,
+      10.023f, 13.094f,  79.837f,
+       6.191f,  8.478f,  34.017f,
+       9.62f,   4.229f,  89.263f,
+      13.865f,  9.21f,  154.488f,
+      12.333f,  5.192f, 206.381f,
+      14.238f,  9.439f, 309.043f,
+      13.054f,  7.243f, 146.111f,
+      13.504f,  7.873f, 280.266f,
+       7.94f,   3.19f,  279.938f,
+       6.621f,  4.06f,  194.58f,
+      12.64f,   6.132f, 148.031f,
+       9.236f,  4.61f,  341.163f,
+       4.933f,  6.663f,  75.806f,
+       6.705f,  3.731f, 175.014f,
+       9.944f, 12.489f, 332.219f,
+      12.232f,  4.38f,  359.104f,
+      12.715f,  6.194f,  43.93f,
+       5.995f,  4.524f, 313.17f,
+       6.278f,  8.925f,  75.947f,
+       9.202f, 12.669f, 179.974f,
+       9.633f,  4.609f,  79.897f,
+       7.156f,  6.697f, 223.502f,
+      13.646f, 11.515f, 160.507f,
+      10.288f,  4.452f,  35.657f,
+      13.48f,   9.501f,  63.705f,
+      12.877f,  8.029f, 188.594f,
+       4.867f, 12.588f, 144.877f,
+       5.715f,  8.072f, 359.814f,
+       5.959f,  8.888f,  91.668f,
+       5.409f,  6.922f, 348.012f,
+      11.783f,  4.381f, 358.834f,
+      10.394f, 12.487f,  36.178f,
+      14.834f,  5.854f,  56.4f,
+      13.44f,   9.519f, 194.675f,
+       9.234f, 12.916f, 139.715f,
+      12.983f,  7.874f, 221.491f,
+       5.802f,  8.245f, 223.653f,
+       9.072f, 12.04f,  227.62f,
+       9.62f,  11.054f, 235.727f,
+       8.503f,  3.395f, 299.429f,
+      11.8f,    8.431f,  49.539f,
+       8.199f, 10.209f, 132.405f
+    }, 57 * 3)}
   };
 
-  this->sprite_index_ = 0;
+  this->greater_sprites_ = {
+    {Type::Nutrient, gen_greater_sprite(Type::Nutrient, {}, 0)},
+    {Type::PrematureSpore, gen_greater_sprite(Type::PrematureSpore, {
+       0.0f,   8.056f, 249.787f,
+       1.33f,  8.973f, 350.101f,
+       8.561f, 0.0f,   351.31f,
+      11.237f, 5.127f,  78.884f,
+       1.158f, 1.267f, 141.76f,
+      11.021f, 6.019f, 297.02f
+    }, 6 * 3)},
+    {Type::MatureSpore, gen_greater_sprite(Type::MatureSpore, {
+      10.940f,  4.324f, 191.244f,
+       8.442f, 12.548f,  80.446f,
+      10.425f,  7.832f, 233.923f,
+       0.092f,  1.034f,  24.485f,
+       5.560f,  8.703f, 340.9f,
+       0.016f,  8.947f, 325.306f,
+       4.902f, 13.011f,  28.105f,
+       0.777f,  7.225f, 257.7f,
+       0.0f,   11.302f, 235.934f,
+       2.668f,  0.0f,   340.45f
+    }, 10 * 3)},
+    {Type::Ring, gen_greater_sprite(Type::Ring, {
+       0.0f,    6.598f,  99.997f,
+       6.611f, 14.005f, 217.211f,
+      12.2f,   11.194f, 253.067f,
+      13.91f,   1.871f,  79.627f,
+       2.978f, 13.762f, 273.062f,
+      10.73f,  12.429f,  86.719f,
+       4.008f,  0.0f,   105.302f
+    }, 7 * 3)},
+    {Type::PrematureCell, gen_greater_sprite(Type::PrematureCell, {
+       7.704f,  0.0f,    55.129f,
+      12.761f, 13.525f, 229.918f,
+      16.746f,  5.762f,  40.122f,
+       0.0f,    7.616f,  68.334f,
+       2.432f,  4.394f, 127.891f,
+       5.678f, 15.774f,  33.216f,
+      16.9f,    7.824f, 294.727f
+    }, 7 * 3)},
+    {Type::TriangleCell, gen_greater_sprite(Type::TriangleCell, {
+      16.842f,  9.0f,   302.572f,
+       9.412f, 17.201f, 111.771f,
+       0.0f,    7.903f, 315.154f,
+       8.695f,  0.0f,   179.72f,
+       1.021f,  3.223f, 171.595f,
+       4.741f,  0.979f,  67.414f,
+       1.048f, 11.272f, 273.497f,
+       3.340f, 15.327f, 302.364f
+    }, 8 * 3)},
+    {Type::SquareCell, gen_greater_sprite(Type::SquareCell, {
+      14.48f,   0.0f,   234.155f,
+       0.0f,    5.57f,   37.312f,
+       5.197f, 16.072f, 345.347f,
+       9.123f,  0.163f, 129.309f,
+       1.312f, 11.68f,    6.275f,
+      14.476f, 12.024f, 179.857f,
+       3.992f,  0.302f, 242.277f,
+       3.602f, 15.003f,  65.112f,
+      18.543f,  7.145f,  19.282f,
+      11.356f, 15.959f, 331.237f
+    }, 10 * 3)},
+    {Type::PentagonCell, gen_greater_sprite(Type::PentagonCell, {
+       0.603f, 11.836f, 354.065f,
+       7.098f,  0.0f,     4.999f,
+       3.345f,  1.370f, 340.184f,
+      17.962f,  9.926f, 242.261f,
+       8.812f, 17.825f, 293.366f,
+      13.331f, 16.729f, 254.708f,
+       0.0f,    5.912f, 132.838f,
+      15.437f,  1.168f, 345.701f,
+      17.415f,  1.821f, 134.487f,
+       0.707f,  8.372f,  72.895f,
+       0.676f, 13.008f,  64.827f
+    }, 11 * 3)},
+  };
 
   log.add(Attn::O, "Started experiment module.");
 }
@@ -404,13 +478,14 @@ Exp::reset_cluster()
   this->palette_.clear();
   this->cell_clusters_.clear();
   this->spore_clusters_.clear();
+  this->districts_.clear();
 }
 
 
 void
 Exp::reset_inject()
 {
-  this->sprite_index_ = 0;
+  this->injected_.clear();
 }
 
 
@@ -568,109 +643,74 @@ Exp::cluster(float radius, unsigned int minpts)
 }
 
 
-bool
-Exp::inject(Type type, float dpe)
+void
+Exp::districts()
 {
+  std::unordered_map<int,std::vector<int>>& ns = this->proc_.neighbors_sets_;
+  std::vector<std::set<int>>& districts = this->districts_;
+
+  for (std::set<int>& cluster : this->clusters_) {
+    std::set<int> district;
+    for (int p : cluster) {
+      for (int n : ns[p]) {
+        district.insert(n);
+      }
+    }
+    districts.push_back(district);
+  }
+}
+
+
+void
+Exp::inject(Type type, bool greater)
+{
+  this->reset_inject();
+
   State& state = this->state_;
-  SpritePts ps = this->sprites_[type];
+  SpritePts& sprite = this->sprites_[type];
+  if (greater) {
+    sprite = this->greater_sprites_[type];
+  }
   float w = static_cast<float>(state.width_);
   float h = static_cast<float>(state.height_);
-  unsigned int size = ps.size();
-
-  // fail if insufficient num
-  unsigned int num = static_cast<unsigned int>(w * h * dpe);
-  if (num < size) {
-    return false;
-  }
-
-  // fix dpe by resizing
   unsigned int n_stride = state.n_stride_;
-  if (num < state.num_) {
-    // truncate particle vectors
-    state.px_.resize(num);
-    state.py_.resize(num);
-    state.pf_.resize(num);
-    state.pc_.resize(num);
-    state.ps_.resize(num);
-    state.pn_.resize(num);
-    state.pl_.resize(num);
-    state.pr_.resize(num);
-    state.pan_.resize(num);
-    state.pls_.resize(n_stride * num);
-    state.prs_.resize(n_stride * num);
-    state.pld_.resize(n_stride * num);
-    state.prd_.resize(n_stride * num);
-    state.pt_.resize(num);
-    state.xr_.resize(num);
-    state.xg_.resize(num);
-    state.xb_.resize(num);
-    state.xa_.resize(num);
-  } else if (num > state.num_) {
-    // pad with random particles
-    for (int i = state.num_; i < num; ++i) {
-      state.px_.push_back(Util::distr(0.0f, w));
-      state.py_.push_back(Util::distr(0.0f, h));
-      state.pf_.push_back(Util::distr(0.0f, TAU));
-      state.pc_.push_back(cosf(state.pf_[i]));
-      state.ps_.push_back(sinf(state.pf_[i]));
-      state.pn_.push_back(0);
-      state.pl_.push_back(0);
-      state.pr_.push_back(0);
-      state.pan_.push_back(0);
-      for (int j = 0; j < n_stride; ++j) { state.pls_.push_back(-1); }
-      for (int j = 0; j < n_stride; ++j) { state.prs_.push_back(-1); }
-      for (int j = 0; j < n_stride; ++j) { state.pld_.push_back(-1.0f); }
-      for (int j = 0; j < n_stride; ++j) { state.prd_.push_back(-1.0f); }
-      state.pt_.push_back(Type::None);
-      state.xr_.push_back(1.0f);
-      state.xg_.push_back(1.0f);
-      state.xb_.push_back(1.0f);
-      state.xr_.push_back(0.5f);
-    }
-  }
-  state.num_ = num;
-
-  // inject: maintain an index that starts at 0 and points to the end of the
-  //         last injected sprite, circling around if it overshoots num
-  if (num <= this->sprite_index_ + size) {
-    this->sprite_index_ = 0;
-  }
+  unsigned int size = sprite.size();
   float dist_x = Util::distr(0.0f, w);
   float dist_y = Util::distr(0.0f, h);
   float x;
   float y;
   unsigned int si = 0;
-  unsigned int istride;
-  for (int i = this->sprite_index_; i < this->sprite_index_ + size; ++i) {
-    SpritePt& p = ps[si];
+  unsigned int i_stride;
+
+  for (int i = state.num_; i < state.num_ + size; ++i) {
+    SpritePt& p = sprite[si];
     ++si;
-    istride = n_stride * si;
+    i_stride = n_stride * si;
     x = std::get<0>(p) + dist_x; if (w <= x) { x -= w; }
     y = std::get<1>(p) + dist_y; if (h <= y) { y -= h; }
-    state.px_[i] = x;
-    state.py_[i] = y;
-    state.pf_[i] = std::get<2>(p);
-    state.pc_[i] = std::get<3>(p);
-    state.ps_[i] = std::get<4>(p);
-    state.pn_[i] = 0;
-    state.pl_[i] = 0;
-    state.pr_[i] = 0;
-    state.pan_[i] = 0;
-    for (int j = 0; j < n_stride; ++j) { state.pls_[istride + j] = -1; }
-    for (int j = 0; j < n_stride; ++j) { state.prs_[istride + j] = -1; }
-    for (int j = 0; j < n_stride; ++j) { state.pld_[istride + j] = -1.0f; }
-    for (int j = 0; j < n_stride; ++j) { state.prd_[istride + j] = -1.0f; }
-    state.pt_[i] = type;
-    state.xr_[i] = 1.0f;
-    state.xg_[i] = 1.0f;
-    state.xb_[i] = 1.0f;
-    state.xa_[i] = 1.0f;
+    state.px_.push_back(x);
+    state.py_.push_back(y);
+    state.pf_.push_back(std::get<2>(p));
+    state.pc_.push_back(std::get<3>(p));
+    state.ps_.push_back(std::get<4>(p));
+    state.pn_.push_back(0);
+    state.pl_.push_back(0);
+    state.pr_.push_back(0);
+    state.pan_.push_back(0);
+    for (int j = 0; j < n_stride; ++j) { state.pls_.push_back(-1); }
+    for (int j = 0; j < n_stride; ++j) { state.prs_.push_back(-1); }
+    for (int j = 0; j < n_stride; ++j) { state.pld_.push_back(-1.0f); }
+    for (int j = 0; j < n_stride; ++j) { state.prd_.push_back(-1.0f); }
+    state.pt_.push_back(type);
+    state.xr_.push_back(1.0f);
+    state.xg_.push_back(1.0f);
+    state.xb_.push_back(1.0f);
+    state.xa_.push_back(1.0f);
+    this->injected_.push_back(i);
   }
+  state.num_ += size;
   this->sprite_x_ = dist_x;
   this->sprite_y_ = dist_y;
-  this->sprite_index_ += size;
-
-  return true;
 }
 
 
@@ -744,6 +784,21 @@ Exp::nearest_neighbor_dists()
       }
     }
     this->nearest_neighbor_dists_.push_back(nearest);
+  }
+}
+
+
+void
+Exp::record_types()
+{
+  State& state = this->state_;
+  std::vector<Type>& pt = state.pt_;
+  std::vector<std::vector<Type>>& history = this->type_history_;
+
+  for (int p = 0; p < state.num_; ++p) {
+    if (history[p].empty() || pt[p] != history[p].back()) {
+      history[p].push_back(pt[p]);
+    }
   }
 }
 
@@ -920,49 +975,106 @@ Exp::cluster_type() {
 }
 
 
-std::vector<std::tuple<float,float,float,float,float>>
+SpritePts
 Exp::gen_sprite(std::vector<float> xyf, unsigned int num)
 {
-  State& state = this->state_;
-  float scale = std::min(state.width_, state.height_) / 100.0f;
   float f;
-  std::vector<std::tuple<float,float,float,float,float>> ps;
+  SpritePts ps;
 
   for (int i = 0; i < num; i += 3) {
     f = Util::deg_to_rad(xyf[i + 2]);
-    ps.push_back({scale * xyf[i], scale * xyf[i + 1], f, cosf(f), sinf(f)});
+    ps.push_back({xyf[i], xyf[i + 1], f, cosf(f), sinf(f)});
   }
-
-  this->sprite_scale_ = scale;
 
   return ps;
 }
 
 
+SpritePts
+Exp::gen_greater_sprite(Type type, std::vector<float> xyf, unsigned int num)
+{
+  float f;
+  SpritePts ps;
+
+  for (auto p : this->sprites_[type]) {
+    ps.push_back(p);
+  }
+
+  for (int i = 0; i < num; i += 3) {
+    f = Util::deg_to_rad(xyf[i + 2]);
+    ps.push_back({xyf[i], xyf[i + 1], f, cosf(f), sinf(f)});
+  }
+
+  return ps;
+}
+
+
+float
+Exp::dhi()
+{
+  State& state = this->state_;
+  float dx;
+  float dy;
+  std::vector<std::vector<int>> units(state.height_,
+                                      std::vector<int>(state.width_, 0));
+
+  // TODO toroid
+
+  for (int ux = 0; ux < state.width_; ++ux) {
+    for (int uy = 0; uy < state.height_; ++uy) {
+      for (int p = 0; p < state.num_; ++p) {
+        dx = state.px_[p] - ux;
+        dy = state.py_[p] - uy;
+        if (state.scope_squared_ >= (dx * dx + dy * dy)) {
+          ++units[uy][ux];
+        }
+      }
+    }
+  }
+
+  unsigned int dense = 0;
+  for (std::vector<int> row : units) {
+    for (int count : row) {
+      if (14 < count) {
+        ++dense;
+      }
+    }
+  }
+
+  return static_cast<float>(dense) / (state.width_ * state.height_);
+}
+
+
 void
-Exp::brief_meta_exp(unsigned int tick) {
+Exp::do_meta_exp(unsigned int tick) {
   if (tick % 50) {
     return;
   }
+  float radius = 0.6f * this->state_.scope_;
+  unsigned int minpts = 14;
+  this->cluster(radius, minpts);
   std::cout << tick << ": "
-            << this->magentas_ << " magenta(mature_spore), "
-            << this->blues_ << " blue(cell_hull), "
-            << this->yellows_ << " yellow(cell_core)"
+            << this->magentas_              << " magenta(mature_spore), "
+            << this->blues_                 << " blue(cell_hull), "
+            << this->yellows_               << " yellow(cell_core), "
+            << this->clusters_.size()       << " clusters, "
+            << this->cell_clusters_.size()  << " cells, "
+            << this->spore_clusters_.size() << " spores"
             << std::endl;
 }
 
 
 void
-Exp::brief_exp_1a(unsigned int tick) {
-  if (0 == tick || 149 == tick) {
-    float radius = 2.0f * this->state_.scope_;
+Exp::do_exp_1a(unsigned int tick) {
+  if (0 == tick || 150 == tick) {
+    float radius = 10.0f;
     unsigned int minpts = 14;
     this->cluster(radius, minpts);
     this->nearest_neighbor_dists_.clear();
     this->nearest_neighbor_dists();
-    std::cout << tick << ":\n";
+    std::cout << tick << ":";
     for (float dist : this->nearest_neighbor_dists_) {
-      std::cout << dist << " ";
+      std::cout << " " << dist;
     }
     std::cout << std::endl;
   }
@@ -970,22 +1082,22 @@ Exp::brief_exp_1a(unsigned int tick) {
 
 
 void
-Exp::brief_exp_1b(unsigned int tick) {
+Exp::do_exp_1b(unsigned int tick) {
   if (  0 == tick ||
        60 == tick ||
        90 == tick ||
       180 == tick ||
       400 == tick ||
-      699 == tick)
+      700 == tick)
   {
-    float radius = 2.0f * this->state_.scope_;
+    float radius = 10.0f;
     unsigned int minpts = 14;
     this->cluster(radius, minpts);
     this->nearest_neighbor_dists_.clear();
     this->nearest_neighbor_dists();
-    std::cout << tick << ":\n";
+    std::cout << tick << ":";
     for (float dist : this->nearest_neighbor_dists_) {
-      std::cout << dist << " ";
+      std::cout << " " << dist;
     }
     std::cout << std::endl;
   }
@@ -993,25 +1105,153 @@ Exp::brief_exp_1b(unsigned int tick) {
 
 
 void
-Exp::brief_exp_2(unsigned int tick) {
+Exp::do_exp_2(unsigned int tick) {
   if (tick % 100) {
     return;
   }
-  float radius = 0.75f * this->state_.scope_;
+  State& state = this->state_;
+  unsigned int num = state.num_;
+  float radius = 0.75f * state.scope_;
   unsigned int minpts = 14;
+
   this->cluster(radius, minpts);
   std::cout << std::fixed << std::setprecision(2)
             << tick << ": "
-            << this->magentas_ << " mature_spores, "
-            << this->blues_ << " cell_hulls, "
-            << this->yellows_ << " cell_cores "
+            << this->magentas_              << " mature_spores, "
+            << this->blues_                 << " cell_hulls, "
+            << this->yellows_               << " cell_cores "
             << "(dbscan " << radius << "," << minpts << ": "
-            << this->clusters_.size() << " clusters, "
-            << this->cell_clusters_.size() << " cells, "
+            << this->clusters_.size()       << " clusters, "
+            << this->cell_clusters_.size()  << " cells, "
             << this->spore_clusters_.size() << " spores, "
-            << this->cores_.size() << " cores, "
-            << this->vague_.size() << " vagues, "
-            << this->state_.num_ << " noise)"
+            << this->cores_.size()          << " cores, "
+            << this->vague_.size()          << " vagues, "
+            << num - cores_.size() - vague_.size() << " noise)"
             << std::endl;
+
+  this->record_types();
+  std::vector<std::vector<Type>>& history = this->type_history_;
+  char t;
+  if (100000 == tick || 1000000 == tick) {
+    std::cout << "types:\n";
+    for (int p = 0; p < num; ++p) {
+      std::cout << p;
+      for (Type type : history[p]) {
+        t = 'g';
+        if      (Type::MatureSpore    == type) { t = 'm'; }
+        else if (Type::CellHull       == type) { t = 'b'; }
+        else if (Type::CellCore       == type) { t = 'y'; }
+        else if (Type::PrematureSpore == type) { t = 'w'; }
+        std::cout << " " << t;
+      }
+      if (p != num - 1) {
+        std::cout << ",";
+      }
+    }
+    std::cout << std::endl;
+  }
+}
+
+
+void
+Exp::do_exp_3(unsigned int tick) {
+  State& state = this->state_;
+  std::vector<Type>& pt = state.pt_;
+  std::vector<unsigned int>& pl = state.pl_;
+  std::vector<unsigned int>& pr = state.pr_;
+  unsigned int num = this->injected_.size();
+  unsigned int p;
+  Type type;
+  char t = 'x';
+
+  std::cout << tick << ":";
+  for (int i = 0; i < num; ++i) {
+    // TODO: something's not right
+    p = this->injected_[i];
+    type = pt[p];
+    if      (Type::Nutrient       == type) { t = 'g'; }
+    else if (Type::PrematureSpore == type) { t = 'w'; }
+    else if (Type::MatureSpore    == type) { t = 'm'; }
+    else if (Type::CellHull       == type) { t = 'b'; }
+    else if (Type::CellCore       == type) { t = 'y'; }
+    std::cout << " " << p << " " << t << " " << pl[p] << " " << pr[p];
+    if (num - 1 > i) {
+      std::cout << ",";
+    }
+  }
+  std::cout << std::endl;
+}
+
+
+bool
+Exp::do_exp_4(unsigned int tick) {
+  if (!tick) {
+    return false;
+  }
+
+  /**
+  State& state = this->state_;
+  unsigned int num = state.num_;
+  unsigned int width = state.width_;
+  unsigned int height = state.height_;
+  float dpe = static_cast<float>(num) / width / height;
+  float radius = state.scope_;
+  unsigned int minpts = 14;
+
+  this->cluster(radius, minpts);
+  //*/
+  State& state = this->state_;
+  float dpe = static_cast<float>(state.num_) / state.width_ / state.height_;
+
+  int repl_threshold = static_cast<int>(48 * 2.1f);
+  if (24 > this->blues_) {
+    std::cout << dpe << ": " << tick << " died" << std::endl;
+    return true;
+  }
+  if (repl_threshold <= this->blues_) {
+    std::cout << dpe << ": " << tick << " replicated" << std::endl;
+    return true;
+  }
+  if (25000 == tick) {
+    std::cout << dpe << ": " << tick << " end" << std::endl;
+    return true;
+  }
+  return false;
+}
+
+
+void
+Exp::do_exp_5(unsigned int tick) {
+  if (tick % 100) {
+    return;
+  }
+
+  float radius = this->state_.scope_;
+  unsigned int minpts = 14;
+
+  this->cluster(radius, minpts);
+  std::cout << tick << ":";
+  if (1 != this->clusters_.size() || !this->cell_clusters_.count(0)) {
+    std::cout << " " << 0 << std::endl;
+  } else {
+    std::cout << " " << this->clusters_[0].size() << std::endl;
+  }
+}
+
+
+bool
+Exp::do_exp_6(unsigned int tick) {
+  if (500 != tick) {
+    return false;
+  }
+
+  State& state = this->state_;
+
+  std::cout << "alpha=" << Util::rad_to_deg(state.alpha_)
+            << ",beta=" << Util::rad_to_deg(state.beta_)
+            << ": " << this->dhi()
+            << std::endl;
+
+  return true;
 }
 
