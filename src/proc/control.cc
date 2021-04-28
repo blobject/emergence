@@ -10,51 +10,252 @@ Control::Control(Log& log, State& state, Proc& proc, Exp& exp,
                  const std::string& init_path, bool pause)
   : exp_(exp), log_(log), proc_(proc), state_(state), paused_(pause)
 {
-  this->start_ = -1;
+  this->pid_ = static_cast<int>(getpid());
+  this->duration_ = -1;
   this->tick_ = 0;
   this->step_ = false;
   this->quit_ = false;
   if (!init_path.empty()) {
     this->load(init_path);
   }
-  int experiment = state.experiment_;
-  int experiment_group = state.experiment_group_;
-  this->experiment_ = experiment;
-  this->experiment_group_ = experiment_group;
-  if (experiment) {
-    if      (1 == experiment_group) { this->start_ = 150;
-      if (14 == experiment)         { this->start_ = 700; } }
-    else if (2 == experiment_group) { this->start_ = 100000; }
-    else if (3 == experiment_group) { this->start_ = 100;
-      if      (30 == experiment) { this->inject(Type::Nutrient,      true); }
-      else if (31 == experiment) { this->inject(Type::PrematureSpore,true); }
-      else if (32 == experiment) { this->inject(Type::MatureSpore,   true); }
-      else if (33 == experiment) { this->inject(Type::Ring,          true); }
-      else if (34 == experiment) { this->inject(Type::PrematureCell, true); }
-      else if (35 == experiment) { this->inject(Type::TriangleCell,  true); }
-      else if (36 == experiment) { this->inject(Type::SquareCell,    true); }
-      else if (37 == experiment) { this->inject(Type::PentagonCell,  true); } }
-    else if (4 == experiment_group) { this->start_ = 25000;
+  int e = state.experiment_;
+  int eg = state.experiment_group_;
+  this->experiment_ = e;
+  this->experiment_group_ = eg;
+  if (e) {
+    if      (1 == eg) { this->duration_ = 150;
+      if      (14 == e) { this->duration_ = 700; } }
+    else if (2 == eg) { this->duration_ = 100000; }
+    else if (3 == eg) { this->duration_ = 100;
+      if      (30 == e) { this->inject(Type::Nutrient,      true); }
+      else if (31 == e) { this->inject(Type::PrematureSpore,true); }
+      else if (32 == e) { this->inject(Type::MatureSpore,   true); }
+      else if (33 == e) { this->inject(Type::Ring,          true); }
+      else if (34 == e) { this->inject(Type::PrematureCell, true); }
+      else if (35 == e) { this->inject(Type::TriangleCell,  true); }
+      else if (36 == e) { this->inject(Type::SquareCell,    true); }
+      else if (37 == e) { this->inject(Type::PentagonCell,  true); } }
+    else if (4 == eg) { this->duration_ = 25000;
+      exp.exp_4_count_ = 1;
+      this->dpe_ = static_cast<float>(state.num_)
+                   / state.width_ / state.height_;
       // TODO
-      if      (40 == experiment) { this->inject(Type::MatureSpore,  false); }
-      else if (41 == experiment) { this->inject(Type::TriangleCell, false); }
-      //this->gui_change_ = true;
+      if      (40 == e || 42 == e) { this->inject(Type::MatureSpore,  false); }
+      else if (41 == e || 43 == e) { this->inject(Type::TriangleCell, false); }
     }
-    else if (5 == experiment_group) { this->start_ = 25000;
-      if      (50 == experiment) { this->inject(Type::TriangleCell, false); }
-      else if (51 == experiment) { this->inject(Type::TriangleCell, false); }
-      else if (52 == experiment) { this->inject(Type::TriangleCell, false); }
-      // TODO: noise
-      else if (53 == experiment) { this->inject(Type::TriangleCell, false); }
-      else if (54 == experiment) { this->inject(Type::TriangleCell, false); }
-      else if (55 == experiment) { this->inject(Type::TriangleCell, false); } }
-    else if (6 == experiment_group) { this->start_ = 500; }
-    ++this->start_; // tick one more to gather the very last data set
+    else if (5 == eg) { this->duration_ = 25000;
+      exp.exp_5_count_ = 1;
+      this->inject(Type::TriangleCell, false); }
+    else if (6 == eg) { this->duration_ = 500; }
+    ++this->duration_; // stop after one more tick to gather very last data set
   }
-  this->stop_ = this->start_;
-  this->gui_change_ = false; // TODO
+  this->countdown_ = this->duration_;
+  this->gui_change_ = false;
 
   log.add(Attn::O, "Started control module.", true);
+}
+
+
+void
+Control::next()
+{
+  // when countdown drops to 0, Proc should exclaim completion
+  Proc& proc = this->proc_;
+  long long countdown = this->countdown_;
+
+  if (0 == countdown) {
+    this->done();
+  }
+
+  if (this->paused_ && !this->step_) {
+    // TODO: separate concerns
+    proc.notify(Issue::ProcNextDone); // Views react
+    return;
+  }
+
+  this->exp_.type();
+  proc.next();
+  this->exp_next();
+  this->step_ = false;
+  ++this->tick_;
+  if (-1 >= countdown) {
+    return;
+  }
+  --this->countdown_;
+}
+
+
+void
+Control::exp_next()
+{
+  int e = this->experiment_;
+
+  if (!e) {
+    return;
+  }
+
+  Exp& exp = this->exp_;
+  unsigned long tick = this->tick_;
+
+  //exp.brief_meta_exp(tick);
+  int eg = this->experiment_group_;
+  if (1 == eg) {
+    if (10 == e ||
+        11 == e ||
+        12 == e ||
+        13 == e) { exp.do_exp_1a(tick); return; }
+    if (14 == e) { exp.do_exp_1b(tick); return; } return; }
+  if (2 == eg) { exp.do_exp_2(tick); return; }
+  if (3 == eg) { exp.do_exp_3(tick); return; }
+  if (4 == eg) {
+    if (1 == tick && 0.0001f > this->dpe_) {
+      if (40 == e || 41 == e) {
+        if (1 < exp.exp_4_count_) {
+          std::cout << "\n";
+        }
+        std::cout << exp.exp_4_count_ << ":" << std::flush;
+      }
+    }
+    bool done;
+    if      (40 == e) { done = exp.do_exp_4a(tick); }
+    else if (41 == e) { done = exp.do_exp_4b(tick); }
+    else if (42 == e ||
+             43 == e) { done = exp.do_exp_4c(tick); }
+    if (done) {
+      exp.exp_4_est_done_ = 0;
+      exp.exp_4_dbscan_done_ = 0;
+      this->dpe_ += 0.001f;
+      if (0.1001f > this->dpe_ && 40 == e || 41 == e) {
+        std::cout << ";";
+      }
+      if (0.1001f < this->dpe_) {
+        ++exp.exp_4_count_;
+        this->dpe_ = 0.0f;
+      }
+      if (10 < exp.exp_4_count_) { // * 10 separate instances
+        this->quit_ = true;
+        return;
+      }
+      State& state = this->state_;
+      Stative stative = {
+        25001,
+        static_cast<int>(state.width_ * state.height_ * this->dpe_),
+        state.width_,
+        state.height_,
+        state.alpha_,
+        state.beta_,
+        state.scope_,
+        state.ascope_,
+        state.speed_,
+        state.noise_,
+        state.prad_,
+        state.coloring_
+      };
+      this->duration_ = -1; // for resetting in change()
+      this->change(stative, true);
+      if      (40 == e || 42 == e) { this->inject(Type::MatureSpore,  false); }
+      else if (41 == e || 43 == e) { this->inject(Type::TriangleCell, false); }
+      this->gui_change_ = true; // let UiState reflect true State
+      return;
+    }
+    return;
+  }
+  if (5 == eg) {
+    State& state = this->state_;
+    if (53 == e || 54 == e || 55 == e) {
+      if (1 == tick && 0.0001f > state.noise_) {
+        if (1 < exp.exp_5_count_) {
+          std::cout << "\n";
+        }
+        std::cout << exp.exp_5_count_ << ":" << std::flush;
+      }
+    }
+    bool done;
+    if      (50 == e || 51 == e || 52 == e) { done = exp.do_exp_5a(tick); }
+    else if (53 == e || 54 == e || 55 == e) { done = exp.do_exp_5b(tick); }
+    if (done) {
+      exp.exp_5_est_done_ = 0;
+      exp.exp_5_dbscan_done_ = 0;
+      float noise = 0.0f;
+      if (50 == e || 51 == e || 52 == e) {
+        ++exp.exp_5_count_;
+        if (100 < exp.exp_5_count_) { // * 10 separate instances
+          this->quit_ = true;
+          return;
+        }
+      } else if (53 == e || 54 == e || 55 == e) {
+        if (90.0f <= Util::rad_to_deg(state.noise_)) {
+          ++exp.exp_5_count_;
+          state.noise_ = Util::deg_to_rad(-5.0f);
+        } else {
+          std::cout << ";";
+        }
+        if (100 < exp.exp_5_count_) { // * 10 separate instances
+          this->quit_ = true;
+          return;
+        }
+        noise = Util::rad_to_deg(state.noise_) + 5.0f;
+      }
+      float dpe = 0.03f;
+      if      (51 == e || 54 == e) { dpe = 0.035f; }
+      else if (52 == e || 55 == e) { dpe = 0.04f; }
+      Stative stative = {
+        25001,
+        static_cast<int>(state.width_ * state.height_ * dpe),
+        state.width_,
+        state.height_,
+        state.alpha_,
+        state.beta_,
+        state.scope_,
+        state.ascope_,
+        state.speed_,
+        Util::deg_to_rad(noise),
+        state.prad_,
+        state.coloring_
+      };
+      this->duration_ = -1; // for resetting in change()
+      this->change(stative, true);
+      this->inject(Type::TriangleCell, false);
+      this->gui_change_ = true; // let UiState reflect true State
+      return;
+    }
+    return;
+  }
+  if (6 == eg) {
+    if (exp.do_exp_6(tick)) {
+      State& state = this->state_;
+      float alpha = Util::rad_to_deg(state.alpha_);
+      float beta = Util::rad_to_deg(state.beta_);
+      if (59.5f > beta) {
+        state.beta_ = Util::deg_to_rad(beta + 1.0f);
+      } else if (179.5f > alpha) {
+        state.beta_ = Util::deg_to_rad(-60.0f);
+        state.alpha_ = Util::deg_to_rad(alpha + 3.0f);
+      } else {
+        this->quit_ = true;
+        return;
+      }
+      Stative stative = {
+        501,
+        1200,
+        state.width_,
+        state.height_,
+        state.alpha_,
+        state.beta_,
+        state.scope_,
+        state.ascope_,
+        state.speed_,
+        state.noise_,
+        state.prad_,
+        state.coloring_
+      };
+      this->duration_ = -1; // for resetting in change()
+      this->change(stative, true);
+      this->gui_change_ = true; // let UiState reflect true State
+      return;
+    }
+    return;
+  }
 }
 
 
@@ -110,19 +311,20 @@ Control::get_num() const
 Coloring
 Control::get_coloring() const
 {
-  return (Coloring)this->state_.coloring_;
+  return static_cast<Coloring>(this->state_.coloring_);
 }
 
 
 void
 Control::change(Stative& input, bool respawn)
 {
-  if (input.stop != this->start_) {
-    this->start_ = input.stop;
-    this->stop_ = input.stop;
+  this->state_.change(input, respawn);
+  long long duration = input.duration;
+  if (duration != this->duration_) {
+    this->duration_ = duration;
+    this->countdown_ = duration;
     this->tick_ = 0;
   }
-  this->state_.change(input, respawn);
 }
 
 
@@ -141,7 +343,7 @@ Control::load(const std::string& path)
     num = -1;
   }
 
-  return {this->stop_, num, state.width_, state.height_,
+  return {this->countdown_, num, state.width_, state.height_,
           state.alpha_, state.beta_, state.scope_, state.ascope_,
           state.speed_, state.noise_, state.prad_, state.coloring_};
 }
@@ -171,7 +373,7 @@ Control::load_file(const std::string& path)
   std::istringstream linestream;
   std::getline(stream, line);
   if (!line.empty()) {
-    long long start;
+    long long duration;
     unsigned int width;
     unsigned int height;
     float alpha;
@@ -183,18 +385,18 @@ Control::load_file(const std::string& path)
     float prad;
     linestream = std::istringstream(line);
     // on read failure, the parameters are left unchanged
-    if (linestream >> start)  this->start_  = start;
-    if (linestream >> width)  truth.width_  = width;
-    if (linestream >> height) truth.height_ = height;
-    if (linestream >> alpha)  truth.alpha_  = Util::deg_to_rad(alpha);
-    if (linestream >> beta)   truth.beta_   = Util::deg_to_rad(beta);
-    if (linestream >> scope)  truth.scope_  = scope;
-    if (linestream >> ascope) truth.ascope_ = ascope;
-    if (linestream >> speed)  truth.speed_  = speed;
-    if (linestream >> noise)  truth.noise_  = Util::deg_to_rad(noise);
-    if (linestream >> prad)   truth.prad_   = prad;
+    if (linestream >> duration) this->duration_ = duration;
+    if (linestream >> width)    truth.width_    = width;
+    if (linestream >> height)   truth.height_   = height;
+    if (linestream >> alpha)    truth.alpha_    = Util::deg_to_rad(alpha);
+    if (linestream >> beta)     truth.beta_     = Util::deg_to_rad(beta);
+    if (linestream >> scope)    truth.scope_    = scope;
+    if (linestream >> ascope)   truth.ascope_   = ascope;
+    if (linestream >> speed)    truth.speed_    = speed;
+    if (linestream >> noise)    truth.noise_    = Util::deg_to_rad(noise);
+    if (linestream >> prad)     truth.prad_     = prad;
   }
-  this->stop_ = this->start_;
+  this->countdown_ = this->duration_;
   this->tick_ = 0;
 
   float w = static_cast<float>(truth.width_);
@@ -257,7 +459,7 @@ Control::save_file(const std::string& path)
   if (!stream) {
     return false;
   }
-  stream << this->start_ << ' '
+  stream << this->duration_ << ' '
          << truth.width_ << ' '
          << truth.height_ << ' '
          << Util::rad_to_deg(truth.alpha_) << ' '
@@ -275,105 +477,6 @@ Control::save_file(const std::string& path)
   }
   stream.close();
   return true;
-}
-
-
-void
-Control::next()
-{
-  // when stop drops to 0, Proc should exclaim completion
-  Proc& proc = this->proc_;
-  long long stop = this->stop_;
-
-  if (0 == stop) {
-    this->done();
-  }
-
-  if (this->paused_ && !this->step_) {
-    // TODO: separate concerns
-    proc.notify(Issue::ProcNextDone); // Views react
-    return;
-  }
-
-  unsigned long tick = this->tick_;
-
-  this->exp_.type();
-  proc.next();
-  this->exp_next();
-  this->step_ = false;
-  this->tick_ = tick + 1;
-  if (-1 >= stop) {
-    return;
-  }
-  --this->stop_;
-}
-
-
-void
-Control::exp_next()
-{
-  int experiment = this->experiment_;
-
-  if (!experiment) {
-    return;
-  }
-
-  Exp& exp = this->exp_;
-  unsigned long tick = this->tick_;
-
-  //exp.brief_meta_exp(tick);
-  if (experiment) {
-    int experiment_group = this->experiment_group_;
-    if      (1 == experiment_group) {
-      if      (10 == experiment ||
-               11 == experiment ||
-               12 == experiment ||
-               13 == experiment) { exp.do_exp_1a(tick); }
-      else if (14 == experiment) { exp.do_exp_1b(tick); } }
-    else if (2 == experiment_group) { exp.do_exp_2(tick); }
-    else if (3 == experiment_group) { exp.do_exp_3(tick); }
-    else if (4 == experiment_group) { if (exp.do_exp_4(tick)) { this->pause(true); }
-    /**
-    // TODO
-    else if (4 == experiment_group) {
-      if (exp.do_exp_4(tick)) {
-        if (0.1 < this->dpe_) {
-          return;
-        }
-        State& state = this->state_;
-        this->dpe_ += 0.001f;
-        Stative stative = {
-          25001,
-          static_cast<int>(state.width_ * state.height_ * this->dpe_),
-          state.width_,
-          state.height_,
-          state.alpha_,
-          state.beta_,
-          state.scope_,
-          state.ascope_,
-          state.speed_,
-          state.noise_,
-          state.prad_,
-          state.coloring_
-        };
-        this->change(stative, true);
-        if      (40 == experiment) { this->inject(Type::MatureSpore,  false); }
-        else if (41 == experiment) { this->inject(Type::TriangleCell, false); }
-        this->gui_change_ = true;
-        this->pause(false);
-      }
-    //*/
-    }
-    else if (5 == experiment_group) { exp.do_exp_5(tick); }
-    else if (6 == experiment_group) {
-      // TODO
-      if (exp.do_exp_6(tick)) {
-        State& state = this->state_;
-        state.alpha_ = Util::deg_to_rad(Util::rad_to_deg(state.alpha_) + 3.0f);
-        this->start_ = 501;
-      }
-    }
-  }
 }
 
 

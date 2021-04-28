@@ -1,10 +1,9 @@
 //===-- exp/exp.hh - Exp class declaration ---------------------*- C++ -*-===//
 ///
 /// \file
-/// Definitions of the Coloring and TypeBit enums and declaration of the Exp
-/// class, which implements utilities for experimenting with the particle
-/// system, including, for example, methods for counting and injecting particle
-/// clusters.
+/// Definitions of the Coloring enum and declaration of the Exp class, which
+/// implements utilities for experimenting with the particle system, including,
+/// for example, methods for counting and injecting particle clusters.
 /// Exp directly accesses and modifies State.
 ///
 //===---------------------------------------------------------------------===//
@@ -16,18 +15,6 @@
 #include <set>
 #include <unordered_map>
 #include <unordered_set>
-
-
-// TypeBit: Type of particle, as a bitfield.
-
-enum class TypeBit
-{
-  PrematureSpore = 1<<0,
-  MatureSpore    = 1<<1,
-  Nutrient       = 1<<2,
-  CellHull       = 1<<3,
-  CellCore       = 1<<4,
-};
 
 
 // Color: Type of particle coloring.
@@ -117,12 +104,28 @@ class Exp
   /// \returns  (some) true if system should halt, change, etc.
   void do_exp_1a(unsigned int tick); // occupancy, t in {0,150}
   void do_exp_1b(unsigned int tick); // occupancy, t in {60,90,180,400,700}
-  void do_exp_2(unsigned int tick);  // stability
+  void do_exp_2(unsigned int tick);  // population
   void do_exp_3(unsigned int tick);  // heat map
-  bool do_exp_4(unsigned int tick);  // replication
-  void do_exp_5(unsigned int tick);  // env, dpe in {0.03,0.035,0.04}, noise
+  bool do_exp_4a(unsigned int tick); // survival, mature spore
+  bool do_exp_4b(unsigned int tick); // survival, triangle cell
+  bool do_exp_4c(unsigned int tick); // survival by reproduction
+  bool do_exp_5a(unsigned int tick); // size, dpe in {0.03,0.035,0.04}
+  bool do_exp_5b(unsigned int tick); // noise, dpe in {0.03,0.035,0.04}
   bool do_exp_6(unsigned int tick);  // param sweep, alpha & beta
 
+  // experiment recurrence
+  unsigned int exp_4_count_;
+  unsigned int exp_5_count_;
+  int exp_4_est_done_;
+  int exp_4_dbscan_done_;
+  std::string exp_4_est_how_;
+  std::string exp_4_dbscan_how_;
+  int exp_5_est_done_;
+  int exp_5_dbscan_done_;
+  std::string exp_5_est_how_;
+  std::string exp_5_dbscan_how_;
+  std::unordered_map<int,int> exp_5_est_size_counts_;
+  std::unordered_map<int,int> exp_5_dbscan_size_counts_;
   // meta, nearest neighbors, color change, etc.
   unsigned int magentas_; // number of mature spore particles
   unsigned int blues_;    // number of cell hull particles
@@ -182,14 +185,13 @@ class Exp
   ///                   clusters.
   void dbscan_collect();
 
-  /// is_cluster_type(): Whether a particle cluster is of a specific type.
-  /// \param target  particle type(s) in bits
-  /// \param cluster  particle cluster
-  /// \returns  true if cluster is of specified type
-  bool is_cluster_type(TypeBit target, std::set<int>& cluster);
+  /// type_clusters(): Assign type to particle cluster.
+  void type_clusters();
 
-  /// cluster_type(): Assign type to particle cluster.
-  void cluster_type();
+  /// type_of_cluster(): Determine type of specified particle cluster.
+  /// \param cluster  particle cluster
+  /// \returns  -1 if mature spore, 1 if cell, 0 otherwise
+  int type_of_cluster(std::set<int>& cluster);
 
   /// gen_sprite(): Generate an absolutely-positioned typical sprite that was
   ///               "captured" from prior runs.

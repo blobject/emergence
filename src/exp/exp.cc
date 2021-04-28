@@ -14,6 +14,11 @@ Exp::Exp(Log& log, State& state, Proc& proc, bool no_cl)
   this->browns_ = 0;
   this->greens_ = 0;
 
+  this->exp_4_est_done_ = 0;
+  this->exp_4_dbscan_done_ = 0;
+  this->exp_5_est_done_ = 0;
+  this->exp_5_dbscan_done_ = 0;
+
   for (int p = 0; p < state.num_; ++p) {
     this->type_history_.push_back({});
   }
@@ -455,7 +460,7 @@ Exp::reset_exp()
 {
   this->reset_cluster();
   this->reset_inject();
-  this->reset_color(); // reset coloring last
+  this->reset_color(); // resetting color should go last
 }
 
 
@@ -639,7 +644,7 @@ Exp::cluster(float radius, unsigned int minpts)
   this->reset_cluster();
   this->dbscan_categorise(radius, minpts);
   this->dbscan_collect();
-  this->cluster_type();
+  this->type_clusters();
 }
 
 
@@ -928,50 +933,35 @@ collect(N, CORES):
 }
 
 
-bool
-Exp::is_cluster_type(TypeBit target, std::set<int>& cluster)
-{
-  std::vector<Type>& pt = this->state_.pt_;
-  unsigned int threshold = cluster.size() / 2; // at least 50%
-  unsigned int count = 0;
-  Type t;
-  TypeBit b = TypeBit::Nutrient;
-
-  // TODO: room for optimisation (return earlier)
-  for (int p : cluster) {
-    if (threshold < count) {
-      return true;
-    }
-    t = pt[p];
-    if      (Type::CellHull       == t) { b = TypeBit::CellHull; }
-    else if (Type::CellCore       == t) { b = TypeBit::CellCore; }
-    else if (Type::MatureSpore    == t) { b = TypeBit::MatureSpore; }
-    else if (Type::PrematureSpore == t) { b = TypeBit::PrematureSpore; }
-    else if (Type::Nutrient       == t) { b = TypeBit::Nutrient; }
-    if (static_cast<int>(target) & static_cast<int>(b)) {
-      ++count;
-    }
-  }
-
-  return false;
-}
-
-
 void
-Exp::cluster_type() {
+Exp::type_clusters() {
   std::vector<std::set<int>>& clusters = this->clusters_;
-  TypeBit cell = static_cast<TypeBit>(static_cast<int>(Type::CellHull)
-                                      | static_cast<int>(Type::CellCore));
+  int type;
 
   for (int i = 0; i < clusters.size(); ++i) {
-    if (this->is_cluster_type(TypeBit::MatureSpore, clusters[i])) {
+    type = this->type_of_cluster(clusters[i]);
+    if (0 > type) {
       this->spore_clusters_.insert(i);
-      continue;
-    }
-    if (this->is_cluster_type(cell, clusters[i])) {
+    } else if (0 < type) {
       this->cell_clusters_.insert(i);
     }
   }
+}
+
+
+int
+Exp::type_of_cluster(std::set<int>& cluster)
+{
+  unsigned int size = cluster.size();
+
+  if (16 < size && size < 23) {
+    return -1;
+  }
+  if (22 < size) {
+    return 1;
+  }
+
+  return 0;
 }
 
 
@@ -1013,27 +1003,90 @@ float
 Exp::dhi()
 {
   State& state = this->state_;
+  unsigned int width = state.width_;
+  unsigned int height = state.height_;
+  std::vector<float>& px = state.px_;
+  std::vector<float>& py = state.py_;
+  float scope = state.scope_;
+  float scopesq = scope * scope;
   float dx;
   float dy;
-  std::vector<std::vector<int>> units(state.height_,
-                                      std::vector<int>(state.width_, 0));
+  std::vector<std::vector<int>> pixels(width, std::vector<int>(height, 0));
 
-  // TODO toroid
+  auto grid = std::vector<int>();
+  int cols;
+  int rows;
+  unsigned int gstride;
 
-  for (int ux = 0; ux < state.width_; ++ux) {
-    for (int uy = 0; uy < state.height_; ++uy) {
-      for (int p = 0; p < state.num_; ++p) {
-        dx = state.px_[p] - ux;
-        dy = state.py_[p] - uy;
-        if (state.scope_squared_ >= (dx * dx + dy * dy)) {
-          ++units[uy][ux];
+  this->proc_.plot(scope, grid, cols, rows, gstride);
+
+  unsigned int uw = width / cols;
+  unsigned int uh = height / rows;
+  unsigned int ux;
+  unsigned int uy;
+  int c;
+  int cc;
+  int r;
+  int rr;
+  bool cunder;
+  bool cover;
+  bool runder;
+  bool rover;
+  unsigned int stride;
+  int p;
+
+  for (int col = 0; col < cols; ++col) {
+    c = col - 1;
+    cc = col + 1;
+    cunder = false;
+    cover = false;
+    if      (col == 0)        { cunder = true; c = cols - 1; }
+    else if (col == cols - 1) { cover  = true; cc = 0; }
+    for (int row = 0; row < rows; ++row) {
+      r = row - 1;
+      rr = row + 1;
+      runder = false;
+      rover = false;
+      if      (row == 0)        { runder = true; r = rows - 1; }
+      else if (row == rows - 1) { rover  = true; rr = 0; }
+      int vic[54] = {/* sw */ c,   r,   cunder, false, runder, false,
+                     /* s  */ col, r,   false,  false, runder, false,
+                     /* se */ cc,  r,   false,  cover, runder, false,
+                     /* w  */ c,   row, cunder, false, false,  false,
+                     /* c  */ col, row, false,  false, false,  false,
+                     /* e  */ cc,  row, false,  cover, false,  false,
+                     /* nw */ c,   rr,  cunder, false, false,  rover,
+                     /* n  */ col, rr,  false,  false, false,  rover,
+                     /* ne */ cc,  rr,  false,  cover, false,  rover};
+      for (int i = 0; i < uw; ++i) {
+        for (int j = 0; j < uh; ++j) {
+          ux = col * uw + j;
+          uy = row * uh + i;
+          for (unsigned int v = 0; v < 54; v += 6) {
+            stride = (cols * (vic[v + 1] * gstride)) + (vic[v] * gstride);
+            for (unsigned int gi = 0; gi < gstride; ++gi) {
+              p = grid[stride + gi];
+              if (0 > p) {
+                break;
+              }
+              dx = px[p] - ux;
+              if      (vic[v + 2]) { dx -= width; }
+              else if (vic[v + 3]) { dx += width; }
+              dy = py[p] - uy;
+              if      (vic[v + 4]) { dy -= height; }
+              else if (vic[v + 5]) { dy += height; }
+              if (scopesq >= (dx * dx + dy * dy)) {
+                ++pixels[uy][ux];
+              }
+            }
+          }
         }
       }
     }
   }
 
   unsigned int dense = 0;
-  for (std::vector<int> row : units) {
+  for (std::vector<int> row : pixels) {
     for (int count : row) {
       if (14 < count) {
         ++dense;
@@ -1046,7 +1099,8 @@ Exp::dhi()
 
 
 void
-Exp::do_meta_exp(unsigned int tick) {
+Exp::do_meta_exp(unsigned int tick)
+{
   if (tick % 50) {
     return;
   }
@@ -1069,9 +1123,11 @@ Exp::do_exp_1a(unsigned int tick) {
   if (0 == tick || 150 == tick) {
     float radius = 10.0f;
     unsigned int minpts = 14;
+
     this->cluster(radius, minpts);
     this->nearest_neighbor_dists_.clear();
     this->nearest_neighbor_dists();
+
     std::cout << tick << ":";
     for (float dist : this->nearest_neighbor_dists_) {
       std::cout << " " << dist;
@@ -1092,9 +1148,11 @@ Exp::do_exp_1b(unsigned int tick) {
   {
     float radius = 10.0f;
     unsigned int minpts = 14;
+
     this->cluster(radius, minpts);
     this->nearest_neighbor_dists_.clear();
     this->nearest_neighbor_dists();
+
     std::cout << tick << ":";
     for (float dist : this->nearest_neighbor_dists_) {
       std::cout << " " << dist;
@@ -1111,10 +1169,11 @@ Exp::do_exp_2(unsigned int tick) {
   }
   State& state = this->state_;
   unsigned int num = state.num_;
-  float radius = 0.75f * state.scope_;
+  float radius = state.scope_;
   unsigned int minpts = 14;
 
   this->cluster(radius, minpts);
+
   std::cout << std::fixed << std::setprecision(2)
             << tick << ": "
             << this->magentas_              << " mature_spores, "
@@ -1133,7 +1192,7 @@ Exp::do_exp_2(unsigned int tick) {
   std::vector<std::vector<Type>>& history = this->type_history_;
   char t;
   if (100000 == tick || 1000000 == tick) {
-    std::cout << "types:\n";
+    std::cout << "types: ";
     for (int p = 0; p < num; ++p) {
       std::cout << p;
       for (Type type : history[p]) {
@@ -1184,58 +1243,377 @@ Exp::do_exp_3(unsigned int tick) {
 
 
 bool
-Exp::do_exp_4(unsigned int tick) {
-  if (!tick) {
+Exp::do_exp_4a(unsigned int tick) {
+  // slight tolerance for Exp and injection to be applied
+  if (10 > tick) {
     return false;
   }
 
-  /**
   State& state = this->state_;
   unsigned int num = state.num_;
   unsigned int width = state.width_;
   unsigned int height = state.height_;
-  float dpe = static_cast<float>(num) / width / height;
-  float radius = state.scope_;
+  unsigned int size = this->sprites_[Type::MatureSpore].size();
+  float dpe = static_cast<float>(num - size) / width / height;
+  float radius = state.ascope_;
   unsigned int minpts = 14;
 
   this->cluster(radius, minpts);
-  //*/
-  State& state = this->state_;
-  float dpe = static_cast<float>(state.num_) / state.width_ / state.height_;
+  std::vector<std::set<int>>& clusters = this->clusters_;
+  unsigned int num_clusters = clusters.size();
 
-  int repl_threshold = static_cast<int>(48 * 2.1f);
-  if (24 > this->blues_) {
-    std::cout << dpe << ": " << tick << " died" << std::endl;
-    return true;
-  }
-  if (repl_threshold <= this->blues_) {
-    std::cout << dpe << ": " << tick << " replicated" << std::endl;
-    return true;
-  }
   if (25000 == tick) {
-    std::cout << dpe << ": " << tick << " end" << std::endl;
+    if (!this->exp_4_est_done_) {
+      this->exp_4_est_done_ = tick;
+      this->exp_4_est_how_ = "end";
+    }
+    if (!this->exp_4_dbscan_done_) {
+      this->exp_4_dbscan_done_ = tick;
+      this->exp_4_dbscan_how_ = "end";
+    }
+    std::cout << std::fixed << std::setprecision(3) << " " << dpe << " "
+              << std::fixed << std::setprecision(0)
+              << this->exp_4_est_done_ << " "
+              << this->exp_4_est_how_ << " est "
+              << this->exp_4_dbscan_done_ << " "
+              << this->exp_4_dbscan_how_ << " dbscan"
+              << std::flush;
     return true;
   }
+
+  if (!this->exp_4_est_done_) {
+    unsigned int cell_size = this->blues_ + this->yellows_;
+    if (17 > this->magentas_ && 23 > cell_size) {
+      this->exp_4_est_done_ = tick;
+      this->exp_4_est_how_ = "decayed";
+    } else if (22 < this->magentas_ || 22 < cell_size) {
+      this->exp_4_est_done_ = tick;
+      this->exp_4_est_how_ = "grew";
+    }
+  }
+
+  if (!this->exp_4_dbscan_done_) {
+    if (!num_clusters) {
+      this->exp_4_dbscan_done_ = tick;
+      this->exp_4_dbscan_how_ = "decayed";
+    } else if (this->cell_clusters_.size()) {
+      this->exp_4_dbscan_done_ = tick;
+      this->exp_4_dbscan_how_ = "grew";
+    }
+  }
+
+  if (this->exp_4_est_done_ && this->exp_4_dbscan_done_) {
+    std::cout << std::fixed << std::setprecision(3) << " " << dpe << " "
+              << std::fixed << std::setprecision(0)
+              << this->exp_4_est_done_ << " "
+              << this->exp_4_est_how_ << " est "
+              << this->exp_4_dbscan_done_ << " "
+              << this->exp_4_dbscan_how_ << " dbscan"
+              << std::flush;
+    return true;
+  }
+
   return false;
 }
 
 
-void
-Exp::do_exp_5(unsigned int tick) {
-  if (tick % 100) {
-    return;
+bool
+Exp::do_exp_4b(unsigned int tick) {
+  // slight tolerance for Exp and injection to be applied
+  if (10 > tick) {
+    return false;
   }
 
-  float radius = this->state_.scope_;
+  State& state = this->state_;
+  unsigned int num = state.num_;
+  unsigned int width = state.width_;
+  unsigned int height = state.height_;
+  unsigned int size = this->sprites_[Type::TriangleCell].size();
+  float dpe = static_cast<float>(num - size) / width / height;
+  float radius = state.scope_;
   unsigned int minpts = 14;
 
   this->cluster(radius, minpts);
-  std::cout << tick << ":";
-  if (1 != this->clusters_.size() || !this->cell_clusters_.count(0)) {
-    std::cout << " " << 0 << std::endl;
-  } else {
-    std::cout << " " << this->clusters_[0].size() << std::endl;
+  std::vector<std::set<int>>& clusters = this->clusters_;
+  unsigned int num_clusters = clusters.size();
+
+  if (25000 == tick) {
+    if (!this->exp_4_est_done_) {
+      this->exp_4_est_done_ = tick;
+      this->exp_4_est_how_ = "end";
+    }
+    if (!this->exp_4_dbscan_done_) {
+      this->exp_4_dbscan_done_ = tick;
+      this->exp_4_dbscan_how_ = "end";
+    }
+    std::cout << std::fixed << std::setprecision(3) << " " << dpe << " "
+              << std::fixed << std::setprecision(0)
+              << this->exp_4_est_done_ << " "
+              << this->exp_4_est_how_ << " est "
+              << this->exp_4_dbscan_done_ << " "
+              << this->exp_4_dbscan_how_ << " dbscan"
+              << std::flush;
+    return true;
   }
+
+  if (!this->exp_4_est_done_) {
+    unsigned int cell_size = this->blues_ + this->yellows_;
+    if (23 > cell_size) {
+      this->exp_4_est_done_ = tick;
+      this->exp_4_est_how_ = "decayed";
+    } else if (2.1f * 48 < cell_size) {
+      this->exp_4_est_done_ = tick;
+      this->exp_4_est_how_ = "replicated";
+    }
+  }
+
+  if (!this->exp_4_dbscan_done_) {
+    if (!num_clusters) {
+      this->exp_4_dbscan_done_ = tick;
+      this->exp_4_dbscan_how_ = "died";
+    } else if (!this->cell_clusters_.size()) {
+      this->exp_4_dbscan_done_ = tick;
+      this->exp_4_dbscan_how_ = "decayed";
+    } else if (1 < num_clusters) {
+      this->exp_4_dbscan_done_ = tick;
+      this->exp_4_dbscan_how_ = "replicated";
+    }
+  }
+
+  if (this->exp_4_est_done_ && this->exp_4_dbscan_done_) {
+    std::cout << std::fixed << std::setprecision(3) << " " << dpe << " "
+              << std::fixed << std::setprecision(0)
+              << this->exp_4_est_done_ << " "
+              << this->exp_4_est_how_ << " est "
+              << this->exp_4_dbscan_done_ << " "
+              << this->exp_4_dbscan_how_ << " dbscan"
+              << std::flush;
+    return true;
+  }
+
+  return false;
+}
+
+
+bool
+Exp::do_exp_4c(unsigned int tick) {
+  if (25000 != tick) {
+    return false;
+  }
+
+  State& state = this->state_;
+  unsigned int num = state.num_;
+  unsigned int width = state.width_;
+  unsigned int height = state.height_;
+  unsigned int size = this->sprites_[Type::MatureSpore].size();
+  if (43 == state.experiment_) {
+    size = this->sprites_[Type::TriangleCell].size();
+  }
+  float dpe = static_cast<float>(num - size) / width / height;
+  float radius = state.scope_;
+  unsigned int minpts = 14;
+
+  this->cluster(radius, minpts);
+
+  std::cout << this->exp_4_count_ << ": "
+            << std::fixed << std::setprecision(3) << dpe << ": "
+            << std::fixed << std::setprecision(0)
+            << this->magentas_              << " mature_spores, "
+            << this->blues_                 << " cell_hulls, "
+            << this->yellows_               << " cell_cores "
+            << "(dbscan " << radius << "," << minpts << ": "
+            << this->clusters_.size()       << " clusters, "
+            << this->cell_clusters_.size()  << " cells, "
+            << this->spore_clusters_.size() << " spores, "
+            << this->cores_.size()          << " cores, "
+            << this->vague_.size()          << " vagues, "
+            << num - cores_.size() - vague_.size() << " noise)"
+            << std::endl;
+
+  return true;
+}
+
+
+bool
+Exp::do_exp_5a(unsigned int tick) {
+  // slight tolerance for Exp and injection to be applied
+  if (10 > tick) {
+    return false;
+  }
+
+  State& state = this->state_;
+  int e = state.experiment_;
+  float radius = state.scope_;
+  unsigned int minpts = 14;
+
+  this->cluster(radius, minpts);
+  std::vector<std::set<int>>& clusters = this->clusters_;
+  unsigned int num_clusters = clusters.size();
+  std::unordered_map<int,int>& est_size_counts = this->exp_5_est_size_counts_;
+  std::unordered_map<int,int>& dbscan_size_counts =
+    this->exp_5_dbscan_size_counts_;
+  int size;
+
+  for (int c : this->cell_clusters_) {
+    size = this->clusters_[c].size();
+    if (dbscan_size_counts.find(size) == dbscan_size_counts.end()) {
+      dbscan_size_counts[size] = 0;
+    }
+    ++dbscan_size_counts[size];
+  }
+
+  size = this->blues_ + this->yellows_;
+  if (est_size_counts.find(size) == est_size_counts.end()) {
+    est_size_counts[size] = 0;
+  }
+  ++est_size_counts[size];
+
+  if (25000 == tick) {
+    std::cout << this->exp_5_count_ << ": " << tick << " end est";
+    int i = 0;
+    for (std::pair<int,int> est_size_count : est_size_counts) {
+      std::cout << (0 < i ? "," : "") << " " << est_size_count.first
+                << " " << est_size_count.second;
+      ++i;
+    }
+    std::cout << "; " << tick << " end dbscan";
+    i = 0;
+    for (std::pair<int,int> dbscan_size_count : dbscan_size_counts) {
+      std::cout << (0 < i ? "," : "") << " " << dbscan_size_count.first
+                << " " << dbscan_size_count.second;
+      ++i;
+    }
+    std::cout << std::endl;
+    est_size_counts.clear();
+    dbscan_size_counts.clear();
+    return true;
+  }
+
+  if (!this->exp_5_est_done_) {
+    if (23 > size) {
+      this->exp_5_est_done_ = tick;
+      this->exp_5_est_how_ = "died";
+    } else if (2.1f * 48 < size) {
+      // should not grow
+      this->exp_5_est_done_ = tick;
+      this->exp_5_est_how_ = "grew!";
+    }
+  }
+
+  if (!this->exp_5_dbscan_done_) {
+    if (!num_clusters) {
+      this->exp_5_dbscan_done_ = tick;
+      this->exp_5_dbscan_how_ = "died";
+    } else if (!this->cell_clusters_.size()) {
+      this->exp_5_dbscan_done_ = tick;
+      this->exp_5_dbscan_how_ = "decayed";
+    } else if (1 < num_clusters) {
+      // should not grow
+      this->exp_5_dbscan_done_ = tick;
+      this->exp_5_dbscan_how_ = "grew!";
+    }
+  }
+
+  if (this->exp_5_est_done_ && this->exp_5_dbscan_done_) {
+    std::cout << this->exp_5_count_ << ": "
+              << this->exp_5_est_done_ << " "
+              << this->exp_5_est_how_ << " est";
+    int i = 0;
+    for (std::pair<int,int> est_size_count : est_size_counts) {
+      std::cout << (0 < i ? "," : "") << " " << est_size_count.first
+                << " " << est_size_count.second;
+      ++i;
+    }
+    std::cout << "; " << this->exp_5_dbscan_done_ << " "
+              << this->exp_5_dbscan_how_ << " dbscan";
+    i = 0;
+    for (std::pair<int,int> dbscan_size_count : dbscan_size_counts) {
+      std::cout << (0 < i ? "," : "") << " " << dbscan_size_count.first
+                << " " << dbscan_size_count.second;
+      ++i;
+    }
+    std::cout << std::endl;
+    est_size_counts.clear();
+    dbscan_size_counts.clear();
+    return true;
+  }
+
+  return false;
+}
+
+
+bool
+Exp::do_exp_5b(unsigned int tick) {
+  // slight tolerance for Exp and injection to be applied
+  if (10 > tick) {
+    return false;
+  }
+
+  State& state = this->state_;
+  int e = state.experiment_;
+  float radius = state.scope_;
+  unsigned int minpts = 14;
+
+  this->cluster(radius, minpts);
+  std::vector<std::set<int>>& clusters = this->clusters_;
+  unsigned int num_clusters = clusters.size();
+  unsigned int noise = Util::rad_to_deg(state.noise_);
+  int size = this->blues_ + this->yellows_;
+
+  if (25000 == tick) {
+    if (!this->exp_5_est_done_) {
+      this->exp_5_est_done_ = tick;
+      this->exp_5_est_how_ = "end";
+    }
+    if (!this->exp_5_dbscan_done_) {
+      this->exp_5_dbscan_done_ = tick;
+      this->exp_5_dbscan_how_ = "end";
+    }
+    std::cout << std::fixed << std::setprecision(0) << " " << noise << " "
+              << this->exp_5_est_done_ << " "
+              << this->exp_5_est_how_ << " est "
+              << this->exp_5_dbscan_done_ << " "
+              << this->exp_5_dbscan_how_ << " dbscan"
+              << std::flush;
+    return true;
+  }
+
+  if (!this->exp_5_est_done_) {
+    if (23 > size) {
+      this->exp_5_est_done_ = tick;
+      this->exp_5_est_how_ = "died";
+    } else if (2.1f * 48 < size) {
+      // should not grow
+      this->exp_5_est_done_ = tick;
+      this->exp_5_est_how_ = "grew!";
+    }
+  }
+
+  if (!this->exp_5_dbscan_done_) {
+    if (!num_clusters) {
+      this->exp_5_dbscan_done_ = tick;
+      this->exp_5_dbscan_how_ = "died";
+    } else if (!this->cell_clusters_.size()) {
+      this->exp_5_dbscan_done_ = tick;
+      this->exp_5_dbscan_how_ = "decayed";
+    } else if (1 < num_clusters) {
+      // should not grow
+      this->exp_5_dbscan_done_ = tick;
+      this->exp_5_dbscan_how_ = "grew";
+    }
+  }
+
+  if (this->exp_5_est_done_ && this->exp_5_dbscan_done_) {
+    std::cout << std::fixed << std::setprecision(0) << " " << noise << " "
+              << this->exp_5_est_done_ << " "
+              << this->exp_5_est_how_ << " est "
+              << this->exp_5_dbscan_done_ << " "
+              << this->exp_5_dbscan_how_ << " dbscan"
+              << std::flush;
+    return true;
+  }
+
+  return false;
 }
 
 
@@ -1247,9 +1625,11 @@ Exp::do_exp_6(unsigned int tick) {
 
   State& state = this->state_;
 
-  std::cout << "alpha=" << Util::rad_to_deg(state.alpha_)
+  std::cout << std::fixed << std::setprecision(0)
+            << "alpha=" << Util::rad_to_deg(state.alpha_)
             << ",beta=" << Util::rad_to_deg(state.beta_)
-            << ": " << this->dhi()
+            << ": " << std::fixed << std::setprecision(4)
+            << this->dhi()
             << std::endl;
 
   return true;

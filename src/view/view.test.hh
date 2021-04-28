@@ -1,5 +1,5 @@
-#include "../src/view/view.hh"
-//#include "../src/util/util.hh"
+#include "view.hh"
+//#include "../util/util.hh"
 
 
 TEST_CASE("View::View")

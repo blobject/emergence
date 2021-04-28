@@ -41,6 +41,16 @@ class Proc : public Subject
     this->notify(Issue::ProcDone); // Views react
   }
 
+  /// plot(): Prepare seek() and move() (for either OpenCL or plain versions).
+  ///         Namely, call clear() and (re)generate the grid.
+  /// \param scope  integer divisor of grid
+  /// \param grid  reference to flat grid
+  /// \param cols  reference to number of columns in grid
+  /// \param rows  reference to number of rows in grid
+  /// \param stride  reference stride (largest grid unit) of grid
+  void plot(unsigned int scope, std::vector<int>& grid, int& cols, int& rows,
+            unsigned int& stride);
+
   /// plain_seek(): Non-OpenCL version of seek.
   ///               Entry point of seeking. Also used by Exp.
   /// \param scope  integer divisor of grid
@@ -82,16 +92,6 @@ class Proc : public Subject
   /// clear(): Clear out seek data. Namely, reinitialise N, L, R, and related
   ///          data structures.
   void clear();
-
-  /// plot(): Prepare seek() and move() (for either OpenCL or plain versions).
-  ///         Namely, call clear() and (re)generate the grid.
-  /// \param scope  integer divisor of grid
-  /// \param grid  reference to flat grid
-  /// \param cols  reference to number of columns in grid
-  /// \param rows  reference to number of rows in grid
-  /// \param stride  reference stride (largest grid unit) of grid
-  void plot(unsigned int scope, std::vector<int>& grid, int& cols, int& rows,
-            unsigned int& stride);
 
 #if 1 == CL_ENABLED
 

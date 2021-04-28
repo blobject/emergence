@@ -57,7 +57,7 @@ public:
   bool load(const std::string& path);
 
   Control&     ctrl_;
-  long long    stop_;
+  long long    duration_;
   int          num_;
   unsigned int width_;
   unsigned int height_;

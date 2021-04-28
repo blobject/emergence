@@ -1,4 +1,4 @@
-#include "../src/proc/proc.hh"
+#include "proc.hh"
 
 
 TEST_CASE("Control::Control")
@@ -9,6 +9,6 @@ TEST_CASE("Control::Control")
   auto proc = Proc(log, state, cl, false);
   auto exp = Exp(log, state, proc, false);
   auto ctrl = Control(log, state, proc, exp, "", false);
-  REQUIRE(-1 == ctrl.stop_);
+  REQUIRE(-1 == ctrl.countdown_);
 }
 

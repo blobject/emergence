@@ -41,7 +41,7 @@ main(int argc, char* argv[])
     experiment = std::stoi(opts["exp"]);
   }
   bool headless = !opts["headless"].empty();
-  std::string init = opts["inputstate"];
+  std::string init = opts["input"];
   bool no_cl = !opts["nocl"].empty();
   bool gui_on = opts["nogui"].empty();
   bool pause = !opts["pause"].empty();
@@ -67,6 +67,7 @@ main(int argc, char* argv[])
   auto uistate = UiState(ctrl);
   std::unique_ptr<View> view = View::init(log, ctrl, uistate,
                                           headless, gui_on, three);
+  log.add(Attn::O, "PID: " + std::to_string(ctrl.pid_), true);
 
   // execution
   attempt(log, experiment);
@@ -85,7 +86,7 @@ usage()
   char* me = strdup(ME);
   me[0] += 0x20;
   std::cout << "Usage: " << me
-            << " -(?h|2|c|e NUM|f FILE|g|p|q|v|x)"
+            << " -(?h|2|c|e NUM|g|i FILE|p|q|v|x)"
             << std::endl;
   free(me);
 }
@@ -102,13 +103,13 @@ help()
             << "  -v       show version\n"
             << "  -c       disable OpenCL\n"
             << "  -e NUM   do an experiment\n"
-            << "             occupancy:   [10, 11], [12, 13], [14]\n"
-            << "             stability:   [2]\n"
-            << "             heat map:    [30, 31, 32, 33, 34, 35, 36, 37]\n"
-            << "             replication: [40, 41]\n"
-            << "             env + noise: [50, 51, 52], [53, 54, 55]\n"
-            << "             param sweep: [6]\n"
-            << "  -f FILE  supply an initial state\n"
+            << "             occupancy:    [10, 11], [12, 13], [14]\n"
+            << "             population:   [2]\n"
+            << "             heat map:     [30, 31, 32, 33, 34, 35, 36, 37]\n"
+            << "             survival:     [40, 41, 42, 43]\n"
+            << "             size & noise: [50, 51, 52], [53, 54, 55]\n"
+            << "             param sweep:  [6]\n"
+            << "  -i FILE  supply an initial state\n"
             << "  -p       start paused\n"
             << "  -x       run in headless mode\n\n"
             << "Options for graphical mode:\n"
@@ -132,7 +133,7 @@ args(int argc, char* argv[])
   std::map<std::string,std::string> opts = {
     {"exp", ""},
     {"headless", ""},
-    {"inputstate", ""},
+    {"input", ""},
     {"nocl", ""},
     {"nogui", ""},
     {"pause", ""},
@@ -142,20 +143,20 @@ args(int argc, char* argv[])
     {"two", ""}
   };
   int opt;
-  while (-1 != (opt = getopt(argc, argv, "?2ce:f:ghpqvx"))) {
+  while (-1 != (opt = getopt(argc, argv, "?2ce:gi:hpqvx"))) {
     if ('?' == opt || 'h' == opt) {
       opts["quit"] = "help";
       opts["return"] = "0";
     }
-    else if ('2' == opt) { opts["two"]        = "."; }
-    else if ('c' == opt) { opts["nocl"]       = "."; }
-    else if ('e' == opt) { opts["exp"]        = optarg; }
-    else if ('f' == opt) { opts["inputstate"] = optarg; }
-    else if ('g' == opt) { opts["nogui"]      = "."; }
-    else if ('p' == opt) { opts["pause"]      = "."; }
-    else if ('q' == opt) { opts["quiet"]      = "."; }
+    else if ('2' == opt) { opts["two"]   = "."; }
+    else if ('c' == opt) { opts["nocl"]  = "."; }
+    else if ('e' == opt) { opts["exp"]   = optarg; }
+    else if ('g' == opt) { opts["nogui"] = "."; }
+    else if ('i' == opt) { opts["input"] = optarg; }
+    else if ('p' == opt) { opts["pause"] = "."; }
+    else if ('q' == opt) { opts["quiet"] = "."; }
     else if ('v' == opt) { opts["quit"] = "version"; opts["return"] = "0"; }
-    else if ('x' == opt) { opts["headless"]   = "."; }
+    else if ('x' == opt) { opts["headless"] = "."; }
     else if (':' == opt) { opts["quit"] = "noarg"; opts["return"] = "-1"; }
     else { opts["quit"] = optopt; opts["return"] = "-1"; }
   }
@@ -176,7 +177,7 @@ argue(Log& log, std::map<std::string,std::string>& opts)
                                  10, 11, 12, 13, 14,
                                  2,
                                  30, 31, 32, 33, 34, 35, 36, 37,
-                                 40, 41,
+                                 40, 41, 42, 43,
                                  50, 51, 52, 53, 54, 55,
                                  6};
     if (std::find(exps.begin(), exps.end(), exp) != exps.end()) {
@@ -186,14 +187,14 @@ argue(Log& log, std::map<std::string,std::string>& opts)
     log.add(Attn::E, "unknown experiment: " + opts["exp"], true);
     return;
   }
-  if (!opts["inputstate"].empty()) {
+  if (!opts["input"].empty()) {
     std::ifstream stream;
-    stream = std::ifstream(opts["inputstate"]);
+    stream = std::ifstream(opts["input"]);
     if (stream) {
       stream.close();
     } else {
       opts["return"] = "-1";
-      log.add(Attn::E, "unreadable file: " + opts["inputstate"], true);
+      log.add(Attn::E, "unreadable file: " + opts["input"], true);
       usage();
     }
     return;
@@ -202,7 +203,7 @@ argue(Log& log, std::map<std::string,std::string>& opts)
     if ("help" == opt) {
       help();
       return;
-    } else if ("inputstate" == opt) {
+    } else if ("input" == opt) {
       log.add(Attn::E, "trouble with input state\n", true);
     } else if ("noarg" == opt) {
       log.add(Attn::E, "no argument provided\n", true);
@@ -224,7 +225,7 @@ argue(Log& log, std::map<std::string,std::string>& opts)
       message += " only";
     }
   } else {
-    opt = opts["inputstate"];
+    opt = opts["input"];
     message += " headless";
     if (!opt.empty()) message += ": " + opt;
   }
@@ -240,14 +241,14 @@ attempt(Log& log, int exp)
 {
   int expg = 10 <= exp ? exp / 10 : exp;
   std::string message = "Running experiment ";
-  if      (1 == expg) { message += "\"occupancy\": ";
+  if      (1 == expg) { message += "1 \"occupancy\": ";
     if      (10 == exp) { message += "12 particles."; }
     else if (11 == exp) { message += "14 particles."; }
     else if (12 == exp) { message += "0.04 dpe."; }
     else if (13 == exp) { message += "0.07 dpe."; }
     else if (14 == exp) { message += "0.09 dpe."; } }
-  else if (2 == expg) { message += "\"stability\"."; }
-  else if (3 == expg) { message += "\"heat map\": ";
+  else if (2 == expg) { message += "2 \"population\"."; }
+  else if (3 == expg) { message += "3 \"heat map\": ";
     if      (30 == exp) { message += "nutrients."; }
     else if (31 == exp) { message += "premature spore."; }
     else if (32 == exp) { message += "mature spore."; }
@@ -256,17 +257,19 @@ attempt(Log& log, int exp)
     else if (35 == exp) { message += "triangle cell."; }
     else if (36 == exp) { message += "square cell."; }
     else if (37 == exp) { message += "pentagon cell."; } }
-  else if (4 == expg) { message += "\"replication\": ";
-    if      (40 == exp) { message += "mature spore."; }
-    else if (41 == exp) { message += "triangle cell."; } }
-  else if (5 == expg) { message += "\"environment + noise\": ";
-    if      (50 == exp) { message += "0.03 dpe."; }
-    else if (51 == exp) { message += "0.035 dpe."; }
-    else if (52 == exp) { message += "0.04 dpe."; }
-    else if (53 == exp) { message += "0.03 dpe + noise."; }
-    else if (54 == exp) { message += "0.035 dpe + noise."; }
-    else if (55 == exp) { message += "0.04 dpe + noise."; } }
-  else if (6 == expg) { message += "\"parameter sweep\"."; }
+  else if (4 == expg) { message += "4 \"survival\": ";
+    if      (40 == exp) { message += "mature spore survival."; }
+    else if (41 == exp) { message += "triangle cell survival."; }
+    else if (42 == exp) { message += "mature spore reproduction."; }
+    else if (43 == exp) { message += "triangle cell reproduction."; } }
+  else if (5 == expg) { message += "5 \"";
+    if      (50 == exp) { message += "size\": 0.03 dpe."; }
+    else if (51 == exp) { message += "size\": 0.035 dpe."; }
+    else if (52 == exp) { message += "size\": 0.04 dpe."; }
+    else if (53 == exp) { message += "noise\": 0.03 dpe + noise."; }
+    else if (54 == exp) { message += "noise\": 0.035 dpe + noise."; }
+    else if (55 == exp) { message += "noise\": 0.04 dpe + noise."; } }
+  else if (6 == expg) { message += "6 \"parameter sweep\"."; }
   else if (exp) {
     log.add(Attn::E, "unknown experiment: " + std::to_string(exp), true);
     return;

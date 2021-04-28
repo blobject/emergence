@@ -13,21 +13,21 @@ set(CMAKE_VERBOSE_MAKEFILE True)
 set(ME emergence)
 project($ME)
 
-include_directories(${PROJECT_SOURCE_DIR}/opt)
+include_directories(${PROJECT_SOURCE_DIR}/external)
 find_package(GLEW REQUIRED)
 find_package(glfw3 REQUIRED)
-set(glm_DIR ${PROJECT_SOURCE_DIR}/opt/glm) # voidlinux workaround
+set(glm_DIR ${PROJECT_SOURCE_DIR}/external/glm) # voidlinux workaround
 find_package(glm REQUIRED)
 find_package(OpenCL)
 find_package(OpenGL REQUIRED)
 
 add_library(imgui STATIC
-  opt/imgui/imgui.cpp
-  opt/imgui/imgui_demo.cpp
-  opt/imgui/imgui_draw.cpp
-  opt/imgui/imgui_impl_glfw.cpp
-  opt/imgui/imgui_impl_opengl3.cpp
-  opt/imgui/imgui_widgets.cpp)
+  external/imgui/imgui.cpp
+  external/imgui/imgui_demo.cpp
+  external/imgui/imgui_draw.cpp
+  external/imgui/imgui_impl_glfw.cpp
+  external/imgui/imgui_impl_opengl3.cpp
+  external/imgui/imgui_widgets.cpp)
 
 add_library(lib${ME} STATIC
   # core
@@ -65,7 +65,7 @@ endif()
 
 add_executable(${ME} src/main.cc)
 enable_testing()
-add_executable(test${ME} test/test.cc)
+add_executable(test${ME} src/test.cc)
 
 target_link_libraries(${ME} ${LIBS})
 target_link_libraries(test${ME} ${LIBS})

@@ -1,5 +1,5 @@
-#include "../src/state/state.hh"
-#include "../src/util/util.hh"
+#include "state.hh"
+#include "../util/util.hh"
 
 
 TEST_CASE("State::State")
@@ -87,7 +87,7 @@ TEST_CASE("State::change")
     state.coloring_
   };
   state.change(stative, false);
-  REQUIRE(1 == log.messages_.size());
+  REQUIRE(2 == log.messages_.size());
   REQUIRE("Changed state without respawn." == log.messages_.front().second);
 
   state.change(stative, true);
@@ -109,7 +109,7 @@ TEST_CASE("State::change")
     state.coloring_
   };
   state.change(stative, true);
-  REQUIRE(3 == log.messages_.size());
+  REQUIRE(2 == log.messages_.size());
   REQUIRE("Changed state with respawn." == log.messages_.front().second);
 }
 

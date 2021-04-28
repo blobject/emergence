@@ -16,14 +16,43 @@ This is a rewrite and extension of an [[https://github.com/blobject/mff/tree/mas
 
 *** Dependencies
 
-- clang++ ~>= 11~
-- cmake ~>= 3.19~
-- glew ~>= 2.2~
-- glfw ~>= 3~
-- glm ~>= 0.9.9~
-- imgui (source & headers provided in =opt/=)
-- opengl ~>= 3.3~
-- stb (headers provided in =opt/=)
+- clang++ ~11~
+- cmake ~3.19~
+- glew ~2.2~
+- glfw ~3~
+- glm ~0.9.9~
+- opengl ~3.3~
+
+/The versions have not been properly tested and are just what I used. The program might still work with different versions./
+
+~ldd ./emergence~:
+
+#+BEGIN_SRC haskell
+linux-vdso.so.1 (0x00007ffe2ffb5000)
+libGLEW.so.2.2 => /usr/lib/libGLEW.so.2.2 (0x00007f618511c000)
+libglfw.so.3 => /usr/lib/libglfw.so.3 (0x00007f61850b4000)
+libOpenGL.so.0 => /usr/lib/libOpenGL.so.0 (0x00007f6185089000)
+libOpenCL.so.1 => /usr/lib/libOpenCL.so.1 (0x00007f6185067000)
+libstdc++.so.6 => /usr/lib/libstdc++.so.6 (0x00007f6184dfe000)
+libm.so.6 => /usr/lib/libm.so.6 (0x00007f6184cb9000)
+libgcc_s.so.1 => /usr/lib/libgcc_s.so.1 (0x00007f6184c9d000)
+libc.so.6 => /usr/lib/libc.so.6 (0x00007f6184ad7000)
+libGL.so.1 => /usr/lib/libGL.so.1 (0x00007f6184a50000)
+libdl.so.2 => /usr/lib/libdl.so.2 (0x00007f6184a4a000)
+libX11.so.6 => /usr/lib/libX11.so.6 (0x00007f6184908000)
+libpthread.so.0 => /usr/lib/libpthread.so.0 (0x00007f61848e7000)
+libGLdispatch.so.0 => /usr/lib/libGLdispatch.so.0 (0x00007f618482e000)
+/lib64/ld-linux-x86-64.so.2 => /usr/lib64/ld-linux-x86-64.so.2 (0x00007f61851e1000)
+libGLX.so.0 => /usr/lib/libGLX.so.0 (0x00007f61847fc000)
+libxcb.so.1 => /usr/lib/libxcb.so.1 (0x00007f61847d1000)
+libXau.so.6 => /usr/lib/libXau.so.6 (0x00007f61847cc000)
+libXdmcp.so.6 => /usr/lib/libXdmcp.so.6 (0x00007f61847c4000)
+#+END_SRC
+
+**** Bundled with this repository (in =external/=)
+
+- imgui
+- stb
 
 **** Optional
 
@@ -54,7 +83,7 @@ This is a rewrite and extension of an [[https://github.com/blobject/mff/tree/mas
 1. ~cmake ..~
 1. ~make~
 
-*Note:* If any OpenCL component was (un)installed after an invocation of =cmake=, make sure to remove =build/= and do a clean =cmake= again.
+*Note:* If any OpenCL component was (un)installed after an invocation of =cmake=, make sure to remove =build/= and do a fresh =cmake= again.
 
 - Test ::
 1. ~cd emergence/build~

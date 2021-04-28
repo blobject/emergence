@@ -90,6 +90,11 @@ class Gui
   /// \param box  whether the 'q'uit box should be drawn
   void draw_quit(Box box);
 
+  /// box_confirm(): Perform the main box action.
+  ///                Used when rendering boxes and when pressing Enter.
+  /// \param box  which box the confirmation applies to
+  void box_confirm(Box box);
+
   /// gen_message_exp_inspect(): Compute inspection message.
   void gen_message_exp_inspect();
 
@@ -147,6 +152,15 @@ class Gui
   GLFWwindow*  window_;
   Canvas&      canvas_;
   float        scale_;
+  double       ago_;         // last moment when counting of frames began (~1s)
+  unsigned int frames_;      // accumulated number of draws
+  float        fps_;         // calculated frames per second
+  double       x_;           // mouse cursor's x position
+  double       y_;           // mouse cursor's y position
+  bool         trail_;       // whether trailing is enabled
+  bool         three_;       // whether in 3D mode
+  bool         dolly_;       // whether mouse activated camera's dolly movement
+  bool         pivot_;       // whether mouse activated camera's pivot movement
   std::string  cwd_;
   ImFont*      font_r_;
   ImFont*      font_b_;
@@ -162,18 +176,14 @@ class Gui
   Box          box_;         // which dialog box should be shown
   float        box_opacity_; // opacity of dialog boxes
   bool         input_focus_; // focus marker for when the dialog box opens
-  double       ago_;         // last moment when counting of frames began (~1s)
-  unsigned int frames_;      // accumulated number of draws
-  float        fps_;         // calculated frames per second
-  double       x_;           // mouse cursor's x position
-  double       y_;           // mouse cursor's y position
-  bool         trail_;       // whether trailing is enabled
-  bool         three_;       // whether in 3D mode
-  bool         dolly_;       // whether mouse activated camera's dolly movement
-  bool         pivot_;       // whether mouse activated camera's pivot movement
-  int          load_save_;      // load/save status (0=none,1=good,-1=bad)
-  std::string  capture_path_;   // path to taken picture
-  int          capture_;        // picture taking status (0=none,1=good,-1=bad)
+  std::string  input_allowed_;       // regex string of allowed input chars
+  char         capture_path_[256];   // path to taken picture
+  char         load_path_[256];      // path to load
+  char         save_path_[256];      // path to save
+  char         quit_save_path_[256]; // path to quit save
+  int          capture_;        // picture taking status (0=none,1=good,0>bad)
+  int          load_save_;      // load/save status (0=none,1=good,0>bad)
+  int          quit_;           // quit status (0=none,1=good,0>bad)
   int          coloring_;       // particle coloring scheme
   float        cluster_radius_; // DBSCAN radius
   unsigned int cluster_minpts_; // DBSCAN minpts

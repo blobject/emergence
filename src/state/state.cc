@@ -3,8 +3,8 @@
 #include "../util/util.hh"
 
 
-State::State(Log& log, int experiment)
-  : log_(log), experiment_(experiment)
+State::State(Log& log, int e)
+  : log_(log), experiment_(e)
 {
   // transportable
   this->num_      = 5000; // 0.08 dpe
@@ -24,51 +24,57 @@ State::State(Log& log, int experiment)
   // fixed
   this->n_stride_ = 100;
 
-  int experiment_group = 10 <= experiment ? experiment / 10 : experiment;
-  this->experiment_group_ = experiment_group;
-  if (1 == experiment_group) {
+  int eg = 10 <= e ? e / 10 : e;
+  this->experiment_group_ = eg;
+  if (1 == eg) {
     this->width_  = 250;
     this->height_ = 250;
     this->prad_   = 0.5f;
-    if      (10 == experiment) { this->num_ = 12; }   // custom placement
-    else if (11 == experiment) { this->num_ = 14; }   // custom placement
-    else if (12 == experiment) { this->num_ = 2500; } // 0.04 dpe
-    else if (13 == experiment) { this->num_ = 4375; } // 0.07 dpe
-    else if (14 == experiment) { this->num_ = 5625; } // 0.09 dpe
-  } else if (2 == experiment_group) {
+    if      (10 == e) { this->num_ = 12; }   // custom placement
+    else if (11 == e) { this->num_ = 14; }   // custom placement
+    else if (12 == e) { this->num_ = 2500; } // 0.04 dpe
+    else if (13 == e) { this->num_ = 4375; } // 0.07 dpe
+    else if (14 == e) { this->num_ = 5625; } // 0.09 dpe
+  } else if (2 == eg) {
     this->num_    = 5000; // 0.08 dpe
     this->width_  = 250;
     this->height_ = 250;
-    this->prad_   = 0.5f;
-  } else if (3 == experiment_group) {
+    this->prad_   = 1.0f;
+  } else if (3 == eg) {
     this->num_    = 0; // variable dpe, inj
     this->width_  = 250;
     this->height_ = 250;
     this->prad_   = 0.5f;
-  } else if (4 == experiment_group) {
+  } else if (4 == eg) {
     this->width_  = 50;
     this->height_ = 50;
     this->num_    = static_cast<unsigned int>(this->width_ * this->height_
-                                              * 0.06f); // variable dpe, inj
+                                              * 0.0f); // variable dpe, inj
     this->prad_   = 0.25f;
-  } else if (5 == experiment_group) {
+  } else if (5 == eg) {
     this->width_  = 50;
     this->height_ = 50;
     this->prad_   = 0.25f;
-    if      (50 == experiment) { this->num_ = 75; }  // 0.03 dpe, inj
-    else if (51 == experiment) { this->num_ = 88; }  // ~0.035 dpe, inj
-    else if (52 == experiment) { this->num_ = 100; } // 0.04 dpe, inj
-    else if (53 == experiment) { this->num_ = 75; }  // 0.03 dpe, inj, noise
-    else if (54 == experiment) { this->num_ = 88; }  // ~0.035 dpe, inj, noise
-    else if (55 == experiment) { this->num_ = 100; } // 0.04 dpe, inj, noise
-  } else if (6 == experiment) {
+    if (50 == e || 53 == e) {
+      this->num_ = static_cast<unsigned int>(this->width_ * this->height_
+                                             * 0.03f); // 0.03 dpe, inj
+    } else if (51 == e || 54 == e) {
+      this->num_ = static_cast<unsigned int>(this->width_ * this->height_
+                                             * 0.035f); // ~0.035 dpe, inj
+    } else if (52 == e || 55 == e) {
+      this->num_ = static_cast<unsigned int>(this->width_ * this->height_
+                                             * 0.04f); // 0.04 dpe, inj
+    }
+  } else if (6 == eg) {
     this->num_    = 1200; // 0.12 dpe, param sweep
     this->width_  = 100;
     this->height_ = 100;
+    this->alpha_  = Util::deg_to_rad(-180.0f);
+    this->beta_   = Util::deg_to_rad(-60.0f);
     this->prad_   = 0.5f;
-  } else if (experiment) {
+  } else if (e) {
     log.add(Attn::E, "state will ignore unknown experiment " +
-            std::to_string(experiment), true);
+            std::to_string(e), true);
   }
 
   this->spawn();
@@ -84,9 +90,9 @@ State::spawn()
   float h = static_cast<float>(this->height_);
   unsigned int num = this->num_;
   unsigned int n_stride = this->n_stride_;
-  int experiment = this->experiment_;
+  int e = this->experiment_;
 
-  if (10 == experiment || 11 == experiment) {
+  if (10 == e || 11 == e) {
     float center = w / 2.0f;
     float spread = 2.5f;
     float min = center - spread;

@@ -7,10 +7,8 @@
 
 #pragma once
 
-
-#define ME           "Emergence"
-#define VERSION      "0.1"
+#define ME "Emergence" // first character capitalised for usage help
+#define VERSION "0.1"
 #define GLSL_VERSION "#version 330 core"
-#define PI           3.1415926536f
-#define TAU          6.2831853072f
+#define TAU 6.2831853072f // 360 degreens in radians
 

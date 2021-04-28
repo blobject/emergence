@@ -118,6 +118,17 @@ class Util
     return (0 < n) - (n < 0);
   }
 
+  /// normal_noise(): Gaussian noise of heading, used by experiment 5.
+  /// \param
+  static inline float
+  normal_noise(float stddev)
+  {
+    static std::random_device rd;
+    static std::mt19937 rng(rd());
+    std::normal_distribution<float> distribution(0.0f, stddev);
+    return distribution(rng);
+  }
+
   // string ///////////////////////////////////////////////////////////////////
 
   /// trim(): Remove whitespace at the ends of a string.

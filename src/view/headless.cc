@@ -37,13 +37,19 @@ Headless::~Headless()
 void
 Headless::exec()
 {
-  if (-1 == this->ctrl_.stop_) {
+  Control& ctrl = this->ctrl_;
+
+  if (ctrl.experiment_) {
+    return;
+  }
+
+  if (-1 == ctrl.countdown_) {
     std::cout << "   Processing for eternity... (tick "
-              << this->ctrl_.tick_ << ")   \r"
+              << ctrl.tick_ << ")   \r"
               << std::flush;
   } else {
     // flushing makes ticking appear smooth but slows processing
-    std::cout << "   Tick " << this->ctrl_.stop_ << "          \r"
+    std::cout << "   Tick " << ctrl.countdown_ << "          \r"
               << std::flush;
   }
 }
@@ -54,7 +60,7 @@ Headless::react(Issue issue)
 {
   if (Issue::ProcNextDone == issue) {
     this->exec();
-  } else if (Issue::NewMessage == issue) {
+  } else if (Issue::NewMessage == issue && !this->ctrl_.experiment_) {
     std::cout << this->log_.messages_.front().second << std::endl;
   } else if (Issue::ProcDone == issue) {
     this->report(When::Done);

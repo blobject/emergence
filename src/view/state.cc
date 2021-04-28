@@ -5,7 +5,7 @@ UiState::UiState(Control& ctrl)
   : ctrl_(ctrl)
 {
   State& truth    = ctrl.get_state();
-  this->stop_     = ctrl.stop_;
+  this->duration_ = ctrl.duration_;
   this->num_      = truth.num_;
   this->width_    = truth.width_;
   this->height_   = truth.height_;
@@ -14,9 +14,9 @@ UiState::UiState(Control& ctrl)
   this->scope_    = truth.scope_;
   this->ascope_   = truth.ascope_;
   this->speed_    = truth.speed_;
-  this->noise_    = truth.noise_;
+  this->noise_    = Util::rad_to_deg(truth.noise_);
   this->prad_     = truth.prad_;
-  this->coloring_ = (Coloring)truth.coloring_;
+  this->coloring_ = static_cast<Coloring>(truth.coloring_);
   this->pattern_  = 0;
 }
 
@@ -24,8 +24,7 @@ UiState::UiState(Control& ctrl)
 Stative
 UiState::current() const
 {
-  // TODO: stop does does not change
-  return {this->stop_,
+  return {this->duration_,
           this->num_,
           this->width_,
           this->height_,
@@ -34,7 +33,7 @@ UiState::current() const
           this->scope_,
           this->ascope_,
           this->speed_,
-          this->noise_,
+          Util::deg_to_rad(this->noise_),
           this->prad_,
           static_cast<int>(this->coloring_)};
 }
@@ -54,7 +53,7 @@ UiState::untrue() const
     return -1;
   }
 
-  if (current.stop != ctrl.start_                       ||
+  if (current.duration != ctrl.duration_                ||
       !Util::floats_same(current.alpha,  truth.alpha_)  ||
       !Util::floats_same(current.beta,   truth.beta_)   ||
       !Util::floats_same(current.scope,  truth.scope_)  ||
@@ -82,13 +81,12 @@ UiState::deceive(bool respawn /* = false */) const
 }
 
 
-// TODO
 void
 UiState::receive()
 {
   Control& ctrl = this->ctrl_;
   State& truth = ctrl.get_state();
-  this->stop_     = ctrl.stop_;
+  this->duration_ = ctrl.duration_;
   this->num_      = truth.num_;
   this->width_    = truth.width_;
   this->height_   = truth.height_;
@@ -97,9 +95,9 @@ UiState::receive()
   this->scope_    = truth.scope_;
   this->ascope_   = truth.ascope_;
   this->speed_    = truth.speed_;
-  this->noise_    = truth.noise_;
+  this->noise_    = Util::rad_to_deg(truth.noise_);
   this->prad_     = truth.prad_;
-  this->coloring_ = (Coloring)truth.coloring_;
+  this->coloring_ = static_cast<Coloring>(truth.coloring_);
 }
 
 
@@ -205,7 +203,7 @@ UiState::load(const std::string& path)
     return false;
   }
 
-  this->stop_     = loaded.stop;
+  this->duration_ = loaded.duration;
   this->num_      = loaded.num;
   this->width_    = loaded.width;
   this->height_   = loaded.height;
@@ -216,7 +214,7 @@ UiState::load(const std::string& path)
   this->speed_    = loaded.speed;
   this->noise_    = loaded.noise;
   this->prad_     = loaded.prad;
-  this->coloring_ = (Coloring)loaded.coloring;
+  this->coloring_ = static_cast<Coloring>(loaded.coloring);
 
   return true;
 }

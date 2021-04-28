@@ -165,7 +165,7 @@ Canvas::exec()
   if (this->gui_on_) {
     gui->draw();
   }
-  // if paused, only particle processing (Proc) gets paused
+  // when not paused (in various senses), process particle movement (Proc)
   if (!gui->capturing_ && !ctrl.paused_ || ctrl.step_) {
     if (this->three_) {
       this->next3d();

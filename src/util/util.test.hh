@@ -1,7 +1,7 @@
-#include "../src/util/common.hh"
-#include "../src/util/log.hh"
-#include "../src/util/observation.hh"
-#include "../src/util/util.hh"
+#include "common.hh"
+#include "log.hh"
+#include "observation.hh"
+#include "util.hh"
 
 
 // common
@@ -10,9 +10,9 @@ TEST_CASE("util/common")
 {
   std::string me = ME;
   std::string glsl_version = GLSL_VERSION;
-  REQUIRE(0 == std::string(ME).compare("emergence"));
+  REQUIRE(0 == std::string(ME).compare("Emergence"));
   REQUIRE(0 == std::string(GLSL_VERSION).compare("#version 330 core"));
-  REQUIRE(Approx(Util::deg_to_rad(180)) == PI);
+  REQUIRE(Approx(Util::deg_to_rad(180)) == M_PI);
   REQUIRE(Approx(Util::deg_to_rad(360)) == TAU);
 }
 

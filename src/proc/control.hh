@@ -22,7 +22,7 @@ class State;
 
 struct Stative
 {
-  long long    stop;     // number of ticks until processing stops
+  long long    duration; // number of ticks until processing stops
   int          num;      // number of particles (negative for error)
   unsigned int width;    // processable space width
   unsigned int height;   // processable space height
@@ -49,6 +49,14 @@ class Control
 
   Control(Log& log, State& state, Proc& proc, Exp& exp,
           const std::string& init, bool pause);
+
+  // next /////////////////////////////////////////////////////////////////////
+
+  /// next(): Handle processing iteration, pausing, ticking, etc.
+  void next();
+
+  /// exp_next(): Handle experimentation.
+  void exp_next();
 
   // State ////////////////////////////////////////////////////////////////////
 
@@ -94,7 +102,7 @@ class Control
    * - Second line and onwards contain particle data
    * - Namely:
    *
-   * START WIDTH HEIGHT ALPHA BETA SCOPE ASCOPE SPEED NOISE PRAD
+   * DURATION WIDTH HEIGHT ALPHA BETA SCOPE ASCOPE SPEED NOISE PRAD
    * 0 X0 Y0 PHI0
    * 1 X1 Y1 PHI1
    * ...
@@ -115,12 +123,6 @@ class Control
   /// Observer pattern helpers for at/de-taching View to Proc.
   void attach_to_proc(Observer& observer);
   void detach_from_proc(Observer& observer);
-
-  /// next(): Handle processing iteration, pausing, ticking, etc.
-  void next();
-
-  /// exp_next(): Handle experimentation.
-  void exp_next();
 
   /// pause(): Whether system should perform processing.
   /// \param yesno  whether processing ought to be paused
@@ -165,13 +167,16 @@ class Control
 
   // members //////////////////////////////////////////////////////////////////
 
-  unsigned long tick_;   // number of ticks (time steps, frames) so far
-  long long     stop_;   // number of ticks remaining
-  long long     start_;  // initial number of ticks of processing
-  bool          paused_; // whether processing is paused
-  bool          step_;   // whether to process one frame at a time
-  bool          quit_;   // whether processing ought to stop
+  int           pid_;       // linux process id
+  unsigned long tick_;      // number of ticks (time steps, frames) so far
+  long long     countdown_; // number of ticks remaining
+  long long     duration_;  // initial number of ticks of processing
+  bool          paused_;    // whether processing is paused
+  bool          step_;      // whether to process one frame at a time
+  bool          quit_;      // whether processing ought to stop
   bool          gui_change_;
+  int experiment_group_;    // experiment being performed
+  int experiment_;          // specific experiment being performed
 
  private:
   Exp&   exp_;
@@ -179,8 +184,6 @@ class Control
   Proc&  proc_;
   State& state_;
 
-  int experiment_group_; // experiment being performed
-  int experiment_;       // specific experiment being performed
   float dpe_;
 };
 

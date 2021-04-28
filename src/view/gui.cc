@@ -27,10 +27,18 @@ Gui::Gui(Log& log, UiState& uistate, Canvas& canvas, GLFWwindow* window,
   // dummy capture (TODO: first capture is always damaged)
   Image::out("", 0, 0, true);
 
+  this->ago_ = glfwGetTime();
+  this->frames_ = 0;
+  this->fps_ = 0.0f;
+  this->x_ = 0.0;
+  this->y_ = 0.0;
+  this->trail_ = false;
+  this->dolly_ = false;
+  this->pivot_ = false;
   float font_size = 28.0f / scale;
   this->cwd_ = Util::working_dir() + "/";
   std::string font = Util::execution_dir() + "/"
-                     + "../opt/fonts/LiberationMono-";
+                     + "../external/fonts/LiberationMono-";
   this->font_r_ = io.Fonts->AddFontFromFileTTF(
     (font + "Regular.ttf").c_str(), font_size);
   this->font_b_ = io.Fonts->AddFontFromFileTTF(
@@ -48,17 +56,14 @@ Gui::Gui(Log& log, UiState& uistate, Canvas& canvas, GLFWwindow* window,
   this->box_ = Box::None;
   this->box_opacity_ = 0.8f;
   this->input_focus_ = false;
-  this->ago_ = glfwGetTime();
-  this->frames_ = 0;
-  this->fps_ = 0.0f;
-  this->x_ = 0.0;
-  this->y_ = 0.0;
-  this->trail_ = false;
-  this->dolly_ = false;
-  this->pivot_ = false;
-  this->load_save_ = 0;
+  this->input_allowed_ = "[/ A-Za-z0-9!@#%()\\[\\],.=+_-]+";
+  this->capture_path_[0] = '\0';
+  this->load_path_[0] = '\0';
+  this->save_path_[0] = '\0';
+  this->quit_save_path_[0] = '\0';
   this->capturing_ = 0;
   this->capture_ = 0;
+  this->load_save_ = 0;
   this->coloring_ = 0;
   this->cluster_radius_ = uistate.scope_;
   this->cluster_minpts_ = 14; // avg size of premature spore (Schmickl et al.)
@@ -93,17 +98,14 @@ Gui::draw()
     this->ago_ = now;
   }
 
+  // take picture, expecting Canvas to not process particle movement, and
+  // revert to normal processing state
   if (2 == this->capturing_) {
-    ImGui_ImplOpenGL3_NewFrame();
-    ImGui_ImplGlfw_NewFrame();
-    ImGui::NewFrame();
-    ImGui::Render();
-    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
     this->capturing_ = 0;
     int width;
     int height;
     glfwGetFramebufferSize(this->window_, &width, &height);
-    if (!Image::out(this->capture_path_, width, height)) {
+    if (!Image::out(std::string(this->capture_path_), width, height)) {
       this->capture_ = -1;
     } else {
       this->capture_ = 1;
@@ -112,17 +114,20 @@ Gui::draw()
     return;
   }
 
+  // close all boxes in preparation of taking picture, expecting Canvas to not
+  // process particle movement
   if (1 == this->capturing_) {
     this->capturing_ = 2;
     this->box_ = Box::None;
   }
 
-  // TODO
   UiState& uistate = this->uistate_;
   Control& ctrl = uistate.ctrl_;
   if (ctrl.gui_change_) {
     ctrl.gui_change_ = false;
     uistate.receive();
+    //ctrl.reset_exp();
+    //uistate.deceive();
   }
 
   ImGui_ImplOpenGL3_NewFrame();
@@ -183,20 +188,13 @@ Gui::draw_brief(bool draw)
     ImGui::TextColored(text_normal, ")");
 
     // tick
-    ImGui::TextColored(text_normal, "tick");
+    ImGui::TextColored(text_normal, "t");
     ImGui::SameLine();
     ImGui::PushFont(font_b);
     ImGui::TextColored(text_bright, "%lu", ctrl.tick_);
     ImGui::PopFont();
     this->backspace(-1);
-    ImGui::TextColored(text_normal, "/%lld", ctrl.start_);
-
-    // fps
-    ImGui::TextColored(text_normal, "fps");
-    ImGui::SameLine();
-    ImGui::PushFont(font_b);
-    ImGui::TextColored(text_bright, "%.1f", this->fps_);
-    ImGui::PopFont();
+    ImGui::TextColored(text_normal, "/%lld", ctrl.duration_);
 
     // mouse
     ImGui::TextColored(text_normal, "x");
@@ -213,11 +211,25 @@ Gui::draw_brief(bool draw)
     this->backspace(-1);
     ImGui::TextColored(text_normal, "/%d", height);
 
+    // fps
+    ImGui::TextColored(text_normal, "fps");
+    ImGui::SameLine();
+    ImGui::PushFont(font_b);
+    ImGui::TextColored(text_bright, "%.1f", this->fps_);
+    ImGui::PopFont();
+
     // opencl
     ImGui::TextColored(text_normal, "opencl");
     ImGui::SameLine();
     ImGui::PushFont(font_b);
     ImGui::TextColored(text_bright, "%s", ctrl.cl_good() ? "on" : "off");
+    ImGui::PopFont();
+
+    // pid
+    ImGui::TextColored(text_normal, "pid");
+    ImGui::SameLine();
+    ImGui::PushFont(font_b);
+    ImGui::TextColored(text_normal, "%d", ctrl.pid_);
     ImGui::PopFont();
 
     // more
@@ -425,7 +437,7 @@ Gui::draw_config_habitat(float width)
   const ImU32 zero = 0;
   const ImU32 max_dim = 100000;
   const ImU32 max_num = 1000000;
-  const ImS64 max_stop = 2000000000;
+  const ImS64 max_duration = 2000000000;
 
   ImGui::Dummy(ImVec2(0.0f, 5.0f));
   ImGui::PushFont(this->font_b_);
@@ -450,13 +462,13 @@ Gui::draw_config_habitat(float width)
 
   float avail = ImGui::GetContentRegionAvail().x / 3.5f;
 
-  // stop
+  // duration
   ImGui::AlignTextToFramePadding();
   ImGui::Text("stop  ");
   ImGui::SameLine();
   this->auto_width(avail, 0.0f);
-  ImGui::InputScalar("!", ImGuiDataType_S64, &uistate.stop_, &negone,
-                     &max_stop);
+  ImGui::InputScalar("!", ImGuiDataType_S64, &uistate.duration_, &negone,
+                     &max_duration);
   ImGui::PopItemWidth();
 
   // num
@@ -1042,9 +1054,7 @@ Gui::draw_capture(Box box)
                    static_cast<int>(window_width * 0.75f));
   int h = std::max(static_cast<int>(250.0f / this->scale_),
                    static_cast<int>(window_height * 0.3f));
-  static char path[256];
-  static char bad_input = ' ';
-  std::string allowed = "[/ A-Za-z0-9!@#%()\\[\\],.=+_-]+";
+  int path_len = IM_ARRAYSIZE(this->capture_path_);
 
   ImGui::SetNextWindowPos(ImVec2((window_width - w) / 2,
                                  (window_height - h) / 3));
@@ -1060,18 +1070,20 @@ Gui::draw_capture(Box box)
       ImGui::SetKeyboardFocusHere(0);
       this->input_focus_ = false;
     }
-    ImGui::InputTextWithHint("bp", "/path/to/file", path, IM_ARRAYSIZE(path));
+    ImGui::InputTextWithHint("bp", "/path/to/file", this->capture_path_,
+                             path_len);
     ImGui::PopItemWidth();
     ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 20);
     if (0 < this->capture_) {
       // TODO: time
       ImGui::TextColored(this->text_color_good_, "Capture succeeded");
-    } else if (0 > this->capture_) {
+    } else if (-1 == this->capture_) {
       ImGui::TextColored(this->text_color_bad_, "Capture failed!");
-    } else if (bad_input == 'e') {
+    } else if (-2 == this->capture_) {
       ImGui::TextColored(this->text_color_bad_, "Path left empty");
-    } else if (bad_input == 'b') {
-      ImGui::TextColored(this->text_color_bad_, "%s", allowed.c_str());
+    } else if (-3 == this->capture_) {
+      ImGui::TextColored(this->text_color_bad_, "%s",
+                         this->input_allowed_.c_str());
     } else {
       ImGui::Text("");
     }
@@ -1081,25 +1093,13 @@ Gui::draw_capture(Box box)
     if (ImGui::Button("CAPTURE",
                       ImVec2(ImGui::GetContentRegionAvail().x * 0.5f - 10, 0)))
     {
-      if (std::string(path).empty()) {
-        bad_input = 'e';
-        this->capture_ = 0;
-      } else if (!std::regex_match(path, std::regex(allowed))) {
-        bad_input = 'b';
-        this->capture_ = 0;
-      } else {
-        bad_input = ' ';
-        this->capturing_ = 1;
-        this->capture_path_ = std::string(path);
-        this->box_ = Box::None;
-      }
+      this->box_confirm(Box::Capture);
     }
     ImGui::PopFont();
     ImGui::SameLine();
     ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 10);
-    if (ImGui::Button("Cancel", ImVec2(ImGui::GetContentRegionAvail().x
-                                       - 20, 0))) {
-      bad_input = ' ';
+    if (ImGui::Button(this->capture_ ? "Close" : "Cancel",
+                      ImVec2(ImGui::GetContentRegionAvail().x - 20, 0))) {
       //this->capture_path_.clear();
       this->capture_ = 0;
       this->box_ = Box::None;
@@ -1134,16 +1134,11 @@ Gui::draw_load_save(Box box)
   std::string what = "Save";
   std::string title = "Save state to where?";
   std::string button = "SAVE";
-  bool (UiState::*fn)(const std::string&) = &UiState::save;
   if (Box::Load == box) {
     what = "Load";
     title = "Load state from where?";
     button = "LOAD";
-    fn = &UiState::load;
   }
-  static char path[256];
-  static char bad_input = ' ';
-  std::string allowed = "[/ A-Za-z0-9!@#%()\\[\\],.=+_-]+";
 
   ImGui::SetNextWindowPos(ImVec2((window_width - w) / 2,
                                  (window_height - h) / 3));
@@ -1159,19 +1154,25 @@ Gui::draw_load_save(Box box)
       ImGui::SetKeyboardFocusHere(0);
       this->input_focus_ = false;
     }
-    ImGui::InputTextWithHint("bls", "/path/to/file", path, IM_ARRAYSIZE(path));
+    if (Box::Load == box) {
+      ImGui::InputTextWithHint("bls", "/path/to/file", this->load_path_,
+                               IM_ARRAYSIZE(this->load_path_));
+    } else {
+      ImGui::InputTextWithHint("bls", "/path/to/file", this->save_path_,
+                               IM_ARRAYSIZE(this->save_path_));
+    }
     ImGui::PopItemWidth();
     ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 20);
     if (0 < this->load_save_) {
       what += " succeeded";
       ImGui::TextColored(this->text_color_good_, "%s", what.c_str());
-    } else if (0 > this->load_save_) {
+    } else if (-1 == this->load_save_) {
       what += " failed!";
       ImGui::TextColored(text_bad, "%s", what.c_str());
-    } else if (bad_input == 'e') {
+    } else if (-2 == this->load_save_) {
       ImGui::TextColored(text_bad, "Path left empty");
-    } else if (bad_input == 'b') {
-      ImGui::TextColored(text_bad, "%s", allowed.c_str());
+    } else if (-3 == this->load_save_) {
+      ImGui::TextColored(text_bad, "%s", this->input_allowed_.c_str());
     } else {
       ImGui::Text("");
     }
@@ -1179,30 +1180,16 @@ Gui::draw_load_save(Box box)
     ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 20);
     ImGui::PushFont(this->font_b_);
     if (ImGui::Button(button.c_str(),
-                      ImVec2(ImGui::GetContentRegionAvail().x * 0.5f - 10,
-                             0))) {
-      if (std::string(path).empty()) {
-        bad_input = 'e';
-        this->load_save_ = 0;
-      } else if (!std::regex_match(path, std::regex(allowed))) {
-        bad_input = 'b';
-        this->load_save_ = 0;
-      } else {
-        bad_input = ' ';
-        if ((uistate.*fn)(path)) {
-          this->load_save_ = 1;
-          ctrl.pause(true);
-        } else {
-          this->load_save_ = -1;
-        }
-      }
+                      ImVec2(ImGui::GetContentRegionAvail().x * 0.5f - 10, 0)))
+    {
+      this->box_confirm(box);
     }
     ImGui::PopFont();
     ImGui::SameLine();
     ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 10);
-    if (ImGui::Button("Cancel", ImVec2(ImGui::GetContentRegionAvail().x
-                                       - 20, 0))) {
-      bad_input = ' ';
+    if (ImGui::Button(this->load_save_ ? "Close" : "Cancel",
+                      ImVec2(ImGui::GetContentRegionAvail().x - 20, 0)))
+    {
       this->load_save_ = 0;
       this->box_ = Box::None;
     }
@@ -1236,12 +1223,9 @@ Gui::draw_quit(Box box)
                    static_cast<int>(window_width * 0.75f));
   int h = std::max(static_cast<int>(460.0f / this->scale_),
                    static_cast<int>(window_width * 0.5f));
-  static char path[256];
   auto color_bad = ImVec4(1.0f, 0.25f, 0.25f, 1.0f);
   auto color_dim = ImVec4(0.5f, 0.5f, 0.5f, 1.0f);
-  static char bad_input = ' ';
-  static bool bad_save = false;
-  std::string allowed = "[/ A-Za-z0-9!@#%()\\[\\],.=+_-]+";
+  int path_len = IM_ARRAYSIZE(this->quit_save_path_);
 
   ImGui::SetNextWindowPos(ImVec2((window_width - w) / 2,
                                  (window_height - h) / 3));
@@ -1257,15 +1241,16 @@ Gui::draw_quit(Box box)
       ImGui::SetKeyboardFocusHere(0);
       this->input_focus_ = false;
     }
-    ImGui::InputTextWithHint("bq", "/path/to/file", path, IM_ARRAYSIZE(path));
+    ImGui::InputTextWithHint("bq", "/path/to/file", this->quit_save_path_,
+                             path_len);
     ImGui::PopItemWidth();
     ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 20);
-    if (bad_save) {
+    if (-1 == this->quit_) {
       ImGui::TextColored(color_bad, "Save failed!");
-    } else if (bad_input == 'e') {
+    } else if (-2 == this->quit_) {
       ImGui::TextColored(color_bad, "Path left empty");
-    } else if (bad_input == 'b') {
-      ImGui::TextColored(color_bad, "%s", allowed.c_str());
+    } else if (-3 == this->quit_) {
+      ImGui::TextColored(color_bad, "%s", this->input_allowed_.c_str());
     } else {
       ImGui::Text("");
     }
@@ -1273,39 +1258,102 @@ Gui::draw_quit(Box box)
     ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 40);
     ImGui::PushFont(this->font_b_);
     if (ImGui::Button("Save and QUIT",
-                      ImVec2(ImGui::GetContentRegionAvail().x - 40, 0))) {
-      if (std::string(path).empty()) {
-        bad_input = 'e';
-      } else if (!std::regex_match(path, std::regex(allowed))) {
-        bad_input = 'b';
-      } else {
-        bad_save = !uistate.save(path);
-        if (!bad_save) {
-          canvas.close();
-        }
-      }
+                      ImVec2(ImGui::GetContentRegionAvail().x - 40, 0)))
+    {
+      this->box_confirm(Box::Quit);
     }
-      ImGui::Text("");
-      ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 40);
-      if (ImGui::Button("QUIT without saving",
-                        ImVec2(ImGui::GetContentRegionAvail().x - 40, 0))) {
-        canvas.close();
-      }
-      ImGui::PopFont();
-      ImGui::Text("");
-      ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 40);
-      if (ImGui::Button("Cancel",
-                        ImVec2(ImGui::GetContentRegionAvail().x - 40, 0))) {
-        bad_input = ' ';
-        bad_save = false;
-        this->box_ = Box::None;
-        uistate.ctrl_.pause(true);
-      }
-      ImGui::Text("");
-      ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 20);
-      ImGui::TextColored(color_dim, " Ctrl+Q to QUIT without saving");
+    ImGui::Text("");
+    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 40);
+    if (ImGui::Button("QUIT without saving",
+                      ImVec2(ImGui::GetContentRegionAvail().x - 40, 0)))
+    {
+      canvas.close();
+    }
+    ImGui::PopFont();
+    ImGui::Text("");
+    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 40);
+    if (ImGui::Button("Cancel",
+                      ImVec2(ImGui::GetContentRegionAvail().x - 40, 0)))
+    {
+      this->quit_ = 0;
+      this->box_ = Box::None;
+      uistate.ctrl_.pause(true);
+    }
+    ImGui::Text("");
+    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 20);
+    ImGui::TextColored(color_dim, " Ctrl+Q to QUIT without saving");
   }
   ImGui::End();
+}
+
+
+void
+Gui::box_confirm(Box box)
+{
+  if (Box::None == box) {
+    return;
+  }
+
+  UiState& uistate = this->uistate_;
+  std::string path;
+
+  if (Box::Capture == box) {
+    path = std::string(this->capture_path_);
+    if (path.empty()) {
+      this->capture_ = -2;
+    } else if (!std::regex_match(path.c_str(),
+                                 std::regex(this->input_allowed_)))
+    {
+      this->capture_ = -3;
+    } else {
+      this->capture_ = 0;
+      this->capturing_ = 1;
+      this->box_ = Box::None;
+    }
+    return;
+  }
+
+  if (Box::Load == box || Box::Save == box) {
+    bool (UiState::*fn)(const std::string&) = &UiState::save;
+    path = std::string(this->save_path_);
+    if (Box::Load == box) {
+      path = std::string(this->load_path_);
+      fn = &UiState::load;
+    }
+    if (path.empty()) {
+      this->load_save_ = -2;
+    } else if (!std::regex_match(path.c_str(),
+                                 std::regex(this->input_allowed_)))
+    {
+      this->load_save_ = -3;
+    } else {
+      if ((uistate.*fn)(path)) {
+        this->load_save_ = 1;
+        uistate.ctrl_.pause(true);
+        uistate.deceive();
+      } else {
+        this->load_save_ = -1;
+      }
+    }
+    return;
+  }
+
+  if (Box::Quit == box) {
+    path = std::string(this->quit_save_path_);
+    if (path.empty()) {
+      this->quit_ = -2;
+    } else if (!std::regex_match(path.c_str(),
+                                 std::regex(this->input_allowed_)))
+    {
+      this->quit_ = -3;
+    } else {
+      if (!uistate.save(path)) {
+        this->quit_ = -1;
+      } else {
+        this->canvas_.close();
+      }
+    }
+  }
 }
 
 
@@ -1520,26 +1568,34 @@ Gui::key_callback(GLFWwindow* window, int key, int /* scancode */, int action,
       gui->box_ = Box::None;
       return;
     }
-    // the following only work with config box or no box
-    if (Box::None != box && Box::Config != box) {
-      return;
-    }
     // deceive
     if (GLFW_KEY_ENTER == key) {
-      ctrl.reset_exp();
-      gui->message_exp_color_ = "";
-      gui->message_exp_cluster_ = "";
-      gui->message_exp_inject_ = "";
-      gui->message_exp_inspect_ = gui->message_exp_inspect_default_;
-      gui->inspect_particle_ = -1;
-      gui->inspect_cluster_ = -1;
-      gui->inspect_cluster_particle_ = -1;
-      if (!gui->message_set_.empty()) {
-        log.add(Attn::O, gui->message_set_);
-        gui->message_set_ = "";
+      if (Box::None == box || Box::Config == box) {
+        ctrl.reset_exp();
+        gui->message_exp_color_ = "";
+        gui->message_exp_cluster_ = "";
+        gui->message_exp_inject_ = "";
+        gui->message_exp_inspect_ = gui->message_exp_inspect_default_;
+        gui->inspect_particle_ = -1;
+        gui->inspect_cluster_ = -1;
+        gui->inspect_cluster_particle_ = -1;
+        if (!gui->message_set_.empty()) {
+          log.add(Attn::O, gui->message_set_);
+          gui->message_set_ = "";
+        }
+        uistate.deceive();
+        canvas->camera_default();
+        return;
       }
-      uistate.deceive();
-      canvas->camera_default();
+      if (Box::Capture == box || Box::Load == box || Box::Save == box ||
+          Box::Quit == box)
+      {
+        gui->box_confirm(box);
+        return;
+      }
+    }
+    // the following only work with config box or no box
+    if (Box::None != box && Box::Config != box) {
       return;
     }
     // pause

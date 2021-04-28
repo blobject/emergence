@@ -43,9 +43,9 @@ class Log : public Subject
   void add(Attn attn, const std::string& message, bool headless);
 
   std::deque<std::pair<Attn,std::string>> messages_; // queue of messages
+  bool quiet_;         // whether to suppress standard printing
 
  private:
   unsigned int limit_; // limit to the number of messages
-  bool quiet_;         // whether to suppress standard printing
 };
 
