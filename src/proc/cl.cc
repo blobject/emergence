@@ -237,19 +237,19 @@ Cl::seek(unsigned int n, unsigned int w, unsigned int h,
   const cl_uint int_size = n * sizeof(int);
   const cl_uint uint_size = n * sizeof(unsigned int);
   try {
-    cl::Buffer G(this->context_, CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR,
+    cl::Buffer G(this->context_, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
                  cols * rows * grid_stride * sizeof(int), grid.data());
-    cl::Buffer COL(this->context_, CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR,
+    cl::Buffer COL(this->context_, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
                    int_size, gcol.data());
-    cl::Buffer ROW(this->context_, CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR,
+    cl::Buffer ROW(this->context_, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
                    int_size, grow.data());
-    cl::Buffer PX(this->context_, CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR,
+    cl::Buffer PX(this->context_, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
                   float_size, px.data());
-    cl::Buffer PY(this->context_, CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR,
+    cl::Buffer PY(this->context_, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
                   float_size, py.data());
-    cl::Buffer PC(this->context_, CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR,
+    cl::Buffer PC(this->context_, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
                   float_size, pc.data());
-    cl::Buffer PS(this->context_, CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR,
+    cl::Buffer PS(this->context_, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
                   float_size, ps.data());
     cl::Buffer PN(this->context_, CL_MEM_READ_WRITE, uint_size);
     cl::Buffer PAN(this->context_, CL_MEM_READ_WRITE, uint_size);
@@ -354,11 +354,11 @@ Cl::move(unsigned int n, unsigned int w, unsigned int h,
   const cl_uint float_size = n * sizeof(float);
   const cl_uint uint_size = n * sizeof(unsigned int);
   try {
-    cl::Buffer PN(this->context_, CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR,
+    cl::Buffer PN(this->context_, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
                   uint_size, pn.data());
-    cl::Buffer PL(this->context_, CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR,
+    cl::Buffer PL(this->context_, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
                   uint_size, pl.data());
-    cl::Buffer PR(this->context_, CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR,
+    cl::Buffer PR(this->context_, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
                   uint_size, pr.data());
     cl::Buffer PX(this->context_, CL_MEM_READ_WRITE, float_size);
     cl::Buffer PY(this->context_, CL_MEM_READ_WRITE, float_size);

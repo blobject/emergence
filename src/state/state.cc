@@ -27,14 +27,14 @@ State::State(Log& log, int e)
   int eg = 10 <= e ? e / 10 : e;
   this->experiment_group_ = eg;
   if (1 == eg) {
-    this->width_  = 250;
-    this->height_ = 250;
-    this->prad_   = 0.5f;
-    if      (10 == e) { this->num_ = 12; }   // custom placement
-    else if (11 == e) { this->num_ = 14; }   // custom placement
-    else if (12 == e) { this->num_ = 2500; } // 0.04 dpe
-    else if (13 == e) { this->num_ = 4375; } // 0.07 dpe
-    else if (14 == e) { this->num_ = 5625; } // 0.09 dpe
+    this->width_  = 50;
+    this->height_ = 50;
+    this->prad_   = 0.25f;
+    if      (11 == e) { this->num_ = 12; }   // custom placement
+    else if (12 == e) { this->num_ = 14; }   // custom placement
+    else if (13 == e) { this->num_ = 100; } // 0.04 dpe
+    else if (14 == e) { this->num_ = 175; } // 0.07 dpe
+    else if (15 == e) { this->num_ = 225; } // 0.09 dpe
   } else if (2 == eg) {
     this->num_    = 5000; // 0.08 dpe
     this->width_  = 250;
@@ -55,13 +55,13 @@ State::State(Log& log, int e)
     this->width_  = 50;
     this->height_ = 50;
     this->prad_   = 0.25f;
-    if (50 == e || 53 == e) {
+    if (51 == e || 54 == e) {
       this->num_ = static_cast<unsigned int>(this->width_ * this->height_
                                              * 0.03f); // 0.03 dpe, inj
-    } else if (51 == e || 54 == e) {
+    } else if (52 == e || 55 == e) {
       this->num_ = static_cast<unsigned int>(this->width_ * this->height_
                                              * 0.035f); // ~0.035 dpe, inj
-    } else if (52 == e || 55 == e) {
+    } else if (53 == e || 56 == e) {
       this->num_ = static_cast<unsigned int>(this->width_ * this->height_
                                              * 0.04f); // 0.04 dpe, inj
     }
@@ -92,7 +92,7 @@ State::spawn()
   unsigned int n_stride = this->n_stride_;
   int e = this->experiment_;
 
-  if (10 == e || 11 == e) {
+  if (11 == e || 12 == e) {
     float center = w / 2.0f;
     float spread = 2.5f;
     float min = center - spread;

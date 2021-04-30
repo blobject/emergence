@@ -1120,6 +1120,7 @@ Exp::do_meta_exp(unsigned int tick)
 
 void
 Exp::do_exp_1a(unsigned int tick) {
+  // occupancy: twelve, fourteen, 0.04 p/su, 0.07 p/su
   if (0 == tick || 150 == tick) {
     float radius = 10.0f;
     unsigned int minpts = 14;
@@ -1139,6 +1140,7 @@ Exp::do_exp_1a(unsigned int tick) {
 
 void
 Exp::do_exp_1b(unsigned int tick) {
+  // occupancy: 0.09 p/su
   if (  0 == tick ||
        60 == tick ||
        90 == tick ||
@@ -1164,6 +1166,7 @@ Exp::do_exp_1b(unsigned int tick) {
 
 void
 Exp::do_exp_2(unsigned int tick) {
+  // population
   if (tick % 100) {
     return;
   }
@@ -1214,6 +1217,7 @@ Exp::do_exp_2(unsigned int tick) {
 
 void
 Exp::do_exp_3(unsigned int tick) {
+  // heat map
   State& state = this->state_;
   std::vector<Type>& pt = state.pt_;
   std::vector<unsigned int>& pl = state.pl_;
@@ -1244,8 +1248,9 @@ Exp::do_exp_3(unsigned int tick) {
 
 bool
 Exp::do_exp_4a(unsigned int tick) {
-  // slight tolerance for Exp and injection to be applied
+  // survival: time-to-replication and survive time of spore
   if (10 > tick) {
+    // slight tolerance for Exp and injection to be applied
     return false;
   }
 
@@ -1319,8 +1324,9 @@ Exp::do_exp_4a(unsigned int tick) {
 
 bool
 Exp::do_exp_4b(unsigned int tick) {
-  // slight tolerance for Exp and injection to be applied
+  // survival: time-to-replication and survive time of cell
   if (10 > tick) {
+    // slight tolerance for Exp and injection to be applied
     return false;
   }
 
@@ -1397,6 +1403,7 @@ Exp::do_exp_4b(unsigned int tick) {
 
 bool
 Exp::do_exp_4c(unsigned int tick) {
+  // survival: clusters emerging from spore and cell
   if (25000 != tick) {
     return false;
   }
@@ -1436,8 +1443,9 @@ Exp::do_exp_4c(unsigned int tick) {
 
 bool
 Exp::do_exp_5a(unsigned int tick) {
-  // slight tolerance for Exp and injection to be applied
+  // size and lifetime: 0.03, 0.035, 0.04 p/su
   if (10 > tick) {
+    // slight tolerance for Exp and injection to be applied
     return false;
   }
 
@@ -1454,19 +1462,23 @@ Exp::do_exp_5a(unsigned int tick) {
     this->exp_5_dbscan_size_counts_;
   int size;
 
-  for (int c : this->cell_clusters_) {
-    size = this->clusters_[c].size();
-    if (dbscan_size_counts.find(size) == dbscan_size_counts.end()) {
-      dbscan_size_counts[size] = 0;
+  if (!this->exp_5_est_done_) {
+    size = this->blues_ + this->yellows_;
+    if (est_size_counts.find(size) == est_size_counts.end()) {
+      est_size_counts[size] = 0;
     }
-    ++dbscan_size_counts[size];
+    ++est_size_counts[size];
   }
 
-  size = this->blues_ + this->yellows_;
-  if (est_size_counts.find(size) == est_size_counts.end()) {
-    est_size_counts[size] = 0;
+  if (!this->exp_5_dbscan_done_) {
+    for (int c : this->cell_clusters_) {
+      size = this->clusters_[c].size();
+      if (dbscan_size_counts.find(size) == dbscan_size_counts.end()) {
+        dbscan_size_counts[size] = 0;
+      }
+      ++dbscan_size_counts[size];
+    }
   }
-  ++est_size_counts[size];
 
   if (25000 == tick) {
     std::cout << this->exp_5_count_ << ": " << tick << " end est";
@@ -1544,8 +1556,9 @@ Exp::do_exp_5a(unsigned int tick) {
 
 bool
 Exp::do_exp_5b(unsigned int tick) {
-  // slight tolerance for Exp and injection to be applied
+  // lifetime with noise: 0.03, 0.035, 0.04 p/su
   if (10 > tick) {
+    // slight tolerance for Exp and injection to be applied
     return false;
   }
 
@@ -1619,6 +1632,7 @@ Exp::do_exp_5b(unsigned int tick) {
 
 bool
 Exp::do_exp_6(unsigned int tick) {
+  // param sweep
   if (500 != tick) {
     return false;
   }

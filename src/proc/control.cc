@@ -24,24 +24,24 @@ Control::Control(Log& log, State& state, Proc& proc, Exp& exp,
   this->experiment_group_ = eg;
   if (e) {
     if      (1 == eg) { this->duration_ = 150;
-      if      (14 == e) { this->duration_ = 700; } }
+      if      (15 == e) { this->duration_ = 700; } }
     else if (2 == eg) { this->duration_ = 100000; }
     else if (3 == eg) { this->duration_ = 100;
-      if      (30 == e) { this->inject(Type::Nutrient,      true); }
-      else if (31 == e) { this->inject(Type::PrematureSpore,true); }
-      else if (32 == e) { this->inject(Type::MatureSpore,   true); }
-      else if (33 == e) { this->inject(Type::Ring,          true); }
-      else if (34 == e) { this->inject(Type::PrematureCell, true); }
-      else if (35 == e) { this->inject(Type::TriangleCell,  true); }
-      else if (36 == e) { this->inject(Type::SquareCell,    true); }
-      else if (37 == e) { this->inject(Type::PentagonCell,  true); } }
+      if      (31 == e) { this->inject(Type::Nutrient,      true); }
+      else if (32 == e) { this->inject(Type::PrematureSpore,true); }
+      else if (33 == e) { this->inject(Type::MatureSpore,   true); }
+      else if (34 == e) { this->inject(Type::Ring,          true); }
+      else if (35 == e) { this->inject(Type::PrematureCell, true); }
+      else if (36 == e) { this->inject(Type::TriangleCell,  true); }
+      else if (37 == e) { this->inject(Type::SquareCell,    true); }
+      else if (38 == e) { this->inject(Type::PentagonCell,  true); } }
     else if (4 == eg) { this->duration_ = 25000;
       exp.exp_4_count_ = 1;
       this->dpe_ = static_cast<float>(state.num_)
                    / state.width_ / state.height_;
       // TODO
-      if      (40 == e || 42 == e) { this->inject(Type::MatureSpore,  false); }
-      else if (41 == e || 43 == e) { this->inject(Type::TriangleCell, false); }
+      if      (41 == e || 43 == e) { this->inject(Type::MatureSpore,  false); }
+      else if (42 == e || 44 == e) { this->inject(Type::TriangleCell, false); }
     }
     else if (5 == eg) { this->duration_ = 25000;
       exp.exp_5_count_ = 1;
@@ -100,16 +100,16 @@ Control::exp_next()
   //exp.brief_meta_exp(tick);
   int eg = this->experiment_group_;
   if (1 == eg) {
-    if (10 == e ||
-        11 == e ||
+    if (11 == e ||
         12 == e ||
-        13 == e) { exp.do_exp_1a(tick); return; }
-    if (14 == e) { exp.do_exp_1b(tick); return; } return; }
+        13 == e ||
+        14 == e) { exp.do_exp_1a(tick); return; }
+    if (15 == e) { exp.do_exp_1b(tick); return; } return; }
   if (2 == eg) { exp.do_exp_2(tick); return; }
   if (3 == eg) { exp.do_exp_3(tick); return; }
   if (4 == eg) {
     if (1 == tick && 0.0001f > this->dpe_) {
-      if (40 == e || 41 == e) {
+      if (41 == e || 42 == e) {
         if (1 < exp.exp_4_count_) {
           std::cout << "\n";
         }
@@ -117,10 +117,10 @@ Control::exp_next()
       }
     }
     bool done;
-    if      (40 == e) { done = exp.do_exp_4a(tick); }
-    else if (41 == e) { done = exp.do_exp_4b(tick); }
-    else if (42 == e ||
-             43 == e) { done = exp.do_exp_4c(tick); }
+    if      (41 == e) { done = exp.do_exp_4a(tick); }
+    else if (42 == e) { done = exp.do_exp_4b(tick); }
+    else if (43 == e ||
+             44 == e) { done = exp.do_exp_4c(tick); }
     if (done) {
       exp.exp_4_est_done_ = 0;
       exp.exp_4_dbscan_done_ = 0;
@@ -153,8 +153,8 @@ Control::exp_next()
       };
       this->duration_ = -1; // for resetting in change()
       this->change(stative, true);
-      if      (40 == e || 42 == e) { this->inject(Type::MatureSpore,  false); }
-      else if (41 == e || 43 == e) { this->inject(Type::TriangleCell, false); }
+      if      (41 == e || 43 == e) { this->inject(Type::MatureSpore,  false); }
+      else if (42 == e || 44 == e) { this->inject(Type::TriangleCell, false); }
       this->gui_change_ = true; // let UiState reflect true State
       return;
     }
@@ -162,7 +162,7 @@ Control::exp_next()
   }
   if (5 == eg) {
     State& state = this->state_;
-    if (53 == e || 54 == e || 55 == e) {
+    if (54 == e || 55 == e || 56 == e) {
       if (1 == tick && 0.0001f > state.noise_) {
         if (1 < exp.exp_5_count_) {
           std::cout << "\n";
@@ -171,19 +171,19 @@ Control::exp_next()
       }
     }
     bool done;
-    if      (50 == e || 51 == e || 52 == e) { done = exp.do_exp_5a(tick); }
-    else if (53 == e || 54 == e || 55 == e) { done = exp.do_exp_5b(tick); }
+    if      (51 == e || 52 == e || 53 == e) { done = exp.do_exp_5a(tick); }
+    else if (54 == e || 55 == e || 56 == e) { done = exp.do_exp_5b(tick); }
     if (done) {
       exp.exp_5_est_done_ = 0;
       exp.exp_5_dbscan_done_ = 0;
       float noise = 0.0f;
-      if (50 == e || 51 == e || 52 == e) {
+      if (51 == e || 52 == e || 53 == e) {
         ++exp.exp_5_count_;
         if (100 < exp.exp_5_count_) { // * 10 separate instances
           this->quit_ = true;
           return;
         }
-      } else if (53 == e || 54 == e || 55 == e) {
+      } else if (54 == e || 55 == e || 56 == e) {
         if (90.0f <= Util::rad_to_deg(state.noise_)) {
           ++exp.exp_5_count_;
           state.noise_ = Util::deg_to_rad(-5.0f);
@@ -197,8 +197,8 @@ Control::exp_next()
         noise = Util::rad_to_deg(state.noise_) + 5.0f;
       }
       float dpe = 0.03f;
-      if      (51 == e || 54 == e) { dpe = 0.035f; }
-      else if (52 == e || 55 == e) { dpe = 0.04f; }
+      if      (52 == e || 55 == e) { dpe = 0.035f; }
+      else if (53 == e || 56 == e) { dpe = 0.04f; }
       Stative stative = {
         25001,
         static_cast<int>(state.width_ * state.height_ * dpe),

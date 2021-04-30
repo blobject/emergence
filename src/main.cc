@@ -103,11 +103,11 @@ help()
             << "  -v       show version\n"
             << "  -c       disable OpenCL\n"
             << "  -e NUM   do an experiment\n"
-            << "             occupancy:    [10, 11], [12, 13], [14]\n"
+            << "             occupancy:    [11, 12], [13, 14], [15]\n"
             << "             population:   [2]\n"
-            << "             heat map:     [30, 31, 32, 33, 34, 35, 36, 37]\n"
-            << "             survival:     [40, 41, 42, 43]\n"
-            << "             size & noise: [50, 51, 52], [53, 54, 55]\n"
+            << "             heat map:     [31, 32, 33, 34, 35, 36, 37, 38]\n"
+            << "             survival:     [41, 42, 43, 44]\n"
+            << "             size & noise: [51, 52, 53], [54, 55, 56]\n"
             << "             param sweep:  [6]\n"
             << "  -i FILE  supply an initial state\n"
             << "  -p       start paused\n"
@@ -174,11 +174,11 @@ argue(Log& log, std::map<std::string,std::string>& opts)
   if (!opts["exp"].empty()) {
     int exp = std::stoi(opts["exp"]);
     auto exps = std::vector<int>{0,
-                                 10, 11, 12, 13, 14,
+                                 11, 12, 13, 14, 15,
                                  2,
-                                 30, 31, 32, 33, 34, 35, 36, 37,
-                                 40, 41, 42, 43,
-                                 50, 51, 52, 53, 54, 55,
+                                 31, 32, 33, 34, 35, 36, 37, 38,
+                                 41, 42, 43, 44,
+                                 51, 52, 53, 54, 55, 56,
                                  6};
     if (std::find(exps.begin(), exps.end(), exp) != exps.end()) {
       return;
@@ -242,33 +242,33 @@ attempt(Log& log, int exp)
   int expg = 10 <= exp ? exp / 10 : exp;
   std::string message = "Running experiment ";
   if      (1 == expg) { message += "1 \"occupancy\": ";
-    if      (10 == exp) { message += "12 particles."; }
-    else if (11 == exp) { message += "14 particles."; }
-    else if (12 == exp) { message += "0.04 dpe."; }
-    else if (13 == exp) { message += "0.07 dpe."; }
-    else if (14 == exp) { message += "0.09 dpe."; } }
+    if      (11 == exp) { message += "12 particles."; }
+    else if (12 == exp) { message += "14 particles."; }
+    else if (13 == exp) { message += "0.04 dpe."; }
+    else if (14 == exp) { message += "0.07 dpe."; }
+    else if (15 == exp) { message += "0.09 dpe."; } }
   else if (2 == expg) { message += "2 \"population\"."; }
   else if (3 == expg) { message += "3 \"heat map\": ";
-    if      (30 == exp) { message += "nutrients."; }
-    else if (31 == exp) { message += "premature spore."; }
-    else if (32 == exp) { message += "mature spore."; }
-    else if (33 == exp) { message += "ring."; }
-    else if (34 == exp) { message += "premature cell."; }
-    else if (35 == exp) { message += "triangle cell."; }
-    else if (36 == exp) { message += "square cell."; }
-    else if (37 == exp) { message += "pentagon cell."; } }
+    if      (31 == exp) { message += "nutrients."; }
+    else if (32 == exp) { message += "premature spore."; }
+    else if (33 == exp) { message += "mature spore."; }
+    else if (34 == exp) { message += "ring."; }
+    else if (35 == exp) { message += "premature cell."; }
+    else if (36 == exp) { message += "triangle cell."; }
+    else if (37 == exp) { message += "square cell."; }
+    else if (38 == exp) { message += "pentagon cell."; } }
   else if (4 == expg) { message += "4 \"survival\": ";
-    if      (40 == exp) { message += "mature spore survival."; }
-    else if (41 == exp) { message += "triangle cell survival."; }
-    else if (42 == exp) { message += "mature spore reproduction."; }
-    else if (43 == exp) { message += "triangle cell reproduction."; } }
+    if      (41 == exp) { message += "mature spore survival."; }
+    else if (42 == exp) { message += "triangle cell survival."; }
+    else if (43 == exp) { message += "mature spore reproduction."; }
+    else if (44 == exp) { message += "triangle cell reproduction."; } }
   else if (5 == expg) { message += "5 \"";
-    if      (50 == exp) { message += "size\": 0.03 dpe."; }
-    else if (51 == exp) { message += "size\": 0.035 dpe."; }
-    else if (52 == exp) { message += "size\": 0.04 dpe."; }
-    else if (53 == exp) { message += "noise\": 0.03 dpe + noise."; }
-    else if (54 == exp) { message += "noise\": 0.035 dpe + noise."; }
-    else if (55 == exp) { message += "noise\": 0.04 dpe + noise."; } }
+    if      (51 == exp) { message += "size\": 0.03 dpe."; }
+    else if (52 == exp) { message += "size\": 0.035 dpe."; }
+    else if (53 == exp) { message += "size\": 0.04 dpe."; }
+    else if (54 == exp) { message += "noise\": 0.03 dpe + noise."; }
+    else if (55 == exp) { message += "noise\": 0.035 dpe + noise."; }
+    else if (56 == exp) { message += "noise\": 0.04 dpe + noise."; } }
   else if (6 == expg) { message += "6 \"parameter sweep\"."; }
   else if (exp) {
     log.add(Attn::E, "unknown experiment: " + std::to_string(exp), true);

@@ -354,7 +354,7 @@ Canvas::next2d()
         rgba[rgbastride + rgbai++] = 0.05f;
       }
     }
-    if (150 <= trail) {
+    if (700 <= trail) {
       this->trail_end_ = true;
     }
   }

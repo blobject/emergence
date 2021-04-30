@@ -51,6 +51,9 @@ libXdmcp.so.6 => /usr/lib/libXdmcp.so.6 (0x00007f61847c4000)
 
 **** Bundled with this repository (in =external/=)
 
+- catch2
+- fonts (Liberation Mono)
+- glmConfig.cmake (at least one linux distribution lacks this file)
 - imgui
 - stb
 
@@ -96,4 +99,4 @@ libXdmcp.so.6 => /usr/lib/libXdmcp.so.6 (0x00007f61847c4000)
 
 ** Misc.
 
-- ~6000 lines of (source code + comments)
+- ~9000 lines of (source code + comments)
