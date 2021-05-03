@@ -1,8 +1,6 @@
 * emergence
 
-[[/pub/demo.gif]]
-
-/The stuttering is part of the animation file; the program itself is a lot smoother/
+[[/pub/demo.png]]
 
 ** About
 
