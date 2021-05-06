@@ -1,9 +1,7 @@
 /build/
 !/data/
 /data/*
-!/data/script/
 !/data/README.org
 !/data/raw.tgz
 /pub/thesis.pdf
 /thesis/
-/tmp/

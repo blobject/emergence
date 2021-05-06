@@ -1,12 +1,18 @@
 * How to collect and display experimental data
 
-Example for experiment 1_1 (occupancy with 12 initial particles):
+Example for experiment 1.1 (occupancy with 12 initial particles):
 
-- ~cd build/~
-- ~./emergence -2pe 11 > ../data/1/1_1.data~
-- Press Escape in the GUI and enable 2D trailing
-- Close Emergence
-- Edit =1_1.data= and remove the prelude header
-- ~cd ../data/~
-- ~./script/1.py 1/1_1.data > plot/1_1.plot~
-- ~gnuplot -e "f='plot/1_1.plot'" -p script/1.p~
+- ~cd emergence/tools/~
+- ~../build/emergence -2pe 11 > ../data/tmp.data~
+- Press Escape in the GUI, enable 2D trailing, and resume processing.
+- Close Emergence when processing is complete.
+- Edit =../data/tmp.data=; remove the irrelevant prelude printout.
+- ~./plot.py 1 ../data/tmp.data~
+
+* Dependencies
+
+- python 3
+  - matplotlib
+  - numpy
+  - scipy
+

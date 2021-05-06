@@ -29,7 +29,7 @@ State::State(Log& log, int e)
   if (1 == eg) {
     this->width_  = 50;
     this->height_ = 50;
-    this->prad_   = 0.25f;
+    this->prad_   = 0.5f;
     if      (11 == e) { this->num_ = 12; }   // custom placement
     else if (12 == e) { this->num_ = 14; }   // custom placement
     else if (13 == e) { this->num_ = 100; } // 0.04 dpe
