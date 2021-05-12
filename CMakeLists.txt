@@ -1,7 +1,7 @@
 set(DPI 200) # higher dpi decreases font size
 set(CL 1) # 0=off, 1=on
 
-cmake_minimum_required(VERSION 3.18)
+cmake_minimum_required(VERSION 3.13)
 set(CMAKE_CXX_COMPILER "clang++")
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED True)

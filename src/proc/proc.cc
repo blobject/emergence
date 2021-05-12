@@ -316,7 +316,7 @@ Proc::plain_move()
     f = fmod(pf[i] + alpha
              + (beta * pn[i]
                 * Util::signum(static_cast<int>(pr[i] - pl[i]))), TAU)
-             + noise;
+        + noise;
     if (f < 0) { f += TAU; }
     pf[i] = f;
     pc[i] = cosf(f);

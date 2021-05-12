@@ -1,6 +1,7 @@
 #include "control.hh"
 #include "../util/common.hh"
 #include "../util/util.hh"
+#include <chrono>
 #include <fstream>
 #include <iomanip>
 #include <sstream>
@@ -51,6 +52,10 @@ Control::Control(Log& log, State& state, Proc& proc, Exp& exp,
   }
   this->countdown_ = this->duration_;
   this->gui_change_ = false;
+  this->profile_ago_ = std::chrono::steady_clock::now();
+  this->profile_fps_ = 0;
+  this->profile_count_ = 0;
+  this->profile_max_ = 120;
 
   log.add(Attn::O, "Started control module.", true);
 }
@@ -59,6 +64,28 @@ Control::Control(Log& log, State& state, Proc& proc, Exp& exp,
 void
 Control::next()
 {
+  /**/
+  // profiling
+  std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
+  ++this->profile_fps_;
+  int since = std::chrono::duration_cast<std::chrono::microseconds>(
+    now - this->profile_ago_).count();
+  if (1000000 <= since) {
+    ++this->profile_count_;
+    if (this->profile_max_ <= this->profile_count_) {
+      this->quit();
+    }
+    int last = std::chrono::duration_cast<std::chrono::microseconds>(
+      now - this->profile_last_).count();
+    std::cout << this->profile_count_ << ": " << this->profile_fps_
+                 + static_cast<float>(since - 1000000) / last
+              << std::endl;
+    this->profile_fps_ = 0;
+    this->profile_ago_ = now;
+  }
+  this->profile_last_ = now;
+  //*/
+
   // when countdown drops to 0, Proc should exclaim completion
   Proc& proc = this->proc_;
   long long countdown = this->countdown_;
@@ -75,9 +102,24 @@ Control::next()
 
   this->exp_.type();
   proc.next();
+
+  /**
+  // profiling
+  std::cout << std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - now).count()
+            << " proc.next ";
+  //*/
+
   this->exp_next();
   this->step_ = false;
   ++this->tick_;
+
+  /**
+  // profiling
+  this->profile_end_ = std::chrono::steady_clock::now();
+  std::chrono::duration<double> seconds = end - start;
+  //std::cout << "time: " << seconds.count() << std::endl;
+  //*/
+
   if (-1 >= countdown) {
     return;
   }
@@ -133,7 +175,7 @@ Control::exp_next()
         this->dpe_ = 0.0f;
       }
       if (10 < exp.exp_4_count_) { // * 10 separate instances
-        this->quit_ = true;
+        this->quit();
         return;
       }
       State& state = this->state_;
@@ -180,7 +222,7 @@ Control::exp_next()
       if (51 == e || 52 == e || 53 == e) {
         ++exp.exp_5_count_;
         if (100 < exp.exp_5_count_) { // * 10 separate instances
-          this->quit_ = true;
+          this->quit();
           return;
         }
       } else if (54 == e || 55 == e || 56 == e) {
@@ -191,7 +233,7 @@ Control::exp_next()
           std::cout << ";";
         }
         if (100 < exp.exp_5_count_) { // * 10 separate instances
-          this->quit_ = true;
+          this->quit();
           return;
         }
         noise = Util::rad_to_deg(state.noise_) + 5.0f;
@@ -232,7 +274,7 @@ Control::exp_next()
         state.beta_ = Util::deg_to_rad(-60.0f);
         state.alpha_ = Util::deg_to_rad(alpha + 3.0f);
       } else {
-        this->quit_ = true;
+        this->quit();
         return;
       }
       Stative stative = {

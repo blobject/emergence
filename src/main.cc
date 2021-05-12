@@ -45,7 +45,7 @@ main(int argc, char* argv[])
   bool no_cl = !opts["nocl"].empty();
   bool gui_on = opts["nogui"].empty();
   bool pause = !opts["pause"].empty();
-  bool three = opts["two"].empty();
+  bool three = !opts["three"].empty();
 
   /* dependency & observation graph
    * ----------   ...........
@@ -86,7 +86,7 @@ usage()
   char* me = strdup(ME);
   me[0] += 0x20;
   std::cout << "Usage: " << me
-            << " -(?h|2|c|e NUM|g|i FILE|p|q|v|x)"
+            << " -(?h|3|c|e NUM|g|i FILE|p|q|v|x)"
             << std::endl;
   free(me);
 }
@@ -113,7 +113,7 @@ help()
             << "  -p       start paused\n"
             << "  -x       run in headless mode\n\n"
             << "Options for graphical mode:\n"
-            << "  -2       start in 2d mode\n"
+            << "  -3       start in 3d mode\n"
             << "  -g       disable GUI and only show canvas\n"
             << "             C-c, C-q: quit\n"
             << "             Space:    pause/resume\n"
@@ -140,15 +140,15 @@ args(int argc, char* argv[])
     {"quiet", ""},
     {"quit", ""},
     {"return", ""},
-    {"two", ""}
+    {"three", ""}
   };
   int opt;
-  while (-1 != (opt = getopt(argc, argv, "?2ce:gi:hpqvx"))) {
+  while (-1 != (opt = getopt(argc, argv, "?3ce:gi:hpqvx"))) {
     if ('?' == opt || 'h' == opt) {
       opts["quit"] = "help";
       opts["return"] = "0";
     }
-    else if ('2' == opt) { opts["two"]   = "."; }
+    else if ('3' == opt) { opts["three"] = "."; }
     else if ('c' == opt) { opts["nocl"]  = "."; }
     else if ('e' == opt) { opts["exp"]   = optarg; }
     else if ('g' == opt) { opts["nogui"] = "."; }

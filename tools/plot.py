@@ -6,8 +6,8 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 import numpy as N
 from os import path
 from pprint import pprint
-from scipy.optimize import curve_fit
 from scipy.integrate import odeint
+from scipy.optimize import curve_fit
 from statistics import median, quantiles
 import sys
 
@@ -19,7 +19,7 @@ def usage(message, verbose=False):
   print('usage: {} {}'.format(sys.argv[0], message))
   if verbose:
     message = 'available actions:\n'
-    for e in range(1,7):
+    for e in range(0,7):
       actions = '|'.join(exp_table[e].actions)
       if not actions:
         continue
@@ -162,6 +162,122 @@ class Exp:
 
   def plot(self):
     pass
+
+
+## Performance ################################################################
+#
+# plot type:
+# - histogram
+#
+# in:
+# - when: first tick, last tick
+# - what: nearest neighbor distance of every particle
+#
+# out:
+# - x:  distance class (= floor of distance)
+# - y1: percentage of occurrence of distance class for first tick
+# - y2: percentage of occurrence of distance class for last tick
+
+class Perf(Exp):
+
+  id = 0
+  actions = ['base_time_framerate',
+             'base_dim_framerate',
+             'base_dpe_framerate',
+             'base_radius_framerate',
+             'base_gui_framerate',
+             'multicore_framerate',
+             'grid_framerate',
+             'cl_framerate',
+             'core_framerate']
+
+  def __init__(self, args):
+    super().__init__(args, False)
+    self.check_action()
+
+    # slight ickiness: input files must be prepended with extra information
+    # input={mode(str): [lines(str)]}
+    input = {}
+    for arg in self.inputs:
+      with open(arg) as f:
+        lines = f.read().splitlines()
+        mode = lines[0]
+        if mode not in input:
+          input[mode] = []
+        input[mode] += lines[1:]
+    self.input = input
+
+  def collect(self):
+    input = self.input
+
+    # data={mode(str): {time(int): [framerates(float)]}}
+    data = {'graphical': {}, 'headless': {}}
+
+    for mode in input.keys():
+      data[mode] = {}
+    for mode, lines in input.items():
+      for line in lines:
+        time, fps = line.split(': ')
+        time = int(time)
+        if time not in data[mode]:
+          data[mode][time] = []
+        data[mode][time].append(float(fps))
+
+    self.data = data
+
+  def refine(self):
+    data = self.data
+
+    # refined={mode(str): {time(int): [framerates(float)]}}
+    refined = {'graphical': {}, 'headless': {}}
+
+    for mode, datum in data.items():
+      refined[mode] = {}
+      for time, fpss in datum.items():
+        refined[mode][time] = median(fpss)
+
+    self.refined = refined
+
+  def plot(self):
+    data = self.refined
+
+    for mode, time_fpss in data.items():
+      # prepare
+      xs = list(time_fpss.keys())
+
+      # plot (observed counts, estimated)
+      P.scatter(list(time_fpss.keys()), list(time_fpss.values()),
+                label=mode,
+                s=1)
+    #bp = P.boxplot(list(data.values()),
+    #               manage_ticks=False,
+    #               positions=xs,
+    #               widths=[0.5] * len(xs),
+    #               flierprops={'marker': '+',
+    #                           'markersize': 1,
+    #                           'markeredgecolor': '#ba59b3'},
+    #               whiskerprops={'linestyle': 'dashed'},
+    #               patch_artist=True,
+    #               zorder=0)
+    #for b in bp['boxes']:
+    #  b.set_facecolor('#d471cc')
+    #  b.set_edgecolor('#ba59b3')
+    #for c in bp['caps']: c.set_color('#ba59b3')
+    #for f in bp['fliers']: f.set_color('#ba59b3')
+    #for m in bp['medians']: m.set_color('w')
+    #for w in bp['whiskers']: w.set_color('#d471cc')
+
+    # periphery
+    P.xlabel('time [sec]')
+    P.ylabel('framerate [frame/sec]')
+    #P.xticks(N.arange(0, 8)) # assumption
+    #P.yticks(N.arange(0, 1.01, 0.1))
+    #P.xlim(-0.5, 7.5) # assumption
+    P.rcParams['legend.handlelength'] = 0.5
+
+    # set
+    P.legend()
+    P.show()
 
 
 ## Experiment 1: "occupancy" ##################################################
@@ -466,6 +582,7 @@ class Exp2(Exp):
       dc = [x['dbscan_cells'] for x in vs]
       ds = [x['dbscan_spores'] for x in vs]
       xs = N.array(list(ks))
+      xt = N.arange(min(xs), max(xs) + 1, max(xs) // 10)
 
       # plot (observed counts)
       P.plot(xs, ec,
@@ -510,7 +627,7 @@ class Exp2(Exp):
       # periphery
       P.xlabel('time step')
       P.ylabel('number of structures')
-      P.xticks(ticks=N.arange(min(xs), max(xs) + 1, max(xs) // 10),
+      P.xticks(ticks=xt,
                labels=['0' if not x else str(x // 1000) + 'k' for x in xt])
       P.yticks(N.arange(0, 101, 10))
       #P.xlim(0, 120000) # uncomment for slice
@@ -628,7 +745,7 @@ class Exp3(Exp):
     ys = [v['right'] for v in data.values()]
     m = [[0 for _ in range(max(ys) + 1)] for _ in range(max(xs) + 1)]
     for v in data.values():
-      m[v['left']][v['right']] = v['count'] if 0 < v['count'] else N.nan
+      m[v['left']][v['right']] = v['count'] if v['count'] else N.nan
     cs = blue
     cs.set_under('k', alpha=0)
 
@@ -752,7 +869,7 @@ class Exp4(Exp):
         for method in ['est', 'dbscan']:
           for i in range(len(datum[method + '_how'])):
             when = datum[method + '_when'][i] / 25000
-            # DATA MUNGING: only use recorded tick when decayed (for cells only)
+            # DATA MUNGING: only use recorded tick if decayed (for cells only)
             if 'd' != datum['est_how'][i]:
               when = 1.0
             # end DATA MUNGING
@@ -1228,7 +1345,7 @@ class Exp5(Exp):
             peak[0] = x
             peak[1] = y
 
-        # flatten frequencies into one file for easy detection of quartiles
+        # flatten frequencies into one list for easy detection of quartiles
         freq = []
         for i, n in enumerate(ys):
           freq += [i] * n # slow for 'size'
@@ -1412,7 +1529,7 @@ class Exp6(Exp):
 
 ## run ########################################################################
 
-exp_table = [None, Exp1, Exp2, Exp3, Exp4, Exp5, Exp6]
+exp_table = [Perf, Exp1, Exp2, Exp3, Exp4, Exp5, Exp6]
 usage_message = 'EXP_NUM [EXP_ACTION] DATA_FILES'
 P.rcParams.update({
   'figure.autolayout': True,
@@ -1424,7 +1541,7 @@ if (2 > len(sys.argv)):
   usage(usage_message, True)
   exit(-1)
 e = sys.argv[1]
-if e not in ['1', '2', '3', '4', '5', '6']:
+if e not in ['0', '1', '2', '3', '4', '5', '6']:
   usage(usage_message, True)
   exit(-1)
 

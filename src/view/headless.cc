@@ -37,6 +37,7 @@ Headless::~Headless()
 void
 Headless::exec()
 {
+  return; // when profiling
   Control& ctrl = this->ctrl_;
 
   if (ctrl.experiment_) {
@@ -94,7 +95,7 @@ Headless::report(When when) const
             << "\n  beta:   " << state.beta_
             << " (" << Util::rad_to_deg(state.beta_) << " deg)"
             << "\n  scope:  " << state.scope_
-            << "\n  ascope:  " << state.ascope_
+            << "\n  ascope: " << state.ascope_
             << "\n  speed:  " << state.speed_
             << std::flush;
 }
@@ -376,6 +377,13 @@ Headless::prompt_param_float(
 void
 Headless::sigint_callback(int /* signal */)
 {
+  Control& ctrl = hoc->ctrl_;
+
+  if (ctrl.experiment_) {
+    ctrl.quit();
+    return;
+  }
+
   hoc->prompt_base();
 }
 

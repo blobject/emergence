@@ -69,8 +69,8 @@ State::State(Log& log, int e)
     this->num_    = 1200; // 0.12 dpe, param sweep
     this->width_  = 100;
     this->height_ = 100;
-    this->alpha_  = Util::deg_to_rad(-180.0f);
-    this->beta_   = Util::deg_to_rad(-60.0f);
+    this->alpha_  = Util::deg_to_rad(180.0f);
+    this->beta_   = Util::deg_to_rad(17.0f);
     this->prad_   = 0.5f;
   } else if (e) {
     log.add(Attn::E, "state will ignore unknown experiment " +

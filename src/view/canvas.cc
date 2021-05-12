@@ -15,6 +15,7 @@ Canvas::Canvas(Log& log, Control& ctrl, UiState& uistate,
 
   this->preamble(this->width_ / window_scale, this->height_ / window_scale);
 
+  this->gui_ = NULL;
   if (gui_on) {
     this->gui_ = new Gui(log, uistate, *this, this->window_, window_scale,
                          three);
@@ -100,7 +101,7 @@ Canvas::preamble(unsigned int window_width, unsigned int window_height)
   }
 
   // gl
-  DOGL(glClearColor(0.0f, 0.0f, 0.0f, 1.0f));
+  DOGL(glClearColor(0.0f, 0.0f, 0.0f, 1.0f)); // background
   DOGL(glEnable(GL_BLEND));
   DOGL(glBlendEquation(GL_FUNC_ADD));
   DOGL(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
@@ -129,7 +130,6 @@ Canvas::exec()
     return;
   }
 
-
   /**
   // profiling
   GLuint64 start, stop;
@@ -145,7 +145,7 @@ Canvas::exec()
   double now;
   now = glfwGetTime();
   if (now - this->ago_ < 1.0f / 60.0f) {
-    continue;
+    return;
   }
   this->ago_ = now;
   //*/
@@ -158,6 +158,10 @@ Canvas::exec()
   } else if (this->trail_) {
     num *= this->trail_count_ + 1;
   }
+  bool capturing = false;
+  if (gui != NULL) {
+    capturing = gui->capturing_;
+  }
 
   this->clear();
   ctrl.color(ctrl.get_coloring());
@@ -166,7 +170,7 @@ Canvas::exec()
     gui->draw();
   }
   // when not paused (in various senses), process particle movement (Proc)
-  if (!gui->capturing_ && !ctrl.paused_ || ctrl.step_) {
+  if (!capturing && !ctrl.paused_ || ctrl.step_) {
     if (this->three_) {
       this->next3d();
     } else {

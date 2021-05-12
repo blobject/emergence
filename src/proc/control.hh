@@ -12,6 +12,7 @@
 
 #include "proc.hh"
 #include "../exp/exp.hh"
+#include <chrono>
 
 
 enum class Type;
@@ -185,5 +186,10 @@ class Control
   State& state_;
 
   float dpe_;
+  std::chrono::steady_clock::time_point profile_ago_;
+  std::chrono::steady_clock::time_point profile_last_;
+  unsigned int profile_fps_;
+  unsigned int profile_count_;
+  unsigned int profile_max_;
 };
 

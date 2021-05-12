@@ -6,7 +6,7 @@
 
 *Emergence* is a visualiser and processor of a primordial particle system.
 
-This project is based on the article, /How a life-like system emerges from a simple particle motion law/, by  Schmickl, Stefanec, and Crailsheim: https://www.nature.com/articles/srep37969, and extends it with our own [[https://zool33.uni-graz.at/artlife/pps_3d][version of three-dimensionality]].
+This project is based on the article, /How a life-like system emerges from a simple particle motion law/, by  Schmickl, Stefanec, and Crailsheim: https://www.nature.com/articles/srep37969.
 
 This is a rewrite and extension of an [[https://github.com/blobject/mff/tree/master/emergence][earlier JavaScript + HTML5 version]] which ran via web browser and Node.js. The present project uses [[https://www.opengl.org/][OpenGL]] + [[http://glew.sourceforge.net/][GLEW]] (graphics), [[https://www.glfw.org/][GLFW]] (windowing), [[https://github.com/g-truc/glm][glm]] (math), [[https://github.com/ocornut/imgui][ImGui]] (user interface), [[https://github.com/nothings/stb][nothings/stb]] (image export), [[https://www.khronos.org/opencl/][OpenCL]] (parallelisation), and [[https://isocpp.org/][C++]] (implementation language). It runs as a native desktop application on Linux ([[https://www.x.org/wiki/][Xorg]]).
 
@@ -21,7 +21,7 @@ This is a rewrite and extension of an [[https://github.com/blobject/mff/tree/mas
 - glm ~0.9.9~
 - opengl ~3.3~
 
-/The versions have not been properly tested and are just what I used. The program might still work with different versions./
+/The versions have not been properly vetted and are just what I used. The program might still work with different versions./
 
 ~ldd ./emergence~:
 
