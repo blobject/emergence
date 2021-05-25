@@ -4,6 +4,8 @@
 
 ** About
 
+/Repository was frozen for thesis submission at commit 6224913 on 25 May 2021, 21:00/
+
 *Emergence* is a visualiser and processor of a primordial particle system. The project is based on the article, /How a life-like system emerges from a simple particle motion law/, by  Schmickl, Stefanec, and Crailsheim: https://www.nature.com/articles/srep37969. This implementation is a rewrite and extension of an [[https://b.agaric.net/dev/emergence][earlier JavaScript + HTML5 version]] which runs on the browser and Node.js.
 
 ** Build & Run
