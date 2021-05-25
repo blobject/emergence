@@ -15,9 +15,6 @@ args(int argc, char* argv[]);
 static void
 argue(Log& log, std::map<std::string,std::string>& opts);
 
-static void
-attempt(Log& log, int exp);
-
 
 /// main(): Program entry point containing the processing loop.
 int
@@ -59,18 +56,20 @@ main(int argc, char* argv[])
    */
 
   // system objects
-  auto state = State(log, experiment);
+  auto expctrl = ExpControl(log, experiment);
+  auto state = State(log, expctrl);
   auto cl = Cl(log); // stub object if OpenCL is unavailable
   auto proc = Proc(log, state, cl, no_cl);
-  auto exp = Exp(log, state, proc, no_cl);
-  auto ctrl = Control(log, state, proc, exp, init, pause);
+  auto exp = Exp(log, expctrl, state, proc, no_cl);
+  auto ctrl = Control(log, state, proc, expctrl, exp, init, pause);
   auto uistate = UiState(ctrl);
   std::unique_ptr<View> view = View::init(log, ctrl, uistate,
                                           headless, gui_on, three);
-  log.add(Attn::O, "PID: " + std::to_string(ctrl.pid_), true);
+  log.add(Attn::O, "PID: " + std::to_string(ctrl.pid_), !headless);
 
   // execution
-  attempt(log, experiment);
+  expctrl.message();
+  view->intro();
   while (!ctrl.quit_) {
     ctrl.next();
   }
@@ -109,6 +108,7 @@ help()
             << "             survival:     [41, 42, 43, 44]\n"
             << "             size & noise: [51, 52, 53], [54, 55, 56]\n"
             << "             param sweep:  [6]\n"
+            << "             performance:  [71, 72, 73, 74]\n"
             << "  -i FILE  supply an initial state\n"
             << "  -p       start paused\n"
             << "  -x       run in headless mode\n\n"
@@ -179,12 +179,13 @@ argue(Log& log, std::map<std::string,std::string>& opts)
                                  31, 32, 33, 34, 35, 36, 37, 38,
                                  41, 42, 43, 44,
                                  51, 52, 53, 54, 55, 56,
-                                 6};
+                                 6,
+                                 71, 72, 73, 74};
     if (std::find(exps.begin(), exps.end(), exp) != exps.end()) {
       return;
     }
     opts["return"] = "-1";
-    log.add(Attn::E, "unknown experiment: " + opts["exp"], true);
+    log.add(Attn::E, "unknown experiment: " + opts["exp"]);
     return;
   }
   if (!opts["input"].empty()) {
@@ -194,7 +195,7 @@ argue(Log& log, std::map<std::string,std::string>& opts)
       stream.close();
     } else {
       opts["return"] = "-1";
-      log.add(Attn::E, "unreadable file: " + opts["input"], true);
+      log.add(Attn::E, "unreadable file: " + opts["input"]);
       usage();
     }
     return;
@@ -204,14 +205,14 @@ argue(Log& log, std::map<std::string,std::string>& opts)
       help();
       return;
     } else if ("input" == opt) {
-      log.add(Attn::E, "trouble with input state\n", true);
+      log.add(Attn::E, "trouble with input state\n");
     } else if ("noarg" == opt) {
-      log.add(Attn::E, "no argument provided\n", true);
+      log.add(Attn::E, "no argument provided\n");
     } else if ("version" == opt) {
       log.add(Attn::O, std::string(ME) + " version " + std::string(VERSION),
               true);
     } else {
-      log.add(Attn::E, "unknown argument: " + opts["quit"], true);
+      log.add(Attn::E, "unknown argument: " + opts["quit"]);
     }
     usage();
     return;
@@ -229,53 +230,6 @@ argue(Log& log, std::map<std::string,std::string>& opts)
     message += " headless";
     if (!opt.empty()) message += ": " + opt;
   }
-  log.add(Attn::O, message, true);
-}
-
-
-/// attempt(): Print message about specified experiment.
-/// \param log  Log object
-/// \param exp  specific experiment
-static void
-attempt(Log& log, int exp)
-{
-  int expg = 10 <= exp ? exp / 10 : exp;
-  std::string message = "Running experiment ";
-  if      (1 == expg) { message += "1 \"occupancy\": ";
-    if      (11 == exp) { message += "12 particles."; }
-    else if (12 == exp) { message += "14 particles."; }
-    else if (13 == exp) { message += "0.04 dpe."; }
-    else if (14 == exp) { message += "0.07 dpe."; }
-    else if (15 == exp) { message += "0.09 dpe."; } }
-  else if (2 == expg) { message += "2 \"population\"."; }
-  else if (3 == expg) { message += "3 \"heat map\": ";
-    if      (31 == exp) { message += "nutrients."; }
-    else if (32 == exp) { message += "premature spore."; }
-    else if (33 == exp) { message += "mature spore."; }
-    else if (34 == exp) { message += "ring."; }
-    else if (35 == exp) { message += "premature cell."; }
-    else if (36 == exp) { message += "triangle cell."; }
-    else if (37 == exp) { message += "square cell."; }
-    else if (38 == exp) { message += "pentagon cell."; } }
-  else if (4 == expg) { message += "4 \"survival\": ";
-    if      (41 == exp) { message += "mature spore survival."; }
-    else if (42 == exp) { message += "triangle cell survival."; }
-    else if (43 == exp) { message += "mature spore reproduction."; }
-    else if (44 == exp) { message += "triangle cell reproduction."; } }
-  else if (5 == expg) { message += "5 \"";
-    if      (51 == exp) { message += "size\": 0.03 dpe."; }
-    else if (52 == exp) { message += "size\": 0.035 dpe."; }
-    else if (53 == exp) { message += "size\": 0.04 dpe."; }
-    else if (54 == exp) { message += "noise\": 0.03 dpe + noise."; }
-    else if (55 == exp) { message += "noise\": 0.035 dpe + noise."; }
-    else if (56 == exp) { message += "noise\": 0.04 dpe + noise."; } }
-  else if (6 == expg) { message += "6 \"parameter sweep\"."; }
-  else if (exp) {
-    log.add(Attn::E, "unknown experiment: " + std::to_string(exp), true);
-    return;
-  }
-  if (exp) {
-    log.add(Attn::O, message, true);
-  }
+  log.add(Attn::O, message);
 }
 

@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include "../exp/control.hh"
 #include "../proc/control.hh"
 #include "../util/log.hh"
 #include <string>
@@ -50,6 +51,7 @@ static const std::string TypeNames[] = {
 
 
 struct Stative; // from control.hh
+class ExpControl;
 
 class State : public Subject
 {
@@ -57,8 +59,8 @@ class State : public Subject
   /// constructor: Initialise the system and particles with default
   ///              parameters.
   /// \param log  Log object
-  /// \param experiment  specific experiment being performed
-  State(Log& log, int experiment);
+  /// \param expctrl  experiment control object
+  State(Log& log, ExpControl& expctrl);
 
   /// spawn(): Initialise the particle parameters.
   void spawn();
@@ -78,20 +80,20 @@ class State : public Subject
   ///              Assumes that the Type enum is continuous.
   /// \param type  particle type
   /// \returns  name of particle type
-  std::string type_name(Type type);
+  static std::string type_name(Type type);
 
   /// dpe(): Get density of particles in the surrounding environment (DPE).
   /// \returns  dpe
   float dpe();
 
-  //// particle
-  // (volatile) location & direction
+  //// particle (volatile)
+  // location & direction
   std::vector<float> px_;         // X parameter
   std::vector<float> py_;         // Y parameter
   std::vector<float> pf_;         // PHI parameter
   std::vector<float> pc_;         // cos(PHI) parameter
   std::vector<float> ps_;         // sin(PHI) parameter
-  // (volatile) vicinity
+  // vicinity
   std::vector<unsigned int> pn_;  // N(=L+R) parameter
   std::vector<unsigned int> pl_;  // L parameter
   std::vector<unsigned int> pr_;  // R parameter
@@ -101,10 +103,10 @@ class State : public Subject
   std::vector<float>        pld_; // L neighbor distances
   std::vector<float>        prd_; // R neighbor distances
   std::vector<Type>         pt_;  // type (nutrient, mature spore, ring, etc.)
-  // (volatile) grid
+  // grid
   std::vector<int> gcol_;         // grid column the particle is in
   std::vector<int> grow_;         // grid row the particle is in
-  // (volatile) color
+  // color
   std::vector<float> xr_;         // red
   std::vector<float> xg_;         // green
   std::vector<float> xb_;         // blue
@@ -129,10 +131,9 @@ class State : public Subject
 
   // fixed
   unsigned int n_stride_;         // neighbor list stride
-  int          experiment_group_; // experiment being perfomed
-  int          experiment_;       // specific experiment being perfomed
 
  private:
-  Log& log_;
+  ExpControl& expctrl_;
+  Log&        log_;
 };
 

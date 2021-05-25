@@ -4,7 +4,7 @@
 UiState::UiState(Control& ctrl)
   : ctrl_(ctrl)
 {
-  State& truth    = ctrl.get_state();
+  State& truth    = ctrl.state_;
   this->duration_ = ctrl.duration_;
   this->num_      = truth.num_;
   this->width_    = truth.width_;
@@ -43,7 +43,7 @@ int
 UiState::untrue() const
 {
   Control& ctrl = this->ctrl_;
-  State& truth = ctrl.get_state();
+  State& truth = ctrl.state_;
   Stative current = this->current();
 
   if (current.num    != truth.num_   ||
@@ -85,7 +85,7 @@ void
 UiState::receive()
 {
   Control& ctrl = this->ctrl_;
-  State& truth = ctrl.get_state();
+  State& truth = ctrl.state_;
   this->duration_ = ctrl.duration_;
   this->num_      = truth.num_;
   this->width_    = truth.width_;

@@ -33,5 +33,8 @@ class View
 
   /// exec(): Reaction to one iteration of particle processing.
   virtual void exec() = 0;
+
+  /// intro(): Preamble to the process loop.
+  virtual void intro() = 0;
 };
 

@@ -1,5 +1,4 @@
 #include "gui.hh"
-#include <iomanip>
 #include <iterator>
 #include <regex>
 
@@ -74,7 +73,7 @@ Gui::Gui(Log& log, UiState& uistate, Canvas& canvas, GLFWwindow* window,
   this->message_exp_inspect_default_ = "\n\n(Select an item on the left)";
   this->message_exp_inspect_ = this->message_exp_inspect_default_;
 
-  log.add(Attn::O, "Started gui module.", true);
+  log.add(Attn::O, "Started gui module.");
 }
 
 
@@ -322,7 +321,7 @@ void
 Gui::draw_config_top()
 {
   Control& ctrl = this->uistate_.ctrl_;
-  State& state = ctrl.get_state();
+  State& state = ctrl.state_;
   bool paused = ctrl.paused_;
   std::string pause = "Pause";
   if (paused) {
@@ -579,8 +578,8 @@ Gui::draw_config_analysis(float width)
   Log& log = this->log_;
   UiState& uistate = this->uistate_;
   Control& ctrl = uistate.ctrl_;
-  State& state = ctrl.get_state();
-  Exp& exp = ctrl.get_exp();
+  State& state = ctrl.state_;
+  Exp& exp = ctrl.exp_;
   float font_width = this->font_width_;
   float inspect_height = 160.0f;
   float inspect_width =
@@ -1361,8 +1360,8 @@ void
 Gui::gen_message_exp_inspect()
 {
   Control& ctrl = this->uistate_.ctrl_;
-  State& state = ctrl.get_state();
-  Exp& exp = ctrl.get_exp();
+  State& state = ctrl.state_;
+  Exp& exp = ctrl.exp_;
   bool no_cl = !ctrl.cl_good();
   std::vector<int>& pls = state.pls_;
   std::vector<int>& prs = state.prs_;
@@ -1533,7 +1532,7 @@ Gui::key_callback(GLFWwindow* window, int key, int /* scancode */, int action,
         gui->inspect_cluster_particle_ = -1;
         gui->message_exp_cluster_ =
           ctrl.cluster(gui->cluster_radius_, gui->cluster_minpts_);
-        ctrl.get_exp().districts();
+        ctrl.exp_.districts();
         log.add(Attn::O, gui->message_exp_cluster_);
         ctrl.color(Coloring::Cluster);
         uistate.coloring_ = Coloring::Cluster;
@@ -1626,8 +1625,8 @@ Gui::key_callback(GLFWwindow* window, int key, int /* scancode */, int action,
   }
 
   // iterate through inspection
-  Exp& exp = ctrl.get_exp();
-  unsigned int num = ctrl.get_num();
+  Exp& exp = ctrl.exp_;
+  unsigned int num = ctrl.state_.num_;
   if (GLFW_KEY_DOWN == key || Box::Config != box && GLFW_KEY_RIGHT == key)
   {
     if (0 <= gui->inspect_cluster_particle_) {

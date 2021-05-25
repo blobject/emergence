@@ -8,6 +8,7 @@
 #pragma once
 
 #include <GL/glew.h>
+#include <iomanip>
 #include <iostream>
 #include <math.h> // cosf, sinf, floor, fmod
 #include <random>

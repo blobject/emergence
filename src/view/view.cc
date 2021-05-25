@@ -9,7 +9,7 @@ std::unique_ptr<View>
 View::init(Log& log, Control& ctrl, UiState& uistate,
            bool headless, bool gui_on, bool three)
 {
-  State& state = ctrl.get_state();
+  State& state = ctrl.state_;
   if (headless) {
     std::unique_ptr<View> view(new Headless(log, ctrl, uistate));
     return view;

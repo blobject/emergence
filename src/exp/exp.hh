@@ -10,6 +10,7 @@
 
 #pragma once
 
+#include "control.hh"
 #include "../proc/proc.hh"
 #include "../state/state.hh"
 #include <set>
@@ -40,6 +41,7 @@ typedef std::vector<SpritePt>                     SpritePts;
 
 
 enum class Type;
+class ExpControl;
 class Proc;
 class State;
 
@@ -48,10 +50,11 @@ class Exp
  public:
   /// constructor: Initialise experiment module.
   /// \param log  Log object
+  /// \param expctrl  ExpControl object
   /// \param state  State object
   /// \param proc  Proc object
   /// \param no_cl  whether user has specified disabling of OpenCL
-  Exp(Log& log, State& state, Proc& proc, bool no_cl);
+  Exp(Log& log, ExpControl& expctrl, State& state, Proc& proc, bool no_cl);
 
   /// init_experiment(): Modify State according to experiment being performed.
   /// \param experiment_group  experiment being performed
@@ -214,9 +217,10 @@ class Exp
   /// \returns  dhi
   float dhi();
 
-  Log&   log_;
-  State& state_;
-  Proc&  proc_;
+  ExpControl& expctrl_;
+  Log&        log_;
+  Proc&       proc_;
+  State&      state_;
   bool                            no_cl_;
   std::vector<std::vector<float>> palette_;  // cluster color cache
   unsigned int                    palette_index_;

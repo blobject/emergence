@@ -2,6 +2,6 @@
 !/data/
 /data/*
 !/data/README.org
-!/data/raw.tgz
+!/data/raw.tar.xz
 /pub/thesis.pdf
 /thesis/

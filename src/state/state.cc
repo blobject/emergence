@@ -3,8 +3,8 @@
 #include "../util/util.hh"
 
 
-State::State(Log& log, int e)
-  : log_(log), experiment_(e)
+State::State(Log& log, ExpControl& expctrl)
+  : log_(log), expctrl_(expctrl)
 {
   // transportable
   this->num_      = 5000; // 0.08 dpe
@@ -24,62 +24,10 @@ State::State(Log& log, int e)
   // fixed
   this->n_stride_ = 100;
 
-  int eg = 10 <= e ? e / 10 : e;
-  this->experiment_group_ = eg;
-  if (1 == eg) {
-    this->width_  = 50;
-    this->height_ = 50;
-    this->prad_   = 0.5f;
-    if      (11 == e) { this->num_ = 12; }   // custom placement
-    else if (12 == e) { this->num_ = 14; }   // custom placement
-    else if (13 == e) { this->num_ = 100; } // 0.04 dpe
-    else if (14 == e) { this->num_ = 175; } // 0.07 dpe
-    else if (15 == e) { this->num_ = 225; } // 0.09 dpe
-  } else if (2 == eg) {
-    this->num_    = 5000; // 0.08 dpe
-    this->width_  = 250;
-    this->height_ = 250;
-    this->prad_   = 1.0f;
-  } else if (3 == eg) {
-    this->num_    = 0; // variable dpe, inj
-    this->width_  = 250;
-    this->height_ = 250;
-    this->prad_   = 0.5f;
-  } else if (4 == eg) {
-    this->width_  = 50;
-    this->height_ = 50;
-    this->num_    = static_cast<unsigned int>(this->width_ * this->height_
-                                              * 0.0f); // variable dpe, inj
-    this->prad_   = 0.25f;
-  } else if (5 == eg) {
-    this->width_  = 50;
-    this->height_ = 50;
-    this->prad_   = 0.25f;
-    if (51 == e || 54 == e) {
-      this->num_ = static_cast<unsigned int>(this->width_ * this->height_
-                                             * 0.03f); // 0.03 dpe, inj
-    } else if (52 == e || 55 == e) {
-      this->num_ = static_cast<unsigned int>(this->width_ * this->height_
-                                             * 0.035f); // ~0.035 dpe, inj
-    } else if (53 == e || 56 == e) {
-      this->num_ = static_cast<unsigned int>(this->width_ * this->height_
-                                             * 0.04f); // 0.04 dpe, inj
-    }
-  } else if (6 == eg) {
-    this->num_    = 1200; // 0.12 dpe, param sweep
-    this->width_  = 100;
-    this->height_ = 100;
-    this->alpha_  = Util::deg_to_rad(180.0f);
-    this->beta_   = Util::deg_to_rad(17.0f);
-    this->prad_   = 0.5f;
-  } else if (e) {
-    log.add(Attn::E, "state will ignore unknown experiment " +
-            std::to_string(e), true);
-  }
-
+  expctrl.state(*this);
   this->spawn();
 
-  log.add(Attn::O, "Started state module.", true);
+  log.add(Attn::O, "Started state module.");
 }
 
 
@@ -90,18 +38,8 @@ State::spawn()
   float h = static_cast<float>(this->height_);
   unsigned int num = this->num_;
   unsigned int n_stride = this->n_stride_;
-  int e = this->experiment_;
 
-  if (11 == e || 12 == e) {
-    float center = w / 2.0f;
-    float spread = 2.5f;
-    float min = center - spread;
-    float max = center + spread;
-    for (int i = 0; i < num; ++i) {
-      this->px_.push_back(Util::distr(min, max));
-      this->py_.push_back(Util::distr(min, max));
-    }
-  } else {
+  if (!this->expctrl_.spawn(*this)) {
     for (int i = 0; i < num; ++i) {
       this->px_.push_back(Util::distr(0.0f, w));
       this->py_.push_back(Util::distr(0.0f, h));

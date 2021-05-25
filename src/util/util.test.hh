@@ -21,22 +21,22 @@ TEST_CASE("util/common")
 
 TEST_CASE("Log::Log")
 {
-  Log log = Log(1);
+  Log log = Log(1, true);
   REQUIRE(0 == log.messages_.size());
 }
 
 TEST_CASE("Log::add")
 {
-  Log log = Log(2);
-  log.add(Attn::E, "bar");
+  Log log = Log(2, true);
+  log.add(Attn::E, "bar", false);
   std::pair<Attn,std::string> message = log.messages_.front();
   REQUIRE(Attn::E == message.first);
   REQUIRE("Error: bar" == message.second);
-  log.add(Attn::O, "foo");
+  log.add(Attn::O, "foo", false);
   message = log.messages_.front();
   REQUIRE(Attn::O == message.first);
   REQUIRE("foo" == message.second);
-  log.add(Attn::O, "baz");
+  log.add(Attn::O, "baz", false);
   message = log.messages_.front();
   REQUIRE(Attn::O == message.first);
   REQUIRE("baz" == message.second);
@@ -106,7 +106,10 @@ TEST_CASE("Util::rad_to_deg")
 TEST_CASE("Util::signum")
 {
   REQUIRE(-1 == Util::signum(-5));
+  REQUIRE(0 == Util::signum(-0));
   REQUIRE(0 == Util::signum(0));
+  REQUIRE(0 == Util::signum(-3 + 3));
+  REQUIRE(0 == Util::signum(3 - 3));
   REQUIRE(1 == Util::signum(2));
 }
 

@@ -93,6 +93,20 @@ class Cl
             std::vector<float>& pf,
             std::vector<float>& pc, std::vector<float>& ps);
 
+  /// prep_naive_seek(): Pre-build the kernel for performing naive particle
+  ///                    seeking.
+  void prep_naive_seek();
+
+  /// naive_seek: Perform naive particle seeking (for benchmarking).
+  ///             See seek() for params.
+  void naive_seek(unsigned int n, float scope, float ascope,
+                  std::vector<float>& px, std::vector<float>& py,
+                  std::vector<float>& pc, std::vector<float>& ps,
+                  std::vector<unsigned int>& pn,
+                  std::vector<unsigned int>& pan,
+                  std::vector<unsigned int>& pl,
+                  std::vector<unsigned int>& pr);
+
   /// good(): Whether OpenCL is enabled.
   /// \returns  true if OpenCL is enabled
   bool

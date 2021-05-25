@@ -14,7 +14,6 @@
 #include "cl.hh"
 #include "../state/state.hh"
 #include "../util/log.hh"
-#include <functional>
 #include <unordered_map>
 
 

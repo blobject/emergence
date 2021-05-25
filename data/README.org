@@ -6,7 +6,7 @@ Example for experiment 1.1 (occupancy with 12 initial particles):
 - ~../build/emergence -2pe 11 > ../data/tmp.data~
 - Press Escape in the GUI, enable 2D trailing, and resume processing.
 - Close Emergence when processing is complete.
-- Edit =../data/tmp.data=; remove the irrelevant prelude printout.
+- Edit =../data/tmp.data=; remove the irrelevant prelude in the printout.
 - ~./plot.py 1 ../data/tmp.data~
 
 * Dependencies

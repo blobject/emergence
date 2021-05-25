@@ -36,11 +36,8 @@ class Log : public Subject
   /// add(): Push a new message into the log.
   /// \param attn  type of message
   /// \param message  message
-  void add(Attn attn, const std::string& message);
-
-  // Like add() but also print to Headless stdout. Only used by main(), Proc,
-  // and Cl, before Headless gets initialised.
-  void add(Attn attn, const std::string& message, bool headless);
+  /// \param stdout  whether to print to stdout
+  void add(Attn attn, const std::string& message, bool stdout = true);
 
   std::deque<std::pair<Attn,std::string>> messages_; // queue of messages
   bool quiet_;         // whether to suppress standard printing

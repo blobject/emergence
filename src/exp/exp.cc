@@ -2,11 +2,10 @@
 #include "../util/common.hh"
 #include "../util/util.hh"
 #include <algorithm>
-#include <iomanip>
 
 
-Exp::Exp(Log& log, State& state, Proc& proc, bool no_cl)
-  : log_(log), state_(state), proc_(proc), no_cl_(no_cl)
+Exp::Exp(Log& log, ExpControl& expctrl, State& state, Proc& proc, bool no_cl)
+  : log_(log), expctrl_(expctrl), state_(state), proc_(proc), no_cl_(no_cl)
 {
   this->magentas_ = 0;
   this->blues_ = 0;
@@ -831,25 +830,6 @@ Exp::dbscan_categorise(float radius, unsigned int minpts)
     }
     ++it;
   }
-
-/* pseudocode
-def:
-  N: set of sets of neighbors
-input: PTS, RAD, MIN
-output: N, CORES, VAGUE
-
-categorise(PTS, RAD, MIN):
-  N := {}
-  CORES := {}
-  VAGUE := {}
-  foreach P in PTS:
-    N_P := neighbors(P, PTS, RAD)
-    if |N_P| == 0:
-      continue
-    add N_P to N
-    add P to (|N_P| < MIN ? VAGUE : CORES)
-  return N, CORES, VAGUE
-*/
 }
 
 
@@ -888,48 +868,6 @@ Exp::dbscan_collect()
     }
     clusters.push_back(cluster);
   }
-
-/* - no need to test if Q (popped from WORKING) is in NEWCLUSTER
- * invariant, nothing can enter working if it is in cluster
- * (change working to set)
- */
-
-/* pseudocode
-input: N, CORES
-output: CLUSTERS
-
-collect(N, CORES):
-  CLUSTERS := {}
-  VIS := {}
-  foreach P in CORES:
-    if P in VIS:
-      continue
-    NEWCLUSTER := {}
-    WORKING := [P]
-    while WORKING not empty:
-      Q := pop from WORKING
-      if Q in NEWCLUSTER:
-        continue
-      add Q to NEWCLUSTER
-      foreach R in N[Q]:
-        if R in CORES and R not in NEWCLUSTER:
-          add R to WORKING
-    foreach Q in NEWCLUSTER:
-      add Q to VIS (ignore redundant)
-    add NEWCLUSTER to CLUSTERS
-  return CLUSTERS
---- ignore ---
-    foreach Q in N[P]:
-      if Q in CORES:
-        add Q to C
-        add Q to V
-        continue
-      if Q not in T:
-        T[Q] := {}
-      add C to T[Q]
-    add C to S
-  return S, T
-*/
 }
 
 
@@ -1409,11 +1347,12 @@ Exp::do_exp_4c(unsigned int tick) {
   }
 
   State& state = this->state_;
+  int e = this->expctrl_.experiment_;
   unsigned int num = state.num_;
   unsigned int width = state.width_;
   unsigned int height = state.height_;
   unsigned int size = this->sprites_[Type::MatureSpore].size();
-  if (43 == state.experiment_) {
+  if (43 == e) {
     size = this->sprites_[Type::TriangleCell].size();
   }
   float dpe = static_cast<float>(num - size) / width / height;
@@ -1450,7 +1389,7 @@ Exp::do_exp_5a(unsigned int tick) {
   }
 
   State& state = this->state_;
-  int e = state.experiment_;
+  int e = this->expctrl_.experiment_;
   float radius = state.scope_;
   unsigned int minpts = 14;
 
@@ -1563,7 +1502,7 @@ Exp::do_exp_5b(unsigned int tick) {
   }
 
   State& state = this->state_;
-  int e = state.experiment_;
+  int e = this->expctrl_.experiment_;
   float radius = state.scope_;
   unsigned int minpts = 14;
 

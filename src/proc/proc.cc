@@ -1,6 +1,7 @@
 #include "proc.hh"
 #include "../util/common.hh"
 #include "../util/util.hh"
+#include <chrono>
 #include <GL/glew.h>
 
 
@@ -12,15 +13,23 @@ Proc::Proc(Log& log, State& state, Cl& cl, bool no_cl)
     this->cl_good_ = false;
   }
   if (!this->cl_good_) {
-    log.add(Attn::O, "Proceeding without OpenCL parallelisation.", true);
+    log.add(Attn::O, "Proceeding without OpenCL parallelisation.");
   }
-  log.add(Attn::O, "Started process module.", true);
+  log.add(Attn::O, "Started process module.");
 }
 
 
 void
 Proc::next()
 {
+  /**
+  // profiling
+  std::chrono::steady_clock::time_point now;
+  std::chrono::steady_clock::time_point then;
+  int since;
+  now = std::chrono::steady_clock::now();
+  //*/
+
   this->clear();
 
 #if 1 == CL_ENABLED
@@ -39,6 +48,14 @@ Proc::next()
                    &Proc::tally_neighborhood);
   this->plain_move();
   this->notify(Issue::ProcNextDone); // Views react
+
+  /**
+  // profiling
+  then = std::chrono::steady_clock::now();
+  since = std::chrono::duration_cast<std::chrono::nanoseconds>(
+    then - now).count();
+  std::cout << since << std::endl;
+  //*/
 }
 
 
@@ -154,6 +171,7 @@ void
 Proc::seek()
 {
   State& state = this->state_;
+  /**/
   this->plot(state.scope_, this->grid_,
              this->grid_cols_, this->grid_rows_, this->grid_stride_);
   this->cl_.seek(state.num_, state.width_, state.height_,
@@ -162,6 +180,12 @@ Proc::seek()
                  this->grid_stride_, this->grid_, state.gcol_, state.grow_,
                  state.px_, state.py_, state.pc_, state.ps_,
                  state.pn_, state.pan_, state.pl_, state.pr_);
+  //*/
+  /**
+  this->cl_.naive_seek(state.num_, state.scope_squared_, state.ascope_squared_,
+                       state.px_, state.py_, state.pc_, state.ps_,
+                       state.pn_, state.pan_, state.pl_, state.pr_);
+  //*/
 }
 
 
@@ -189,6 +213,7 @@ Proc::plain_seek(unsigned int scope, std::vector<int>& grid,
   std::vector<int>& gcol = state.gcol_;
   std::vector<int>& grow = state.grow_;
   unsigned int scopesq = scope * scope;
+  // scopesq is int because scope needs to be int for plotting anyway
 
   this->plot(scope, grid, cols, rows, stride);
 
@@ -261,8 +286,7 @@ Proc::plain_seek_vicinity(unsigned int scopesq, std::vector<int>& grid,
 
 
 void
-Proc::plain_seek_tally(unsigned int scopesq,
-                       unsigned int srci, unsigned int dsti,
+Proc::plain_seek_tally(unsigned int scopesq, unsigned int srci, unsigned int dsti,
                        bool cunder, bool cover, bool runder, bool rover,
                        void (Proc::*tally)(int,int,float,float,float))
 {
@@ -340,7 +364,6 @@ Proc::tally_neighborhood(int srci, int dsti, float dx, float dy, float distsq)
   std::vector<unsigned int>& pn = state.pn_;
   std::vector<unsigned int>& pl = state.pl_;
   std::vector<unsigned int>& pr = state.pr_;
-  std::vector<unsigned int>& pan = state.pn_;
   std::vector<int>& pls = state.pls_;
   std::vector<int>& prs = state.prs_;
   std::vector<float>& pld = state.pld_;

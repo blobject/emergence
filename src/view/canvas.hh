@@ -40,12 +40,13 @@ class Canvas : public View, Observer
   /// destructor: Detach from observation and delete the OpenGL constructs.
   ~Canvas() override;
 
+  /// intro(): (unimplemented)
+  void intro() override;
+
   /// exec(): Render one iteration of all the graphics.
-  ///         This is a virtual function of the View superclass.
   void exec() override;
 
   /// react(): React to State::change(), Proc::next(), Proc::done().
-  ///          This is a virtual function of the Observer class.
   /// \param issue  which observed Subject's function to react to.
   void react(Issue issue) override;
 

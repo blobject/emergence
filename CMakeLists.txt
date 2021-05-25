@@ -1,4 +1,4 @@
-set(DPI 200) # higher dpi decreases font size
+set(DPI 200)
 set(CL 1) # 0=off, 1=on
 
 cmake_minimum_required(VERSION 3.13)
@@ -6,8 +6,8 @@ set(CMAKE_CXX_COMPILER "clang++")
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 # debugging
-set(CMAKE_BUILD_TYPE Debug)
-set(CMAKE_VERBOSE_MAKEFILE True)
+#set(CMAKE_BUILD_TYPE Debug)
+#set(CMAKE_VERBOSE_MAKEFILE True)
 #set(CMAKE_CXX_FLAGS "-Werror -Wall -Wextra")
 
 set(ME emergence)
@@ -36,6 +36,7 @@ add_library(lib${ME} STATIC
   src/proc/proc.cc
   src/state/state.cc
   # exp
+  src/exp/control.cc
   src/exp/exp.cc
   # view
   src/view/canvas.cc

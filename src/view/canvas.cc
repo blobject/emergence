@@ -22,7 +22,7 @@ Canvas::Canvas(Log& log, Control& ctrl, UiState& uistate,
     this->ago_ = glfwGetTime();
   }
 
-  State& state = ctrl.get_state();
+  State& state = ctrl.state_;
 
   this->levels_ = 50;
   this->level_ = 1;
@@ -59,7 +59,7 @@ Canvas::Canvas(Log& log, Control& ctrl, UiState& uistate,
   this->camera_set();
   this->spawn();
 
-  log.add(Attn::O, "Started canvas module.", true);
+  log.add(Attn::O, "Started canvas module.");
 }
 
 
@@ -124,6 +124,10 @@ Canvas::~Canvas()
 
 
 void
+Canvas::intro()
+{}
+
+void
 Canvas::exec()
 {
   if (this->closing()) {
@@ -151,8 +155,9 @@ Canvas::exec()
   //*/
 
   Control& ctrl = this->ctrl_;
+  State& state = ctrl.state_;
   Gui* gui = this->gui_;
-  int num = ctrl.get_num();
+  int num = state.num_;
   if (this->three_) {
     num *= this->level_;
   } else if (this->trail_) {
@@ -164,7 +169,7 @@ Canvas::exec()
   }
 
   this->clear();
-  ctrl.color(ctrl.get_coloring());
+  ctrl.color(static_cast<Coloring>(state.coloring_));
   this->draw(4, num, this->vertex_array_, this->shader_);
   if (this->gui_on_) {
     gui->draw();
@@ -214,7 +219,7 @@ Canvas::react(Issue issue)
 void
 Canvas::spawn()
 {
-  State& state = this->ctrl_.get_state();
+  State& state = this->ctrl_.state_;
   std::vector<float>& px = state.px_;
   std::vector<float>& py = state.py_;
   std::vector<float>& xr = state.xr_;
@@ -300,7 +305,7 @@ Canvas::draw(GLuint instances, GLuint instance_count,
 void
 Canvas::next2d()
 {
-  State& state = this->ctrl_.get_state();
+  State& state = this->ctrl_.state_;
   unsigned int num = state.num_;
   std::vector<float>& px = state.px_;
   std::vector<float>& py = state.py_;
@@ -392,7 +397,7 @@ Canvas::next2d()
 void
 Canvas::next3d()
 {
-  State &state = this->ctrl_.get_state();
+  State &state = this->ctrl_.state_;
   unsigned int num = state.num_;
   std::vector<float>& px = state.px_;
   std::vector<float>& py = state.py_;
@@ -492,7 +497,7 @@ Canvas::next3d()
 void
 Canvas::camera_default()
 {
-  State& state = this->ctrl_.get_state();
+  State& state = this->ctrl_.state_;
   this->dolly_ = glm::vec3(0.0f, 0.0f, this->zoomdef_);
   this->pivotax_ = 0.0f;
   this->pivotay_ = 0.0f;
@@ -545,7 +550,7 @@ void
 Canvas::camera_resize(GLfloat w, GLfloat h)
 {
   DOGL(glViewport(0, 0, w, h));
-  State& state = this->ctrl_.get_state();
+  State& state = this->ctrl_.state_;
   this->width_ = w;
   this->height_ = h;
   this->orth_ = glm::ortho(0.0f, static_cast<GLfloat>(state.width_),

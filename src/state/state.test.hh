@@ -4,9 +4,11 @@
 
 TEST_CASE("State::State")
 {
-  Log log = Log(1);
-  State state = State(log, 0);
+  auto log = Log(1, QUIET);
+  auto expctrl = ExpControl(log, 0);
+  auto state = State(log, expctrl);
   unsigned int num = state.num_;
+
   REQUIRE(5000 == state.num_);
   REQUIRE(250 == state.width_);
   REQUIRE(250 == state.height_);
@@ -29,13 +31,31 @@ TEST_CASE("State::State")
   REQUIRE(num == state.pr_.size());
   REQUIRE(num == state.gcol_.size());
   REQUIRE(num == state.grow_.size());
+  for (float x : state.px_) {
+    REQUIRE((0.0f <= Approx(x) && Approx(x) <= state.width_));
+  }
+  for (float y : state.py_) {
+    REQUIRE((0.0f <= Approx(y) && Approx(y) <= state.height_));
+  }
+  for (float f : state.pf_) {
+    REQUIRE((0.0f <= Approx(f) && Approx(f) <= 360.0f));
+  }
+  for (int i = 0; i < num; ++i) {
+    REQUIRE(Approx(cosf(state.pf_[i])) == state.pc_[i]);
+    REQUIRE(Approx(sinf(state.pf_[i])) == state.ps_[i]);
+    REQUIRE(0 == state.pn_[i]);
+    REQUIRE(0 == state.pl_[i]);
+    REQUIRE(0 == state.pr_[i]);
+  }
 }
 
 TEST_CASE("State::respawn")
 {
-  Log log = Log(1);
-  State state = State(log, 0);
+  auto log = Log(1, QUIET);
+  auto expctrl = ExpControl(log, 0);
+  auto state = State(log, expctrl);
   unsigned int num = state.num_;
+
   state.respawn();
   REQUIRE(num == state.px_.size());
   REQUIRE(num == state.py_.size());
@@ -51,8 +71,10 @@ TEST_CASE("State::respawn")
 
 TEST_CASE("State::clear")
 {
-  Log log = Log(1);
-  State state = State(log, 0);
+  auto log = Log(1, QUIET);
+  auto expctrl = ExpControl(log, 0);
+  auto state = State(log, expctrl);
+
   state.clear();
   REQUIRE(0 == state.px_.size());
   REQUIRE(0 == state.py_.size());
@@ -68,10 +90,11 @@ TEST_CASE("State::clear")
 
 TEST_CASE("State::change")
 {
-  Log log = Log(2);
+  auto log = Log(2, QUIET);
   REQUIRE(0 == log.messages_.size());
 
-  State state = State(log, 0);
+  auto expctrl = ExpControl(log, 0);
+  auto state = State(log, expctrl);
   Stative stative = {
     -1,
     state.num_,
@@ -90,7 +113,7 @@ TEST_CASE("State::change")
   REQUIRE(2 == log.messages_.size());
   REQUIRE("Changed state without respawn." == log.messages_.front().second);
 
-  state.change(stative, true);
+  state.change(stative, QUIET);
   REQUIRE(2 == log.messages_.size());
   REQUIRE("Changed state with respawn." == log.messages_.front().second);
 
@@ -108,8 +131,40 @@ TEST_CASE("State::change")
     state.prad_,
     state.coloring_
   };
-  state.change(stative, true);
+  state.change(stative, QUIET);
   REQUIRE(2 == log.messages_.size());
   REQUIRE("Changed state with respawn." == log.messages_.front().second);
+}
+
+
+TEST_CASE("State::type_name")
+{
+  auto log = Log(1, QUIET);
+  auto expctrl = ExpControl(log, 0);
+  auto state = State(log, expctrl);
+
+  REQUIRE("premature spore" == state.type_name(Type::PrematureSpore));
+  REQUIRE("mature spore"    == state.type_name(Type::MatureSpore));
+  REQUIRE("ring"            == state.type_name(Type::Ring));
+  REQUIRE("premature cell"  == state.type_name(Type::PrematureCell));
+  REQUIRE("triangle cell"   == state.type_name(Type::TriangleCell));
+  REQUIRE("square cell"     == state.type_name(Type::SquareCell));
+  REQUIRE("pentagon cell"   == state.type_name(Type::PentagonCell));
+  REQUIRE("nutrient"        == state.type_name(Type::Nutrient));
+  REQUIRE("cell hull"       == state.type_name(Type::CellHull));
+  REQUIRE("cell core"       == state.type_name(Type::CellCore));
+}
+
+
+TEST_CASE("State::dpe")
+{
+  auto log = Log(1, QUIET);
+  auto expctrl = ExpControl(log, 0);
+  auto state = State(log, expctrl);
+
+  REQUIRE(5000 == state.num_);
+  REQUIRE(250 == state.width_);
+  REQUIRE(250 == state.height_);
+  REQUIRE(Approx(0.08f) == state.dpe());
 }
 

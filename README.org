@@ -4,11 +4,7 @@
 
 ** About
 
-*Emergence* is a visualiser and processor of a primordial particle system.
-
-This project is based on the article, /How a life-like system emerges from a simple particle motion law/, by  Schmickl, Stefanec, and Crailsheim: https://www.nature.com/articles/srep37969.
-
-This is a rewrite and extension of an [[https://github.com/blobject/mff/tree/master/emergence][earlier JavaScript + HTML5 version]] which ran via web browser and Node.js. The present project uses [[https://www.opengl.org/][OpenGL]] + [[http://glew.sourceforge.net/][GLEW]] (graphics), [[https://www.glfw.org/][GLFW]] (windowing), [[https://github.com/g-truc/glm][glm]] (math), [[https://github.com/ocornut/imgui][ImGui]] (user interface), [[https://github.com/nothings/stb][nothings/stb]] (image export), [[https://www.khronos.org/opencl/][OpenCL]] (parallelisation), and [[https://isocpp.org/][C++]] (implementation language). It runs as a native desktop application on Linux ([[https://www.x.org/wiki/][Xorg]]).
+*Emergence* is a visualiser and processor of a primordial particle system. The project is based on the article, /How a life-like system emerges from a simple particle motion law/, by  Schmickl, Stefanec, and Crailsheim: https://www.nature.com/articles/srep37969. This implementation is a rewrite and extension of an [[https://b.agaric.net/dev/emergence][earlier JavaScript + HTML5 version]] which runs on the browser and Node.js.
 
 ** Build & Run
 
@@ -86,15 +82,15 @@ libXdmcp.so.6 => /usr/lib/libXdmcp.so.6 (0x00007f61847c4000)
 
 *Note:* If any OpenCL component was (un)installed after an invocation of =cmake=, make sure to remove =build/= and do a fresh =cmake= again.
 
-- Test ::
-1. ~cd emergence/build~
-1. ~./testemergence~
-
 - Run ::
 1. ~cd emergence/build~
 1. ~./emergence~ (append =-h= for usage help)
   - On Intel graphics, turn vsync off to get better performance: ~vblank_mode=0 ./emergence~
 
+- Test ::
+1. ~cd emergence/build~
+1. ~./testemergence~
+
 ** Misc.
 
-- ~9000 lines of (source code + comments)
+- ~10k lines of (source code + comments + unit tests)

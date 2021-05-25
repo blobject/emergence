@@ -19,7 +19,7 @@ def usage(message, verbose=False):
   print('usage: {} {}'.format(sys.argv[0], message))
   if verbose:
     message = 'available actions:\n'
-    for e in range(0,7):
+    for e in range(1,8):
       actions = '|'.join(exp_table[e].actions)
       if not actions:
         continue
@@ -120,16 +120,17 @@ class Exp:
         exit(-1)
 
     self.inputs = args
-
-    # read in data files
-    input = []
-    if read:
-      for arg in self.inputs:
-        with open(arg) as f:
-          input += f.read().splitlines()
-    self.input = input
-
+    if read: self.read_input()
     self.figure, self.axes = P.subplots()
+
+  # read_input: Read in data files.
+
+  def read_input(self):
+    input = []
+    for arg in self.inputs:
+      with open(arg) as f:
+        input += f.read().splitlines()
+    self.input = input
 
   # exp_usage: Print oneliner usage help for the specific experiment.
 
@@ -165,114 +166,239 @@ class Exp:
 
 
 ## Performance ################################################################
-#
-# plot type:
-# - histogram
-#
-# in:
-# - when: first tick, last tick
-# - what: nearest neighbor distance of every particle
-#
-# out:
-# - x:  distance class (= floor of distance)
-# - y1: percentage of occurrence of distance class for first tick
-# - y2: percentage of occurrence of distance class for last tick
 
 class Perf(Exp):
 
   id = 0
-  actions = ['base_time_framerate',
-             'base_dim_framerate',
-             'base_dpe_framerate',
-             'base_radius_framerate',
-             'base_gui_framerate',
-             'multicore_framerate',
-             'grid_framerate',
-             'cl_framerate',
-             'core_framerate']
+  actions = ['base_time',
+             'base_dim',
+             'base_dpe',
+             'base_scope',
+             'base_gui',
+             'cl',
+             'grid']
 
   def __init__(self, args):
     super().__init__(args, False)
     self.check_action()
+    action = self.action
 
-    # slight ickiness: input files must be prepended with extra information
-    # input={mode(str): [lines(str)]}
-    input = {}
-    for arg in self.inputs:
-      with open(arg) as f:
-        lines = f.read().splitlines()
-        mode = lines[0]
-        if mode not in input:
-          input[mode] = []
-        input[mode] += lines[1:]
-    self.input = input
+    if action in ['base_time', 'base_gui', 'cl', 'grid']:
+      # slight ickiness: input files must be prepended with extra information
+      # input={mode(str): [lines(str)]}
+      input = {}
+      for arg in self.inputs:
+        with open(arg) as f:
+          lines = f.read().splitlines()
+          mode = lines[0]
+          if mode not in input:
+            input[mode] = []
+          input[mode] += lines[1:]
+      self.input = input
+      return
+
+    super().read_input()
 
   def collect(self):
+    action = self.action
     input = self.input
 
-    # data={mode(str): {time(int): [framerates(float)]}}
-    data = {'graphical': {}, 'headless': {}}
+    if action in ['base_time', 'base_gui', 'cl']:
+      # data={mode(str): {time(int): [framerates(float)]}}
+      data = {}
 
-    for mode in input.keys():
-      data[mode] = {}
-    for mode, lines in input.items():
-      for line in lines:
-        time, fps = line.split(': ')
-        time = int(time)
-        if time not in data[mode]:
-          data[mode][time] = []
-        data[mode][time].append(float(fps))
+      for mode in input.keys():
+        data[mode] = {}
+      for mode, lines in input.items():
+        for line in lines:
+          time, fps = line.split(': ')
+          time = int(time)
+          if time not in data[mode]:
+            data[mode][time] = []
+          data[mode][time].append(float(fps))
+
+      self.data = data
+      return
+
+    if 'grid' == action:
+      # data={mode(str): {param(int): [framerates(float)]}}
+      data = {}
+
+      for mode in input.keys():
+        data[mode] = {}
+      for mode, lines in input.items():
+        for line in lines:
+          key, fpss = line.split(': ')
+          key = int(key.split(',')[0][1:])
+          if key not in data[mode]:
+            data[mode][key] = []
+          for fps in fpss.split():
+            data[mode][key].append(float(fps))
+
+      self.data = data
+      return
+
+    # data={key(int or float): [framerates(float)]}
+    data = {}
+
+    for line in input:
+      key, fpss = line.split(': ')
+      if 'base_dim' == action:
+        key = int(key.split(',')[0])
+      elif 'base_scope' == action:
+        key = int(float(key))
+      else:
+        key = float(key)
+      if key not in data:
+        data[key] = []
+      for fps in fpss.split():
+        data[key].append(float(fps))
 
     self.data = data
+    return
 
   def refine(self):
+    action = self.action
     data = self.data
 
-    # refined={mode(str): {time(int): [framerates(float)]}}
-    refined = {'graphical': {}, 'headless': {}}
+    if action in ['base_time', 'base_gui', 'cl', 'grid']:
+      # refined={mode(str): {time(int): [framerates(float)]}}
+      refined = {}
 
-    for mode, datum in data.items():
-      refined[mode] = {}
-      for time, fpss in datum.items():
-        refined[mode][time] = median(fpss)
+      for mode, datum in data.items():
+        refined[mode] = {}
+        for time, fpss in datum.items():
+          refined[mode][time] = median(fpss)
 
-    self.refined = refined
+      self.refined = refined
+      return
+
+    if action in ['base_dim', 'base_dpe', 'base_scope']:
+      # refined={key(int or float): framerate(float)}
+      refined = {}
+
+      for dim, fpss in data.items():
+        refined[dim] = median(fpss)
+
+      self.refined = refined
+      return
+
+  # approximate_power: Fit a prediction curve to the framerate data.
+  # - model: power function f(x) = a * exp(b * x)
+
+  def approximate_power(self, xdata, ydata):
+    # take the logarithm of everything to allow for linear regression
+    xs = [math.log(x) for x in xdata]
+    ys = [math.log(y) for y in ydata]
+
+    def obj(x, a, b): return a + b * x
+    def f(x, a, b): return a * b ** x
+
+    (a, b), _ = curve_fit(obj, xs, ys)
+    ea = N.exp(a)
+    eb = N.exp(b)
+    res = N.array([y - obj(x, a, b) for x, y in zip(xs, ys)])
+    res = sum(res ** 2)
+    tot = sum((ys - N.mean(ys)) ** 2)
+
+    return {
+      'a': ea,
+      'b': eb,
+      'r2': 1 - (res / tot),
+      'x': xdata,
+      'y': [f(x, ea, eb) for x in xs]
+    }
+
+  # approximate_s: Fit a prediction curve to the framerate data.
+  # - model: (inverted) logistic function f(x) = a / (1 + b * c^x)
+
+  def approximate_s(self, xs, ys):
+    def obj(x, a, b, c): return a / (1 + b * c ** x)
+
+    (a, b, c), _ = curve_fit(obj, xs, ys, [max(ys), median(ys), 1])
+    res = N.array([y - obj(x, a, b, c) for x, y in zip(xs, ys)])
+    res = sum(res ** 2)
+    tot = sum((ys - N.mean(ys)) ** 2)
+
+    return {
+      'a': a,
+      'b': b,
+      'c': c,
+      'r2': 1 - (res / tot),
+      'x': xs,
+      'y': [obj(x, a, b, c) for x in xs]
+    }
 
   def plot(self):
+    action = self.action
     data = self.refined
 
-    for mode, time_fpss in data.items():
+    cs = {'d': '#36383f', 'p': '#92959d'}
+
+    if action in ['base_time', 'base_gui', 'cl', 'grid']:
+      one = 'graphical' if 'base_time' == action else 'on'
+      two = 'headless' if 'base_time' == action else 'off'
+      cs = {'d': {one: '#cf554d', two: '#72a336'},
+            'p': {one: '#a32c2d', two: '#4b7d08'}}
+
+      for mode, time_fpss in data.items():
+        # prepare
+        xs = list(time_fpss.keys())
+        if 'grid' == action:
+          xs = N.arange(1, 31)
+        ys = list(time_fpss.values())
+        label = mode
+        if 'base_gui' == action: label = 'gui '    + label
+        elif     'cl' == action: label = 'opencl ' + label
+        elif   'grid' == action: label = 'grid '   + label
+
+        # plot
+        P.scatter(xs, ys, label=label, color=cs['d'][mode], s=1)
+        fit = self.approximate_power(xs, ys)
+        label = '{:.1f}*{:.3f}^x, R^2={:.2f}'.format(
+          fit['a'], fit['b'], fit['r2'])
+        if 'grid' == action:
+          fit = self.approximate_s(xs, ys)
+          label = '{:d} / (1 + {:.2f} * {:.2f}^x), R^2={:.3f}'.format(
+            int(fit['a']), fit['b'], fit['c'], fit['r2'])
+        P.plot(fit['x'], fit['y'], label=label, color=cs['p'][mode])
+
+      # periphery
+      if 'grid' == action:
+        P.xlabel('params [custom]')
+      else:
+        P.xlabel('time [sec]')
+      P.ylabel('framerate [frames/sec]')
+      if 'grid' == action:
+        P.xlim(0, 30)
+      else:
+        P.xlim(0, 120)
+
+    elif action in ['base_dim', 'base_dpe', 'base_scope']:
       # prepare
-      xs = list(time_fpss.keys())
+      xs = list(data.keys())
+      ys = list(data.values())
 
-      # plot (observed counts, estimated)
-      P.scatter(list(time_fpss.keys()), list(time_fpss.values()),
-                label=mode,
-                s=1)
-    #bp = P.boxplot(list(data.values()),
-    #               manage_ticks=False,
-    #               positions=xs,
-    #               widths=[0.5] * len(xs),
-    #               flierprops={'marker': '+',
-    #                           'markersize': 1,
-    #                           'markeredgecolor': '#ba59b3'},
-    #               whiskerprops={'linestyle': 'dashed'},
-    #               patch_artist=True,
-    #               zorder=0)
-    #for b in bp['boxes']:
-    #  b.set_facecolor('#d471cc')
-    #  b.set_edgecolor('#ba59b3')
-    #for c in bp['caps']: c.set_color('#ba59b3')
-    #for f in bp['fliers']: f.set_color('#ba59b3')
-    #for m in bp['medians']: m.set_color('w')
-    #for w in bp['whiskers']: w.set_color('#d471cc')
+      # plot
+      P.scatter(xs, ys, color=cs['d'], s=1, zorder=10)
+      fit = self.approximate_power(xs, ys)
+      P.plot(fit['x'], fit['y'],
+             label='({:.2e})*{:.3f}^x, R^2={:.2f}'
+               .format(fit['a'], fit['b'], fit['r2']),
+             color=cs['p'], zorder=0)
 
-    # periphery
-    P.xlabel('time [sec]')
-    P.ylabel('framerate [frame/sec]')
-    #P.xticks(N.arange(0, 8)) # assumption
-    #P.yticks(N.arange(0, 1.01, 0.1))
-    #P.xlim(-0.5, 7.5) # assumption
+      # periphery
+      P.ylabel('framerate [frames/sec]')
+      if 'base_dim' == action:
+        P.xlabel('habitat dimensions [su^2]')
+        P.ylim(0, 1500)
+      elif 'base_dpe' == action:
+        P.xlabel('DPE [p/su]')
+        P.ylim(0, 210)
+      elif 'base_scope' == action:
+        P.xlabel('neighborhood radius [su]')
+        P.ylim(0, 100)
+
     P.rcParams['legend.handlelength'] = 0.5
 
     # set
@@ -564,7 +690,7 @@ class Exp2(Exp):
     """
 
     if 'count' == self.action:
-      data = self.refined # slice here to truncate
+      data = self.refined
 
       # prepare
       color_est_cell          = '#667ad3'
@@ -575,7 +701,7 @@ class Exp2(Exp):
       color_dbscan_cell_line  = '#4ea494'
       color_dbscan_spore      = '#ff99f6'
       color_dbscan_spore_line = '#ba8d3b'
-      ks = data.keys()
+      ks = data.keys() # slice 'ks' and 'vs' to truncate
       vs = data.values()
       ec = [x['est_cells'] for x in vs]
       es = [x['est_spores'] for x in vs]
@@ -923,7 +1049,7 @@ class Exp4(Exp):
 
     (a, b), _ = curve_fit(obj, lxs, lys)
     ea = math.exp(a)
-    res = N.array([y - obj(x, a, b) for (x, y) in zip(lxs, lys)])
+    res = N.array([y - obj(x, a, b) for x, y in zip(lxs, lys)])
     res = sum(res ** 2)
     tot = sum((lys - N.mean(lys)) ** 2)
 
@@ -954,7 +1080,7 @@ class Exp4(Exp):
     def obj(x, a, b): return a * x + b
 
     (a, b), _ = curve_fit(obj, xs, ys)
-    res = N.array([y - obj(x, a, b) for (x, y) in zip(xs, ys)])
+    res = N.array([y - obj(x, a, b) for x, y in zip(xs, ys)])
     res = sum(res ** 2)
     tot = sum((ys - N.mean(ys)) ** 2)
 
@@ -1529,7 +1655,7 @@ class Exp6(Exp):
 
 ## run ########################################################################
 
-exp_table = [Perf, Exp1, Exp2, Exp3, Exp4, Exp5, Exp6]
+exp_table = [None, Exp1, Exp2, Exp3, Exp4, Exp5, Exp6, Perf]
 usage_message = 'EXP_NUM [EXP_ACTION] DATA_FILES'
 P.rcParams.update({
   'figure.autolayout': True,
@@ -1541,7 +1667,7 @@ if (2 > len(sys.argv)):
   usage(usage_message, True)
   exit(-1)
 e = sys.argv[1]
-if e not in ['0', '1', '2', '3', '4', '5', '6']:
+if e not in ['1', '2', '3', '4', '5', '6', '7']:
   usage(usage_message, True)
   exit(-1)
 

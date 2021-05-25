@@ -11,6 +11,7 @@
 #pragma once
 
 #include "proc.hh"
+#include "../exp/control.hh"
 #include "../exp/exp.hh"
 #include <chrono>
 
@@ -18,6 +19,7 @@
 enum class Type;
 enum class Coloring;
 class Exp;
+class ExpControl;
 class Proc;
 class State;
 
@@ -45,10 +47,12 @@ class Control
   /// \param log  Log object
   /// \param state  State object
   /// \param proc  Proc object
+  /// \param exp  Exp object
+  /// \param expctrl  experiment control object
   /// \param init  path to the file containing an initial state
   /// \param pause  whether system should start paused
 
-  Control(Log& log, State& state, Proc& proc, Exp& exp,
+  Control(Log& log, State& state, Proc& proc, ExpControl& expctrl, Exp& exp,
           const std::string& init, bool pause);
 
   // next /////////////////////////////////////////////////////////////////////
@@ -64,22 +68,6 @@ class Control
   /// Observer pattern helpers for at/de-taching View to State.
   void attach_to_state(Observer& observer);
   void detach_from_state(Observer& observer);
-
-  /// get_state(): Return a reference to State.
-  /// \returns  reference to State
-  State& get_state() const;
-
-  /// get_exp(): Return a reference to Exp.
-  /// \returns  reference to Exp
-  Exp& get_exp() const;
-
-  /// get_num(): Return the number of particles.
-  /// \returns  number of particles
-  int get_num() const;
-
-  /// get_num(): Return the particle color scheme.
-  /// \returns  particle coloring scheme
-  Coloring get_coloring() const;
 
   /// change(): Change system parameters.
   /// \param input  input system parameters
@@ -168,6 +156,10 @@ class Control
 
   // members //////////////////////////////////////////////////////////////////
 
+  Exp&        exp_;
+  ExpControl& expctrl_;
+  State&      state_;
+
   int           pid_;       // linux process id
   unsigned long tick_;      // number of ticks (time steps, frames) so far
   long long     countdown_; // number of ticks remaining
@@ -176,16 +168,14 @@ class Control
   bool          step_;      // whether to process one frame at a time
   bool          quit_;      // whether processing ought to stop
   bool          gui_change_;
-  int experiment_group_;    // experiment being performed
-  int experiment_;          // specific experiment being performed
+  float         dpe_;
 
  private:
-  Exp&   exp_;
-  Log&   log_;
-  Proc&  proc_;
-  State& state_;
+  /// profile(): Print the framerate.
+  void profile();
 
-  float dpe_;
+  Log&     log_;
+  Proc&    proc_;
   std::chrono::steady_clock::time_point profile_ago_;
   std::chrono::steady_clock::time_point profile_last_;
   unsigned int profile_fps_;
