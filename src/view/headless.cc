@@ -37,7 +37,7 @@ Headless::~Headless()
 void
 Headless::exec()
 {
-  return; // when profiling
+  //return; // when profiling
   Control& ctrl = this->ctrl_;
 
   if (ctrl.expctrl_.experiment_) {

@@ -127,6 +127,7 @@ void
 Canvas::intro()
 {}
 
+
 void
 Canvas::exec()
 {

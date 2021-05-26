@@ -45,7 +45,7 @@ def find_median(item_freqs):
     if not b and count >= j:
       b = item_freq[0]
     if a and b:
-      return (a + b) // 2 # only 5 median uses this and requires an int
+      return (a + b) // 2 # only exp "5 median" uses this and requires an int
 
 
 # discretise: Place data into bins, and return a dict whose keys are the
