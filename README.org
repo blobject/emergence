@@ -6,7 +6,7 @@
 
 ** About
 
-*Emergence* is a visualiser and processor of a primordial particle system. The project is based on the article, /How a life-like system emerges from a simple particle motion law/, by  Schmickl, Stefanec, and Crailsheim: https://www.nature.com/articles/srep37969. This implementation is a rewrite and extension of an [[https://b.agaric.net/dev/emergence][earlier JavaScript + HTML5 version]] which runs on the browser and Node.js.
+*Emergence* is a visualiser and processor of a primordial particle system. The project is based on the article, /How a life-like system emerges from a simple particle motion law/, by  Schmickl, Stefanec, and Crailsheim: https://www.nature.com/articles/srep37969.
 
 ** Build & Run
 
