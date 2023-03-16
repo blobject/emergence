@@ -82,12 +82,11 @@ main(int argc, char* argv[])
 static void
 usage()
 {
-  char* me = strdup(ME);
-  me[0] += 0x20;
+  std::string me = ME;
+  me[0] = tolower(me[0]);
   std::cout << "Usage: " << me
             << " -(?h|3|c|e NUM|g|i FILE|p|q|v|x)"
             << std::endl;
-  free(me);
 }
 
 
@@ -111,6 +110,7 @@ help()
             << "             performance:  [71, 72, 73, 74]\n"
             << "  -i FILE  supply an initial state\n"
             << "  -p       start paused\n"
+            << "  -q       suppress (non-experimental) logging to stdout\n"
             << "  -x       run in headless mode\n\n"
             << "Options for graphical mode:\n"
             << "  -3       start in 3d mode\n"
@@ -118,7 +118,6 @@ help()
             << "             C-c, C-q: quit\n"
             << "             Space:    pause/resume\n"
             << "             S:        step\n"
-            << "  -q       suppress logging to stdout\n"
             << std::endl;
 }
 
@@ -147,6 +146,7 @@ args(int argc, char* argv[])
     if ('?' == opt || 'h' == opt) {
       opts["quit"] = "help";
       opts["return"] = "0";
+      break;
     }
     else if ('3' == opt) { opts["three"] = "."; }
     else if ('c' == opt) { opts["nocl"]  = "."; }
@@ -155,10 +155,16 @@ args(int argc, char* argv[])
     else if ('i' == opt) { opts["input"] = optarg; }
     else if ('p' == opt) { opts["pause"] = "."; }
     else if ('q' == opt) { opts["quiet"] = "."; }
-    else if ('v' == opt) { opts["quit"] = "version"; opts["return"] = "0"; }
+    else if ('v' == opt) { opts["quit"] = "version"; opts["return"] = "0";
+      break;
+    }
     else if ('x' == opt) { opts["headless"] = "."; }
-    else if (':' == opt) { opts["quit"] = "noarg"; opts["return"] = "-1"; }
-    else { opts["quit"] = optopt; opts["return"] = "-1"; }
+    else if (':' == opt) { opts["quit"] = "noarg"; opts["return"] = "-1";
+      break;
+    }
+    else                 { opts["quit"] = optopt; opts["return"] = "-1";
+      break;
+    }
   }
   return opts;
 }

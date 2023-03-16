@@ -22,6 +22,7 @@ def usage(message, verbose=False):
     for e in range(1,8):
       actions = '|'.join(exp_table[e].actions)
       if not actions:
+        message += '  {}\n'.format(e)
         continue
       message += '  {}  {}\n'.format(e, actions)
     print(message, end='')
@@ -1659,7 +1660,7 @@ exp_table = [None, Exp1, Exp2, Exp3, Exp4, Exp5, Exp6, Perf]
 usage_message = 'EXP_NUM [EXP_ACTION] DATA_FILES'
 P.rcParams.update({
   'figure.autolayout': True,
-  'font.family': 'Liberation Mono',
+  #'font.family': 'Liberation Mono',
   'toolbar': 'None'
 })
 

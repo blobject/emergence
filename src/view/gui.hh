@@ -44,10 +44,9 @@ class Gui
   /// \param uistate  UiState object
   /// \param canvas  Canvas object
   /// \param window  GLFW window object
-  /// \param scale  window scaling
   /// \param three  whether in 3D mode
   Gui(Log& log, UiState& uistate, Canvas& canvas, GLFWwindow* window,
-      float scale, bool three);
+      bool three);
 
   /// destructor: Clean up the window and the UI.
   ~Gui();
@@ -101,10 +100,10 @@ class Gui
   /// backspace(): Move cursor back one space.
   /// \param offset  how many more/less pixels to move back
   inline void
-  backspace(int offset = 1)
+  backspace(int offset = 0)
   {
     ImGui::SameLine();
-    ImGui::SetCursorPosX(ImGui::GetCursorPosX() - this->font_width_ - offset);
+    ImGui::SetCursorPosX(ImGui::GetCursorPosX() - this->font_width_ + 5 + offset);
   }
 
   /// auto_width(): Set next element width.
@@ -151,7 +150,6 @@ class Gui
   UiState&     uistate_;
   GLFWwindow*  window_;
   Canvas&      canvas_;
-  float        scale_;
   double       ago_;         // last moment when counting of frames began (~1s)
   unsigned int frames_;      // accumulated number of draws
   float        fps_;         // calculated frames per second

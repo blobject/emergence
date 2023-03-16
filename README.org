@@ -1,12 +1,10 @@
-/Repository has been frozen for thesis submission at commit 6224913 on 25 May 2021, 21:00/
-
 * emergence
 
 [[/pub/demo.png]]
 
 ** About
 
-*Emergence* is a visualiser and processor of a primordial particle system. The project is based on the article, /How a life-like system emerges from a simple particle motion law/, by  Schmickl, Stefanec, and Crailsheim: https://www.nature.com/articles/srep37969.
+*Emergence* is a visualiser and processor of a primordial particle system. The project is based on the article, "How a life-like system emerges from a simple particle motion law", by Schmickl et al.: https://www.nature.com/articles/srep37969.
 
 ** Build & Run
 
@@ -19,30 +17,30 @@
 - glm ~0.9.9~
 - opengl ~3.3~
 
-/The versions have not been properly vetted and are just what I used. The program might still work with different versions./
+/These versions indicate those used in the latest build, not necessarily what works./
 
 ~ldd ./emergence~:
 
-#+BEGIN_SRC haskell
-linux-vdso.so.1 (0x00007ffe2ffb5000)
-libGLEW.so.2.2 => /usr/lib/libGLEW.so.2.2 (0x00007f618511c000)
-libglfw.so.3 => /usr/lib/libglfw.so.3 (0x00007f61850b4000)
-libOpenGL.so.0 => /usr/lib/libOpenGL.so.0 (0x00007f6185089000)
-libOpenCL.so.1 => /usr/lib/libOpenCL.so.1 (0x00007f6185067000)
-libstdc++.so.6 => /usr/lib/libstdc++.so.6 (0x00007f6184dfe000)
-libm.so.6 => /usr/lib/libm.so.6 (0x00007f6184cb9000)
-libgcc_s.so.1 => /usr/lib/libgcc_s.so.1 (0x00007f6184c9d000)
-libc.so.6 => /usr/lib/libc.so.6 (0x00007f6184ad7000)
-libGL.so.1 => /usr/lib/libGL.so.1 (0x00007f6184a50000)
-libdl.so.2 => /usr/lib/libdl.so.2 (0x00007f6184a4a000)
-libX11.so.6 => /usr/lib/libX11.so.6 (0x00007f6184908000)
-libpthread.so.0 => /usr/lib/libpthread.so.0 (0x00007f61848e7000)
-libGLdispatch.so.0 => /usr/lib/libGLdispatch.so.0 (0x00007f618482e000)
-/lib64/ld-linux-x86-64.so.2 => /usr/lib64/ld-linux-x86-64.so.2 (0x00007f61851e1000)
-libGLX.so.0 => /usr/lib/libGLX.so.0 (0x00007f61847fc000)
-libxcb.so.1 => /usr/lib/libxcb.so.1 (0x00007f61847d1000)
-libXau.so.6 => /usr/lib/libXau.so.6 (0x00007f61847cc000)
-libXdmcp.so.6 => /usr/lib/libXdmcp.so.6 (0x00007f61847c4000)
+#+BEGIN_SRC
+linux-vdso.so.1
+/usr/lib/libGLEW.so.2.2
+/usr/lib/libglfw.so.3
+/usr/lib/libOpenGL.so.0
+/usr/lib/libOpenCL.so.1
+/usr/lib/libstdc++.so.6
+/usr/lib/libm.so.6
+/usr/lib/libgcc_s.so.1
+/usr/lib/libc.so.6
+/usr/lib/libGL.so.1
+/usr/lib/libdl.so.2
+/usr/lib/libX11.so.6
+/usr/lib/libpthread.so.0
+/usr/lib/libGLdispatch.so.0
+/usr/lib64/ld-linux-x86-64.so.2
+/usr/lib/libGLX.so.0
+/usr/lib/libxcb.so.1
+/usr/lib/libXau.so.6
+/usr/lib/libXdmcp.so.6
 #+END_SRC
 
 **** Bundled with this repository (in =external/=)
@@ -55,9 +53,10 @@ libXdmcp.so.6 => /usr/lib/libXdmcp.so.6 (0x00007f61847c4000)
 
 **** Optional
 
-- opencl c/c++ headers ~>= 2~
-- opencl loader (aka. ocl-icd) ~>= 2~
-- opencl runtime ~>= 2.1~
+- opencl c headers ("opencl2-headers") ~>= 2023.02.06~
+- opencl c++ headers ("opencl-clhpp") ~>= 2.0.15~
+- opencl loader ("ocl-icd") ~>= 2.3.1~
+- opencl runtime
   - Per your graphics card manufacturer, eg. [[https://software.intel.com/content/www/us/en/develop/articles/opencl-drivers.html][Intel]], [[https://developer.nvidia.com/opencl][Nvidia]], AMD ([[https://www.amd.com/en/search?keyword=amdgpu-pro][link]], [[https://stackoverflow.com/questions/53070673/download-opencl-amd-app-sdk-3-0-for-windows-and-linux][link]], [[https://wiki.archlinux.org/index.php/AMDGPU_PRO][link]]).
   - This project has only been tested using [[https://software.intel.com/content/www/us/en/develop/articles/opencl-drivers.html][Intel Graphics Compute Runtime]] (aka. NEO) for OpenCL for Intel gen9 graphics on Linux.
 
@@ -77,7 +76,7 @@ libXdmcp.so.6 => /usr/lib/libXdmcp.so.6 (0x00007f61847c4000)
 - Build ::
 1. Retrieve this repository from https://github.com/blobject/emergence.
 1. ~cd emergence~
-1. Optionally configure =DPI= (default =200=) and =CL= (default =on=) in CMakeLists.txt.
+1. Optionally configure =CL= (default =on=) in CMakeLists.txt.
 1. ~rm -R build; mkdir build; cd build~
 1. ~cmake ..~
 1. ~make~

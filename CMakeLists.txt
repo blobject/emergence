@@ -1,4 +1,3 @@
-set(DPI 200)
 set(CL 1) # 0=off, 1=on
 
 cmake_minimum_required(VERSION 3.13)
@@ -57,7 +56,7 @@ target_compile_definitions(lib${ME} PUBLIC MESA_GLSL_VERSION_OVERRIDE=330)
 #target_link_libraries(lib${ME} imgui)
 
 set(LIBS lib${ME} GLEW glfw imgui OpenGL)
-if(OpenCL_FOUND AND EXISTS "${OpenCL_INCLUDE_DIR}/CL/cl2.hpp")
+if(OpenCL_FOUND AND EXISTS "${OpenCL_INCLUDE_DIR}/CL/opencl.hpp")
   target_compile_definitions(lib${ME} PUBLIC CL_ENABLED=${CL})
   target_compile_definitions(lib${ME} PUBLIC CL_TARGET_OPENCL_VERSION=210)
   target_compile_definitions(lib${ME} PUBLIC CL_HPP_TARGET_OPENCL_VERSION=210)
@@ -65,9 +64,9 @@ if(OpenCL_FOUND AND EXISTS "${OpenCL_INCLUDE_DIR}/CL/cl2.hpp")
 endif()
 
 add_executable(${ME} src/main.cc)
-enable_testing()
-add_executable(test${ME} src/test.cc)
+#enable_testing()
+#add_executable(test${ME} src/test.cc)
 
 target_link_libraries(${ME} ${LIBS})
-target_link_libraries(test${ME} ${LIBS})
+#target_link_libraries(test${ME} ${LIBS})
 

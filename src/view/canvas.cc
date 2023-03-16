@@ -11,14 +11,12 @@ Canvas::Canvas(Log& log, Control& ctrl, UiState& uistate,
 
   this->width_ = static_cast<GLfloat>(1000.0f);
   this->height_ = static_cast<GLfloat>(1000.0f);
-  float window_scale = DPI / 100.0f;
 
-  this->preamble(this->width_ / window_scale, this->height_ / window_scale);
+  this->preamble(this->width_, this->height_);
 
   this->gui_ = NULL;
   if (gui_on) {
-    this->gui_ = new Gui(log, uistate, *this, this->window_, window_scale,
-                         three);
+    this->gui_ = new Gui(log, uistate, *this, this->window_, three);
     this->ago_ = glfwGetTime();
   }
 

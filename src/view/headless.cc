@@ -92,7 +92,7 @@ Headless::report(When when) const
   if (When::Done == when) {
     std::cout << "\nProcessing finished after " << ctrl.tick_ << " ticks.";
   } else if (When::Paused == when) {
-    std::cout << "\nPaused after " << ctrl.tick_ << " ticks.";
+    std::cout << "\nPaused at " << ctrl.tick_ << " ticks.";
   }
   std::cout << "\n  num:    " << state.num_
             << "\n  width:  " << state.width_

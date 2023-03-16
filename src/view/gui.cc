@@ -4,9 +4,9 @@
 
 
 Gui::Gui(Log& log, UiState& uistate, Canvas& canvas, GLFWwindow* window,
-         float scale, bool three)
+         bool three)
   : canvas_(canvas), log_(log), uistate_(uistate), window_(window),
-    scale_(scale), three_(three)
+    three_(three)
 {
   // more glfw
   glfwSetKeyCallback(window, key_callback);
@@ -34,7 +34,7 @@ Gui::Gui(Log& log, UiState& uistate, Canvas& canvas, GLFWwindow* window,
   this->trail_ = false;
   this->dolly_ = false;
   this->pivot_ = false;
-  float font_size = 28.0f / scale;
+  float font_size = 24.0f;
   this->cwd_ = Util::working_dir() + "/";
   std::string font = Util::execution_dir() + "/"
                      + "../external/fonts/LiberationMono-";
@@ -192,7 +192,7 @@ Gui::draw_brief(bool draw)
     ImGui::PushFont(font_b);
     ImGui::TextColored(text_bright, "%lu", ctrl.tick_);
     ImGui::PopFont();
-    this->backspace(-1);
+    this->backspace();
     ImGui::TextColored(text_normal, "/%lld", ctrl.duration_);
 
     // mouse
@@ -201,13 +201,13 @@ Gui::draw_brief(bool draw)
     ImGui::PushFont(font_b);
     ImGui::TextColored(text_bright, "%.0f", this->x_);
     ImGui::PopFont();
-    this->backspace(-1);
+    this->backspace();
     ImGui::TextColored(text_normal, "/%d, y", width);
     ImGui::SameLine();
     ImGui::PushFont(font_b);
     ImGui::TextColored(text_bright, "%.0f", height - this->y_);
     ImGui::PopFont();
-    this->backspace(-1);
+    this->backspace();
     ImGui::TextColored(text_normal, "/%d", height);
 
     // fps
@@ -235,8 +235,8 @@ Gui::draw_brief(bool draw)
     ImGui::PushFont(this->font_i_);
     ImGui::TextColored(text_normal, "Escape");
     ImGui::PopFont();
-    this->backspace(-4);
-    ImGui::TextColored(text_normal, "for more");
+    this->backspace();
+    ImGui::TextColored(text_normal, " for more");
   }
   ImGui::End();
   style.WindowBorderSize = 1.0f;
@@ -858,8 +858,8 @@ Gui::draw_config_usage()
   ImGui::TextColored(text_dimmer, "pause/resume");
   ImGui::PopFont();
   this->backspace();
-  ImGui::TextColored(text_dimmer, ":");
-  ImGui::SameLine();
+  ImGui::TextColored(text_dimmer, ": ");
+  this->backspace();
   ImGui::TextColored(text_dim, "Space");
 
   // step
@@ -867,8 +867,8 @@ Gui::draw_config_usage()
   ImGui::TextColored(text_dimmer, "step");
   ImGui::PopFont();
   this->backspace();
-  ImGui::TextColored(text_dimmer, ":");
-  ImGui::SameLine();
+  ImGui::TextColored(text_dimmer, ": ");
+  this->backspace();
   ImGui::TextColored(text_dim, "S");
 
   // quit
@@ -931,30 +931,30 @@ Gui::draw_config_usage()
 
   // camera dolly and pivot
   ImGui::TextColored(text_dim, "               QWE");
-  ImGui::SameLine();
-  ImGui::SetCursorPosX(ImGui::GetCursorPosX() - 2 + 8 * font_width);
-  ImGui::TextColored(text_dim, "UIO");
+  this->backspace(4);
+  ImGui::TextColored(text_dim, "        UIO");
   ImGui::PushFont(font_b);
   ImGui::TextColored(text_dimmer, "camera  dolly");
   ImGui::PopFont();
   this->backspace();
-  ImGui::TextColored(text_dimmer, ":");
-  ImGui::SameLine();
+  ImGui::TextColored(text_dimmer, ": ");
+  this->backspace();
   ImGui::TextColored(text_dim, "A D");
-  ImGui::SameLine();
+  this->backspace();
   ImGui::PushFont(font_b);
-  ImGui::TextColored(text_dimmer, " pivot:");
+  ImGui::TextColored(text_dimmer, " pivot");
   ImGui::PopFont();
-  this->backspace(-1);
-  ImGui::TextColored(text_dim, " J L");
+  this->backspace();
+  ImGui::TextColored(text_dimmer, ": ");
+  this->backspace();
+  ImGui::TextColored(text_dim, "J L");
   ImGui::TextColored(text_dim, "               ZXC");
-  ImGui::SameLine();
-  ImGui::SetCursorPosX(ImGui::GetCursorPosX() - 2 + 8 * font_width);
-  ImGui::TextColored(text_dim, "M,.");
+  this->backspace(4);
+  ImGui::TextColored(text_dim, "        M,.");
   ImGui::TextColored(text_dimmer, "            mouse");
   this->backspace();
   ImGui::TextColored(text_dim, "L");
-  ImGui::SameLine();
+  this->backspace();
   ImGui::TextColored(text_dimmer, "     mouse");
   this->backspace();
   ImGui::TextColored(text_dim, "R");
@@ -964,8 +964,8 @@ Gui::draw_config_usage()
   ImGui::TextColored(text_dimmer, "         zoom");
   ImGui::PopFont();
   this->backspace();
-  ImGui::TextColored(text_dimmer, ":");
-  ImGui::SameLine();
+  ImGui::TextColored(text_dimmer, ": ");
+  this->backspace();
   ImGui::TextColored(text_dim, "Minus");
   this->backspace();
   ImGui::TextColored(text_dimmer, "(");
@@ -989,23 +989,25 @@ Gui::draw_config_usage()
   ImGui::TextColored(text_dimmer, "        reset");
   ImGui::PopFont();
   this->backspace();
-  ImGui::TextColored(text_dimmer, ":");
-  ImGui::SameLine();
+  ImGui::TextColored(text_dimmer, ": ");
+  this->backspace();
   ImGui::TextColored(text_dim, "Slash");
   this->backspace();
   ImGui::TextColored(text_dimmer, "(");
   this->backspace();
   ImGui::TextColored(text_dim, "/");
   this->backspace();
-  ImGui::TextColored(text_dimmer, ")");
+  ImGui::TextColored(text_dimmer, "), mouse");
+  this->backspace();
+  ImGui::TextColored(text_dim, "M");
 
   // message box
   ImGui::PushFont(font_b);
   ImGui::TextColored(text_dimmer, "messages box");
   ImGui::PopFont();
   this->backspace();
-  ImGui::TextColored(text_dimmer, ":   ");
-  ImGui::SameLine();
+  ImGui::TextColored(text_dimmer, ":    ");
+  this->backspace();
   ImGui::TextColored(text_dim, "Grave");
   this->backspace();
   ImGui::TextColored(text_dimmer, "(");
@@ -1019,8 +1021,8 @@ Gui::draw_config_usage()
   ImGui::TextColored(text_dimmer, "brief corner");
   ImGui::PopFont();
   this->backspace();
-  ImGui::TextColored(text_dimmer, ":   ");
-  ImGui::SameLine();
+  ImGui::TextColored(text_dimmer, ":    ");
+  this->backspace();
   ImGui::TextColored(text_dim, "Apostrophe");
   this->backspace();
   ImGui::TextColored(text_dimmer, "(");
@@ -1034,8 +1036,8 @@ Gui::draw_config_usage()
   ImGui::TextColored(text_dimmer, "this config box");
   ImGui::PopFont();
   this->backspace();
-  ImGui::TextColored(text_dimmer, ":");
-  ImGui::SameLine();
+  ImGui::TextColored(text_dimmer, ": ");
+  this->backspace();
   ImGui::TextColored(text_dim, "Escape");
 }
 
@@ -1049,9 +1051,9 @@ Gui::draw_capture(Box box)
   int window_width;
   int window_height;
   glfwGetFramebufferSize(this->window_, &window_width, &window_height);
-  int w = std::max(static_cast<int>(400.0f / this->scale_),
+  int w = std::max(static_cast<int>(400.0f),
                    static_cast<int>(window_width * 0.75f));
-  int h = std::max(static_cast<int>(250.0f / this->scale_),
+  int h = std::max(static_cast<int>(250.0f),
                    static_cast<int>(window_height * 0.3f));
   int path_len = IM_ARRAYSIZE(this->capture_path_);
 
@@ -1125,9 +1127,9 @@ Gui::draw_load_save(Box box)
   int window_width;
   int window_height;
   glfwGetFramebufferSize(this->window_, &window_width, &window_height);
-  int w = std::max(static_cast<int>(400.0f / this->scale_),
+  int w = std::max(static_cast<int>(400.0f),
                    static_cast<int>(window_width * 0.75f));
-  int h = std::max(static_cast<int>(250.0f / this->scale_),
+  int h = std::max(static_cast<int>(250.0f),
                    static_cast<int>(window_height * 0.3f));
   ImVec4& text_bad = this->text_color_bad_;
   std::string what = "Save";
@@ -1218,9 +1220,9 @@ Gui::draw_quit(Box box)
   int window_width;
   int window_height;
   glfwGetFramebufferSize(this->window_, &window_width, &window_height);
-  int w = std::max(static_cast<int>(420.0f / this->scale_),
+  int w = std::max(static_cast<int>(420.0f),
                    static_cast<int>(window_width * 0.75f));
-  int h = std::max(static_cast<int>(460.0f / this->scale_),
+  int h = std::max(static_cast<int>(460.0f),
                    static_cast<int>(window_width * 0.5f));
   auto color_bad = ImVec4(1.0f, 0.25f, 0.25f, 1.0f);
   auto color_dim = ImVec4(0.5f, 0.5f, 0.5f, 1.0f);
@@ -1856,6 +1858,10 @@ Gui::mouse_button_callback(GLFWwindow* window, int button, int action,
   if (action == GLFW_RELEASE) {
     if (button == GLFW_MOUSE_BUTTON_LEFT)  { gui->dolly_ = false; return; }
     if (button == GLFW_MOUSE_BUTTON_RIGHT) { gui->pivot_ = false; return; }
+    if (button == GLFW_MOUSE_BUTTON_MIDDLE) {
+      canvas->camera_default();
+      return;
+    }
     return;
   }
 }

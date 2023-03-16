@@ -15,7 +15,7 @@
 
 #if 1 == CL_ENABLED
 
-#include <CL/cl2.hpp>
+#include <CL/opencl.hpp>
 
 #endif /* CL_ENABLED */
 
